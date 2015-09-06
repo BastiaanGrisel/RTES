@@ -30,3 +30,7 @@
 
 # Debug files
 *.dSYM/
+
+# X32 specifics
+*.d
+*.ce
