@@ -1,1 +1,1 @@
-Test branch for the Real-time embedded systems course. 
+Test branch for the Real-Time embedded systems course. 
