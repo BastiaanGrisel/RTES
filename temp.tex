@@ -1,0 +1,68 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{geometry}
+ \geometry{
+ a4paper,
+% total={210mm,297mm},
+ left=20mm,
+ right=20mm,
+ top=20mm,
+ bottom=20mm,
+ }
+\graphicspath{ {/home/synchro/Pictures/} }
+\setlength{\tabcolsep}{2pt}
+\setlength\emergencystretch\textwidth
+
+\begin{document}
+
+\title{\textbf{Embedded Real-Time Systems}}
+\author{Ali Alessio Salman, Bastiaan Grisèl, Henko Aantjes}
+
+\maketitle
+
+\begin{abstract}
+\begin{center}
+The abstract text goes here. 
+\end{center}
+\end{abstract}
+
+\section{Introduction}
+Here is the text of the introduction.
+
+\subsection{Protocol Design}
+\justifying
+Due to bandwidth restrictions we've decided to use a 24 bits packets for each message from the PC to the X32 soft-core. The first int\_8 number will be the preamble of the packet; the table below shows what is the correspondence with the commands (Mode, Lift, Roll, Pitch, etc.). The next 8 bits carry the real information that could be the offset, choosing the new mode or the value of the P-control.  
+Since we're working on a \textit{real-time} system we don't need to pay special attention to the packet loss because the information in each packet is pretty meager and it's more important to receive the next one than setting up a routine to re-send lost packets that could incur in losing precious time (...).  
+The checksum instead is fondamental not to execute the wrong commands that could cause an immediate crush of the QR. 
+\vspace{2em}
+
+
+\begin{table}[h!]
+\centering
+ \begin{tabular}{||c|c|c|c||} 
+ \hline
+ Code & Type & Payload & Additional Info \\ [0.5ex] 
+ \hline\hline
+ 0 & M & 3bits to choose the mode + padding & 8bits checksum \\ 
+ \hline
+ 1 & L & 8bits integer value (offset) & 8bits checksum \\
+ \hline
+ 2 & R & 8bits integer value (offset) & 8bits checksum \\
+ \hline
+ 3 & P & 8bits integer value (offset) & 8bits checksum \\
+ \hline
+ 4 & Y & 8bits integer value (offset) & 8bits checksum\\ 
+ \hline
+ 5 & J & 8bits integer value (P-control) & 8bits checksum\\ 
+ \hline
+ 6 & K & 8bits integer value (P-control) & 8bits checksum\\ 
+ \hline
+ 7 & L & 8bits integer value (P-control) & 8bits checksum\\ 
+ \hline
+\end{tabular}
+\caption{Each row describes a packet type (Provisional)}
+\label{table:1}
+\end{table}
+
+
+\end{document}
