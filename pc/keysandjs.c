@@ -11,10 +11,27 @@
 
 #include "joystick.h"
 
-#include <ncurses.h>
+#include <ncurses.h> /*for user key input*/
+
+#define JS_DEV	"/dev/input/js0" /*define joystick location*/
+
+
+#define SERIAL_DEVICE	"/dev/ttyS0"
+#define USB_DEVICE	"/dev/ttyUSB0"
+#define WIFI_DEVICE 	"/dev/ttyUSB0" /* may need to change this */
+
+#define JS_ENABLED 0
+#define RS232_enabled 1
+
 
 void keyInit(void);
 int joystickInit(void);
+void rs232_open(void);
+void rs232_close(void);
+int rs232_putchar(char c);
+int	rs232_getchar_nb(void);
+
+int fd_RS232;
 
 
 /* current axis and button readings
@@ -23,7 +40,7 @@ int	axis[6];
 int	button[12];
 
 
-#define JS_DEV	"/dev/input/js0"
+
 
 int main (int argc, char **argv)
 {
@@ -31,12 +48,22 @@ int main (int argc, char **argv)
 	struct js_event js;
 	unsigned int i;
 	int c, last_c;
+	char rec_c;
+	char received_chars[1000];
+	int charpos = 0;
+	bool js_change = false;
 
     // init keyspress functionality
     keyInit();
 
-    // init joystick functionality 
-    fd = joystickInit();
+	if(JS_ENABLED){
+    	// init joystick functionality 
+    	fd = joystickInit();
+    }
+    if(RS232_enabled){
+    	// open connection to X32
+    	rs232_open();
+    }
 
 	while (1) {
 	
@@ -45,41 +72,70 @@ int main (int argc, char **argv)
 	    if (c != -1){
 	        last_c = c;
 	    }
+	    clear();
 	    
-	
+		if(JS_ENABLED){
 		/* check joystick */
-		if (read(fd, &js, sizeof(struct js_event)) == 
-		       			sizeof(struct js_event))  {
+			if (read(fd, &js, sizeof(struct js_event)) == 
+				   			sizeof(struct js_event))  {
 
-			/* register data
-			 */
-			// fprintw(stderr,".");
-			switch(js.type & ~JS_EVENT_INIT) {
-				case JS_EVENT_BUTTON:
-					button[js.number] = js.value;
-					break;
-				case JS_EVENT_AXIS:
-					axis[js.number] = js.value;
-					break;
+				/* register data
+				 */
+				// fprintw(stderr,".");
+				switch(js.type & ~JS_EVENT_INIT) {
+					case JS_EVENT_BUTTON:
+						button[js.number] = js.value;
+						break;
+					case JS_EVENT_AXIS:
+						axis[js.number] = js.value;
+						break;
+				}
 			}
 		}
+		
+		rec_c = rs232_getchar_nb();
+		if (rec_c != -1){
+			received_chars[charpos++] = rec_c;
+			if(charpos>=1000){
+				charpos = 0;
+			}
+		}
+		
 		/*if (errno != EAGAIN) {
 		    endwin();
 			perror("\njs: error reading (EAGAIN)");
 			// this error might be thrown because I changed the while(read) to if(read)
 			exit (1);
 		}*/
+		
+		if (c != -1){
+			if(c >= '0' && c<='5'){
+				i = c-((int) '0');
+				if(RS232_enabled){
+					rs232_putchar('M');
+	        		rs232_putchar((char) i);
+	        	}
+	        	printw("sending: M%i  if RS232_enabled\n",i);
+	        }
+	    } else{
+	    	printw("\n");
+	    }
+		
 
 		printw("\n");
-		printw("keyCode: %5i, last valid: %5i | ",c,last_c);
+		printw("keyCode: \'%c\', last valid: \'%c\' \n",c,last_c);
 		
+		printw("Joystick axis: ");
 		for (i = 0; i < 6; i++) {
 			printw("%6d ",axis[i]);
 		}
-		printw(" |  ");
+		printw("\nJoystick buttons: ");
 		for (i = 0; i < 12; i++) {
 			printw("%d ",button[i]);
 		}
+		printw("\n\nreceived messages: \n%s\n", received_chars);
+		
+		// terminate program if user presses panic button or ESC
 		if (button[0] || c ==27)
 			break;
 	}
@@ -129,4 +185,116 @@ int joystickInit(void){
 	
 	return fd;
 	
+}
+
+#include <termios.h>
+#include <assert.h>
+
+void rs232_open(void)
+{
+  	char 		*name;
+  	int 		result;  
+  	struct termios	tty;
+  	int serial_device = 1;
+  	
+
+	if (serial_device == 0) 
+	{   
+		fd_RS232 = open(SERIAL_DEVICE, O_RDWR | O_NOCTTY);
+		fprintf(stderr,"using /dev/ttyS0\n"); 
+
+	} 
+	else if ( (serial_device == 1) || (serial_device == 2) ) 
+	{
+        	fd_RS232 = open(USB_DEVICE, O_RDWR | O_NOCTTY);
+		fprintf(stderr,"using /dev/ttyUSB0\n"); 
+	} 
+
+	assert(fd_RS232>=0);
+
+  	result = isatty(fd_RS232);
+  	assert(result == 1);
+
+  	name = ttyname(fd_RS232);
+  	assert(name != 0);
+
+  	result = tcgetattr(fd_RS232, &tty);	
+	assert(result == 0);
+
+	tty.c_iflag = IGNBRK; /* ignore break condition */
+	tty.c_oflag = 0;
+	tty.c_lflag = 0;
+
+	tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8; /* 8 bits-per-character */
+	tty.c_cflag |= CLOCAL | CREAD; /* Ignore model status + read input */		
+
+	/* Set output and input baud rates. 
+	 */
+	if (serial_device == 0 || serial_device == 1) // wired 
+	{  
+		cfsetospeed(&tty, B115200); 
+		cfsetispeed(&tty, B115200); 
+	} 
+    	else if (serial_device == 2) // wireless 
+	{  
+		cfsetospeed(&tty, B9600); 
+		cfsetispeed(&tty, B9600); 
+	}
+
+	tty.c_cc[VMIN]  = 0;
+	tty.c_cc[VTIME] = 0;
+
+	tty.c_iflag &= ~(IXON|IXOFF|IXANY);
+
+	result = tcsetattr (fd_RS232, TCSANOW, &tty); /* non-canonical */
+
+	tcflush(fd_RS232, TCIOFLUSH); /* flush I/O buffer */
+}
+
+void 	rs232_close(void)
+{
+  	int 	result;
+
+  	result = close(fd_RS232);
+  	assert (result==0);
+}
+
+int	rs232_getchar_nb(void)
+{
+	int 		result;
+	unsigned char 	c;
+
+	result = read(fd_RS232, &c, 1);
+
+	if (result == 0) 
+		return -1;
+	
+	else 
+	{
+		assert(result == 1);   
+		return (int) c;
+	}
+}
+
+
+/*int 	rs232_getchar()
+{
+	int 	c;
+
+	while ((c = rs232_getchar_nb()) == -1) 
+		;
+	return c;
+}*/
+
+
+int 	rs232_putchar(char c)
+{ 
+	int result;
+
+	do {
+		result = (int) write(fd_RS232, &c, sizeof(char));
+	} while (result == 0);   
+
+	assert(result == 1);
+	return result;
 }
