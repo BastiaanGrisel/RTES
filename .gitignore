@@ -34,3 +34,4 @@
 # X32 specifics
 *.d
 *.ce
+*.c~
