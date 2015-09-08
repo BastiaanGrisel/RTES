@@ -18,23 +18,41 @@
 #define X32_rs232_char		(X32_rs232_stat & 0x02)
 
 enum { SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL, FULL_CONTROL } mode = SAFE;
+typedef enum {false,true} bool;
 
 char c;
+char control;
+char value;
+bool expect_value = false;
+
+void toggle_led(int i) 
+{
+	X32_leds = (X32_leds ^ (1 << i));
+}
 
 /*
- * Process interupts from serial connection
+ * Process interrupts from serial connection
  * Author: Bastiaan Grisel
  */
 void isr_rs232_rx(void) 
 {
-	//printf("Interrupt");
+	printf("Interrupt");
 
-	char d;
-	char m;
+	// Read the data of serial comm
+	c = X32_rs232_data;
 
-	if((d = X32_rs232_data) == 'M')
-		if(m = X32_rs232_data)
-			printf("Ctrl: %c, Mode: %c\n",c,m);
+	if(c == 'M' && !expect_value)
+	{
+		control = c;
+		expect_value = true;
+	}
+	else if(expect_value)
+	{
+		value = c;
+		expect_value = false;
+		printf("Ctrl: >%c<, Mode: >%c<\n",control,value);
+		mode = value - '0';
+	}
 }
 
 int main() 
@@ -53,7 +71,7 @@ int main()
 	while (1) {
 		// Turn on the LED corresponding to the mode
 		X32_leds = 1 << mode;
-		
+
 		if (X32_buttons == 0x09)
 			break;
 	}
