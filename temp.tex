@@ -33,7 +33,7 @@ Here is the text of the introduction.
 \justifying
 Due to bandwidth restrictions we've decided to use a 24 bits packets for each message from the PC to the X32 soft-core. The first int\_8 number will be the preamble of the packet; the table below shows what is the correspondence with the commands (Mode, Lift, Roll, Pitch, etc.). The next 8 bits carry the real information that could be the offset, choosing the new mode or the value of the P-control.  
 Since we're working on a \textit{real-time} system we don't need to pay special attention to the packet loss because the information in each packet is pretty meager and it's more important to receive the next one than setting up a routine to re-send lost packets that could incur in losing precious time (...).  
-The checksum instead is fondamental not to execute the wrong commands that could cause an immediate crush of the QR. 
+The checksum instead is fondamental not to execute the wrong commands that could cause an immediate crash of the QR. 
 \vspace{2em}
 
 
