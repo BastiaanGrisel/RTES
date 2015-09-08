@@ -93,8 +93,8 @@ int main (int argc, char **argv)
 			}
 		}
 		
-		rec_c = rs232_getchar_nb();
-		if (rec_c != -1){
+
+		while ((rec_c = rs232_getchar_nb())!= -1){
 			received_chars[charpos++] = rec_c;
 			if(charpos>=1000){
 				charpos = 0;

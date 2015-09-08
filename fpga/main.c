@@ -50,7 +50,7 @@ void isr_rs232_rx(void)
 	{
 		value = c;
 		expect_value = false;
-		printf("Ctrl: >%c<, Mode: >%c<\n",control,value);
+		printf("Ctrl: >%c<, Mode: >%i<\n",control,value);
 		mode = value - '0';
 	}
 }
