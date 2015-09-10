@@ -46,6 +46,18 @@ int R=0, P=0, Y=0, T=0;
 int	s0, s1, s2, s3, s4, s5;
 bool expect_value = false, new_user_input= false;
 
+/* Add offset to the four motors
+ * No need to check for negative numbers since offset can be negative
+ * Author: Bastiaan
+ */
+void add_motor_offset(int motor0, int motor1, int motor2, int motor3) 
+{
+	offset[0] += motor0;
+	offset[1] += motor1;
+	offset[2] += motor2;
+	offset[3] += motor3;
+}
+
 void toggle_led(int i) 
 {
 	X32_leds = (X32_leds ^ (1 << i));
@@ -57,57 +69,29 @@ void toggle_led(int i)
  */
 void trim(char c){
 	switch(c){
-		case 'a':
-			offset[0] += 10;
-			offset[1] += 10;
-			offset[2] += 10;
-			offset[3] += 10;
+		case 'a': // throttle up
+			add_motor_offset(10,10,10,10);
 			break;
 		case 'z': // throttle down
-			offset[0] -= 10;
-			if (offset[0] < 0) offset[0] = 0;
-			offset[1] -= 10;
-			if (offset[1] < 0) offset[1] = 0;
-			offset[2] -= 10;
-			if (offset[2] < 0) offset[2] = 0;
-			offset[3] -= 10;
-			if (offset[3] < 0) offset[3] = 0;
+			add_motor_offset(-10,-10,-10,-10);
 			break;
-		case LEFT_CHAR: // roll
-			offset[3] -= 10;
-			if (offset[3] < 0) offset[3] = 0;
-			offset[1] += 10;
+		case LEFT_CHAR: // roll left
+			add_motor_offset(0,10,0,-10);
 			break;
-		case RIGHT_CHAR: // roll
-			offset[3] += 10;
-			offset[1] -= 10;
-			if (offset[1] < 0) offset[1] = 0;
+		case RIGHT_CHAR: // roll right
+			add_motor_offset(0,-10,0,10);
 			break;
-		case UP_CHAR: // pitch
-			offset[0] -= 10;
-			if (offset[0] < 0) offset[0] = 0;
-			offset[2] += 10;
+		case UP_CHAR: // pitch up
+			add_motor_offset(-10,0,10,0);
 			break;
-		case DOWN_CHAR: // pitch
-			offset[0] += 10;
-			offset[2] -= 10;
-			if (offset[2] < 0) offset[2] = 0;
+		case DOWN_CHAR: // pitch down
+			add_motor_offset(10,0,-10,0);
 			break;
-		case 'q': // yaw down
-			offset[1] += 10;
-			offset[3] += 10;
-			offset[0] -= 10;
-			if (offset[2] < 0) offset[2] = 0;
-			offset[2] -= 10;
-			if (offset[2] < 0) offset[2] = 0;
+		case 'q': // yaw left
+			add_motor_offset(-10,10,-10,10);
 			break;
-		case 'w': // yaw up
-			offset[0] += 10;
-			offset[2] += 10;
-			offset[1] -= 10;
-			if (offset[1] < 0) offset[1] = 0;
-			offset[3] -= 10;
-			if (offset[3] < 0) offset[3] = 0;
+		case 'w': // yaw right
+			add_motor_offset(10,-10,10,-10);
 			break;
 		case 'u':
 		case 'j':
