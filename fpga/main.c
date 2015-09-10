@@ -109,12 +109,12 @@ void trim(char c){
 			offset[3] -= 10;
 			if (offset[3] < 0) offset[3] = 0;
 			break;
-			case 'u':
-			case 'j':
-			case 'i':
-			case 'k':
-			case 'o':
-			case 'l':
+		case 'u':
+		case 'j':
+		case 'i':
+		case 'k':
+		case 'o':
+		case 'l':
 		default:
 			printf("#offset = {%i,%i,%i,%i}\n",offset[0],offset[1],offset[2],offset[3]);
 			printf("ae = {%i,%i,%i,%i}\n",ae[0],ae[1],ae[2],ae[3]);

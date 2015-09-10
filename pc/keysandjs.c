@@ -17,7 +17,7 @@
 
 
 #define SERIAL_DEVICE	"/dev/ttyS0"
-#define USB_DEVICE	"/dev/ttyUSB0" /* may need to change this */
+#define USB_DEVICE0	"/dev/ttyUSB0" /* may need to change this */
 #define USB_DEVICE1	"/dev/ttyUSB1"
 #define WIFI_DEVICE 	"/dev/ttyUSB0" /* may need to change this */
 
@@ -27,12 +27,13 @@
 #define DOWN_CHAR 'g'
 
 
-#define JS_ENABLED 0
+#define JS_ENABLED 1
 #define RS232_enabled 1
 
 void keyInit(void);
 int joystickInit(void);
-void sendKeyData(char c);
+void sendKeyData(int c);
+void sendJSData(int number,int valueInt);
 void rs232_open(void);
 void rs232_close(void);
 int rs232_putchar(char c);
@@ -58,6 +59,7 @@ int main (int argc, char **argv)
 
     // init keyspress functionality
     keyInit();
+	printw("start up screen\n");
 
 	if(JS_ENABLED){
     	// init joystick functionality 
@@ -69,15 +71,16 @@ int main (int argc, char **argv)
     }
 
 	while (1) {
-	
+		printw("waiting for char\n");
 	    /* check keypress */
 	    c = getch();
+		printw("received a char\n");
 	    if (c != -1){
 	        last_c = c;
 	    }
 	    clear();
-		
-		if (c != ERR){
+			printw("start up screen3\n");
+		if (c != -1){
 			sendKeyData(c); // send a message if user gave input
 	    } else{
 	    	printw("NOTHING TO SEND\n");
@@ -103,11 +106,12 @@ int main (int argc, char **argv)
 			}
 		}
 		
-
-		while ((rec_c = rs232_getchar_nb())!= -1){
-			received_chars[charpos++] = rec_c;
-			if(charpos>=1000 | rec_c = '#'){
-				charpos = 0;
+		if(RS232_enabled){
+			while ((rec_c = rs232_getchar_nb())!= -1){
+				received_chars[charpos++] = rec_c;
+				if(charpos>=1000 | rec_c == '#'){
+					charpos = 0;
+				}
 			}
 		}
 		
@@ -136,7 +140,7 @@ int main (int argc, char **argv)
 		if (button[0] || c ==27){
 			endwin();
 			rs232_close();
-			printf("Having fun?!\n")
+			//printf("Having fun?!\n");
 			return 0;
 			
 		}
@@ -191,7 +195,7 @@ int joystickInit(void){
 	return fd;
 	
 }
-void sendKeyData(char c){
+void sendKeyData(int c){
 	char control, value; // the control and value to send
 	if(c >= '0' && c<='5'){
 		value = (char) c-'0';
@@ -220,7 +224,7 @@ void sendKeyData(char c){
 			case KEY_DOWN:
 				value = DOWN_CHAR;
 				break;
-			case 27: \\ ESCAPE
+			case 27: // ESCAPE
 			case 'a':
 			case 'z':
 			case 'q':
@@ -233,8 +237,9 @@ void sendKeyData(char c){
 			case 'l':
 				value = c;
 				break;
-			case default:
+			default:
 				value = 0;
+				break;
 		}
 		control = 'A'; // A == Adjust trimming
 		if(RS232_enabled & value !=0){
@@ -268,7 +273,7 @@ void sendJSData(int number,int valueInt){
 		case 3: 
 			control = 'T'; // throttle
 			break;
-		case default:
+		default:
 			control = 0;
 			break;	
 	}
@@ -303,7 +308,7 @@ void rs232_open(void)
 	} 
 	else if ( (serial_device == 1) || (serial_device == 2) ) 
 	{
-        	fd_RS232 = open(USB_DEVICE, O_RDWR | O_NOCTTY);
+        	fd_RS232 = open(USB_DEVICE0, O_RDWR | O_NOCTTY);
 		fprintf(stderr,"using /dev/ttyUSB0\n"); 
 		if(fd_RS232<0){
 			fd_RS232 = open(USB_DEVICE1, O_RDWR | O_NOCTTY);
