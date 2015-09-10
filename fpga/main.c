@@ -29,15 +29,21 @@
 #define X32_rs232_stat		peripherals[PERIPHERAL_PRIMARY_STATUS]
 #define X32_rs232_char		(X32_rs232_stat & 0x02)
 
+#define LEFT_CHAR 'f'
+#define RIGHT_CHAR 'h'
+#define UP_CHAR 't'
+#define DOWN_CHAR 'g'
+
 enum { SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL, FULL_CONTROL } mode = SAFE;
 
 typedef enum {false,true} bool;
 
-int	isr_qr_counter =0;
+int	isr_qr_time = 0, isr_qr_counter =0;
 char control;
 int	ae[4];
 int offset[4];
-Int8 R = P = Y = T = 0;
+int R=0, P=0, Y=0, T=0;
+int	s0, s1, s2, s3, s4, s5;
 bool expect_value = false, new_user_input= false;
 
 void toggle_led(int i) 
@@ -67,22 +73,22 @@ void trim(char c){
 			offset[3] -= 10;
 			if (offset[3] < 0) offset[3] = 0;
 			break;
-		case LEFTARROW: // roll
+		case LEFT_CHAR: // roll
 			offset[3] -= 10;
 			if (offset[3] < 0) offset[3] = 0;
 			offset[1] += 10;
 			break;
-		case RIGHTARROW: // roll
+		case RIGHT_CHAR: // roll
 			offset[3] += 10;
 			offset[1] -= 10;
 			if (offset[1] < 0) offset[1] = 0;
 			break;
-		case UPARROW: // pitch
+		case UP_CHAR: // pitch
 			offset[0] -= 10;
 			if (offset[0] < 0) offset[0] = 0;
 			offset[2] += 10;
 			break;
-		case DOWNARROW: // pitch
+		case DOWN_CHAR: // pitch
 			offset[0] += 10;
 			offset[2] -= 10;
 			if (offset[2] < 0) offset[2] = 0;
@@ -109,7 +115,7 @@ void trim(char c){
 			case 'k':
 			case 'o':
 			case 'l':
-		case default:
+		default:
 			printf("#offset = {%i,%i,%i,%i}\n",offset[0],offset[1],offset[2],offset[3]);
 			printf("ae = {%i,%i,%i,%i}\n",ae[0],ae[1],ae[2],ae[3]);
 			break;
@@ -139,7 +145,7 @@ void set_value(char c){
 		case 'A':
 			trim(c);
 			break;
-		case default:
+		default:
 			break;
 	}
 }
@@ -236,6 +242,7 @@ void isr_qr_link(void)
 
 int main() 
 {
+	int c;
 	printf("Program started in mode: %d \r\n", mode);
 	
 		/* prepare QR rx interrupt handler
