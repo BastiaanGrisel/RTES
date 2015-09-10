@@ -35,3 +35,8 @@
 *.d
 *.ce
 *.c~
+
+# Tex
+*.aux
+*.log
+*.pdf
