@@ -71,15 +71,13 @@ int main (int argc, char **argv)
     }
 
 	while (1) {
-		printw("waiting for char\n");
 	    /* check keypress */
 	    c = getch();
-		printw("received a char\n");
+
 	    if (c != -1){
 	        last_c = c;
 	    }
 	    clear();
-			printw("start up screen3\n");
 		if (c != -1){
 			sendKeyData(c); // send a message if user gave input
 	    } else{
@@ -108,8 +106,14 @@ int main (int argc, char **argv)
 		
 		if(RS232_enabled){
 			while ((rec_c = rs232_getchar_nb())!= -1){
+				if(rec_c == '#'){
+				for(i = 0;i<10 &i+charpos<1000;i++){
+					received_chars[charpos++] = '\n';
+				}
+					charpos = 0;
+				}
 				received_chars[charpos++] = rec_c;
-				if(charpos>=1000 | rec_c == '#'){
+				if(charpos>=1000){
 					charpos = 0;
 				}
 			}

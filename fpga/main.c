@@ -129,6 +129,7 @@ void set_value(char c){
 	switch(control){
 		case 'M':
 			mode = c;
+			printf("#Control: >%c<, Mode: >%i<\n",control,mode);
 			break;
 		case 'R':
 			R = c;
@@ -157,7 +158,7 @@ void set_value(char c){
 void isr_rs232_rx(void) 
 {
 	char c;
-	printf("Intrpt:");
+	//printf("Intrpt:");
 
 	// Read the data of serial comm
 	c = X32_rs232_data;
@@ -171,7 +172,7 @@ void isr_rs232_rx(void)
 		set_value(c);
 		new_user_input= true;
 		expect_value = false; // reset expect_value
-		printf("Control: >%c<, Mode: >%i<\n",control,mode);
+		//printf("#Control: >%c<, Mode: >%i<\n",control,mode);
 		//X32_leds = 1<<mode;
 	}
 }
