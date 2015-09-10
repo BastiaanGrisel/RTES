@@ -229,31 +229,43 @@ int main()
 	int c;
 	printf("Program started in mode: %d \r\n", mode);
 	
-		/* prepare QR rx interrupt handler
+	/* Initialize Variables
 	 */
-    SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
-    SET_INTERRUPT_PRIORITY(INTERRUPT_XUFO, 21);
+
 	isr_qr_counter = isr_qr_time = 0;
 	ae[0] = ae[1] = ae[2] = ae[3] = 0;
 	offset[0] = offset[1] = offset[2] = offset[3] =0;
-    ENABLE_INTERRUPT(INTERRUPT_XUFO);
 
-	// prepare rs232 rx interrupt and getchar handler
-        SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_RX, &isr_rs232_rx);
+	/* Prepare Interrupts
+	 */
+
+	// FPGA -> X32
+	SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
+    	SET_INTERRUPT_PRIORITY(INTERRUPT_XUFO, 21);
+	
+	// PC -> X32
+	SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_RX, &isr_rs232_rx);
         SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_RX, 20);
 	while (X32_rs232_char) c = X32_rs232_data; // empty the buffer
+
+	/* Enable Interrupts
+	 */
+
+    	ENABLE_INTERRUPT(INTERRUPT_XUFO);
         ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX);
 
-	// Enable all interupts after init code
+	/* Enable all interupts after init code
+	 */
 	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
+	// Main loop
 	while (1) {
 		// Turn on the LED corresponding to the mode
 		X32_leds = 1 << mode;
-		
 	}
 	
-	// Disable interrupts before exiting
+	/* Exit routine 
+	*/
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 	return 0;
 }
