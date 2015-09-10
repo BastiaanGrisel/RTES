@@ -86,7 +86,7 @@ int main (int argc, char **argv)
 			sendKeyData(c); // send a message if user gave input
 	    } else{
 			col_on(1);
-	    	printw("NOTHING TO SEND  (last char was:  \'%c\' == %i\n", last_c,last_c);
+	    	printw("NOTHING TO SEND  (last char was:  \'%c\' == %i\n", last_c=='\n'?'<':last_c,last_c);
 			col_off(1);	    
 		}
 	    
@@ -204,7 +204,7 @@ int joystickInit(void){
 		/*endwin();
 		perror("joystick /dev/input/js0 ");
 		exit(1);*/
-		printw("Joystick not found?! <<press \aa key to continue>>");
+		printw("Joystick not found?! <<press a key to continue>>");
 		nodelay(stdscr, false);
 		getch();
 		nodelay(stdscr, true);
