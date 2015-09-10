@@ -71,6 +71,22 @@ void reset_motors()
 	offset[0]=offset[1]=offset[2]=offset[3]=0;
 }
 
+/*
+  Check if is it permitted to switch to the received mode
+	and eventually do it
+	Author: Alessio
+*/
+void set_mode(int new_mode)
+{
+	if((mode != SAFE) && (new_mode!=SAFE || new_mode !=PANIC))
+	{
+		//NOT ALLOWED
+		//logging 
+	}
+
+	mode = new_mode;
+}
+
 void toggle_led(int i)
 {
 	X32_leds = (X32_leds ^ (1 << i));
@@ -112,7 +128,7 @@ void trim(char c){
 				-OFFSET_STEP,
 				0,
 				+OFFSET_STEP
-				);	
+				);
 			break;
 		case UP_CHAR: // pitch up
 			add_motor_offset(
@@ -168,7 +184,8 @@ void trim(char c){
 void set_value(char c){
 	switch(control){
 		case 'M':
-			mode = c;
+			//mode = c; // add mode check
+			set_mode(c);
 			printf("#Control: >%c<, Mode: >%i<\n",control,mode);
 			break;
 		case 'R':
