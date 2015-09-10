@@ -17,15 +17,22 @@
 
 
 #define SERIAL_DEVICE	"/dev/ttyS0"
-#define USB_DEVICE	"/dev/ttyUSB1"
+#define USB_DEVICE	"/dev/ttyUSB0" /* may need to change this */
+#define USB_DEVICE1	"/dev/ttyUSB1"
 #define WIFI_DEVICE 	"/dev/ttyUSB0" /* may need to change this */
+
+#define LEFT_CHAR 'f'
+#define RIGHT_CHAR 'h'
+#define UP_CHAR 't'
+#define DOWN_CHAR 'g'
+
 
 #define JS_ENABLED 0
 #define RS232_enabled 1
 
-
 void keyInit(void);
 int joystickInit(void);
+void sendKeyData(char c);
 void rs232_open(void);
 void rs232_close(void);
 int rs232_putchar(char c);
@@ -33,13 +40,10 @@ int	rs232_getchar_nb(void);
 
 int fd_RS232;
 
-
 /* current axis and button readings
  */
 int	axis[6];
 int	button[12];
-
-
 
 
 int main (int argc, char **argv)
@@ -51,7 +55,6 @@ int main (int argc, char **argv)
 	char rec_c;
 	char received_chars[1000];
 	int charpos = 0;
-	bool js_change = false;
 
     // init keyspress functionality
     keyInit();
@@ -73,6 +76,12 @@ int main (int argc, char **argv)
 	        last_c = c;
 	    }
 	    clear();
+		
+		if (c != ERR){
+			sendKeyData(c); // send a message if user gave input
+	    } else{
+	    	printw("NOTHING TO SEND\n");
+	    }
 	    
 		if(JS_ENABLED){
 		/* check joystick */
@@ -88,6 +97,7 @@ int main (int argc, char **argv)
 						break;
 					case JS_EVENT_AXIS:
 						axis[js.number] = js.value;
+						sendJSData(js.number,js.value);
 						break;
 				}
 			}
@@ -96,7 +106,7 @@ int main (int argc, char **argv)
 
 		while ((rec_c = rs232_getchar_nb())!= -1){
 			received_chars[charpos++] = rec_c;
-			if(charpos>=1000){
+			if(charpos>=1000 | rec_c = '#'){
 				charpos = 0;
 			}
 		}
@@ -107,19 +117,6 @@ int main (int argc, char **argv)
 			// this error might be thrown because I changed the while(read) to if(read)
 			exit (1);
 		}*/
-		
-		if (c != -1){
-			if(c >= '0' && c<='5'){
-				i = c-((int) '0');
-				if(RS232_enabled){
-					rs232_putchar('M');
-	        		rs232_putchar((char) i);
-	        	}
-	        	printw("sending: M%i  if RS232_enabled\n",i);
-	        }
-	    } else{
-	    	printw("\n");
-	    }
 		
 
 		printw("\n");
@@ -136,8 +133,13 @@ int main (int argc, char **argv)
 		printw("\n\nreceived messages: \n%s\n", received_chars);
 		
 		// terminate program if user presses panic button or ESC
-		if (button[0] || c ==27)
-			break;
+		if (button[0] || c ==27){
+			endwin();
+			rs232_close();
+			printf("Having fun?!\n")
+			return 0;
+			
+		}
 	}
 	
 	endwin();
@@ -165,6 +167,9 @@ void keyInit(void){
 	//nodelay(stdscr, TRUE); // don't wait for user input, give error instead
 }
 
+/* Initialize joystick connection
+ * contributing author: Henko
+ */
 int joystickInit(void){
     int fd,i;
     if ((fd = open(JS_DEV, O_RDONLY)) < 0) { // open connection
@@ -186,10 +191,102 @@ int joystickInit(void){
 	return fd;
 	
 }
+void sendKeyData(char c){
+	char control, value; // the control and value to send
+	if(c >= '0' && c<='5'){
+		value = (char) c-'0';
+		control = 'M';
+		if(RS232_enabled){
+			
+			rs232_putchar(control);
+			rs232_putchar(value);
+			printw("sending: %c%i\n",control, (int) value);
+		}
+		else{
+			printw("NOT sending: %c%i   (RS232 = DISABLED)\n",control, (int) value);
+		}
+		
+	} else {
+		switch(c){
+			case KEY_LEFT:
+				value = LEFT_CHAR;
+				break;
+			case KEY_RIGHT:
+				value = RIGHT_CHAR;
+				break;
+			case KEY_UP:
+				value = UP_CHAR;
+				break;
+			case KEY_DOWN:
+				value = DOWN_CHAR;
+				break;
+			case 27: \\ ESCAPE
+			case 'a':
+			case 'z':
+			case 'q':
+			case 'w':
+			case 'u':
+			case 'j':
+			case 'i':
+			case 'k':
+			case 'o':
+			case 'l':
+				value = c;
+				break;
+			case default:
+				value = 0;
+		}
+		control = 'A'; // A == Adjust trimming
+		if(RS232_enabled & value !=0){
+			
+			rs232_putchar(control);
+			rs232_putchar(value);
+			printw("sending: %c  %c\n",control, value);
+		}
+		else{
+			printw("NOT sending: %c  %c   (RS232 = DISABLED)\n",control, value);
+		}
+	}
+}
+
+/* Send Joystick data
+ *
+ * Author: Henko Aantjes
+ */
+void sendJSData(int number,int valueInt){
+	char control, value = (char)(valueInt<<8);
+	switch(number){
+		case 0: 
+			control = 'R'; // roll
+			break;
+		case 1:
+			control = 'P'; // pitch
+			break;
+		case 2: 
+			control = 'Y'; // yaw
+			break;
+		case 3: 
+			control = 'T'; // throttle
+			break;
+		case default:
+			control = 0;
+			break;	
+	}
+	if(RS232_enabled & control !=0){
+		rs232_putchar(control);
+		rs232_putchar(value);
+		printw("sending: %c  %c\n",control, value);
+	}
+	else{
+		printw("NOT sending: %c  %c   (RS232 = DISABLED)\n",control, value);
+	}
+}
 
 #include <termios.h>
 #include <assert.h>
-
+/* Open RS232 connection
+ * copy pasted by: Henko Aantjes
+ */
 void rs232_open(void)
 {
   	char 		*name;
@@ -208,6 +305,9 @@ void rs232_open(void)
 	{
         	fd_RS232 = open(USB_DEVICE, O_RDWR | O_NOCTTY);
 		fprintf(stderr,"using /dev/ttyUSB0\n"); 
+		if(fd_RS232<0){
+			fd_RS232 = open(USB_DEVICE1, O_RDWR | O_NOCTTY);
+		}
 	} 
 
 	assert(fd_RS232>=0);
