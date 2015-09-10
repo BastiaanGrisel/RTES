@@ -29,22 +29,27 @@
 #define X32_rs232_stat		peripherals[PERIPHERAL_PRIMARY_STATUS]
 #define X32_rs232_char		(X32_rs232_stat & 0x02)
 
+/* User defines
+ */
 #define LEFT_CHAR 'f'
 #define RIGHT_CHAR 'h'
 #define UP_CHAR 't'
 #define DOWN_CHAR 'g'
 
+#define OFFSET_STEP 10
+
+/* Define global variables
+ */
+typedef enum {false,true} bool;
 enum { SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL, FULL_CONTROL } mode = SAFE;
 
-typedef enum {false,true} bool;
-
 int	isr_qr_time = 0, isr_qr_counter =0;
-char control;
+char	control;
 int	ae[4];
-int offset[4];
-int R=0, P=0, Y=0, T=0;
+int 	offset[4];
+int 	R=0, P=0, Y=0, T=0;
 int	s0, s1, s2, s3, s4, s5;
-bool expect_value = false, new_user_input= false;
+bool	expect_value = false, new_user_input= false;
 
 /* Add offset to the four motors
  * No need to check for negative numbers since offset can be negative
@@ -70,28 +75,68 @@ void toggle_led(int i)
 void trim(char c){
 	switch(c){
 		case 'a': // throttle up
-			add_motor_offset(10,10,10,10);
+			add_motor_offset(
+				+OFFSET_STEP,
+				+OFFSET_STEP,
+				+OFFSET_STEP,
+				+OFFSET_STEP
+				);
 			break;
 		case 'z': // throttle down
-			add_motor_offset(-10,-10,-10,-10);
+			add_motor_offset(
+				-OFFSET_STEP,
+				-OFFSET_STEP,
+				-OFFSET_STEP,
+				-OFFSET_STEP
+				);
 			break;
 		case LEFT_CHAR: // roll left
-			add_motor_offset(0,10,0,-10);
+			add_motor_offset(
+				0,
+				+OFFSET_STEP,
+				0,
+				-OFFSET_STEP
+				);
 			break;
 		case RIGHT_CHAR: // roll right
-			add_motor_offset(0,-10,0,10);
+			add_motor_offset(
+				0,
+				-OFFSET_STEP,
+				0,
+				+OFFSET_STEP
+				);	
 			break;
 		case UP_CHAR: // pitch up
-			add_motor_offset(-10,0,10,0);
+			add_motor_offset(
+				-OFFSET_STEP,
+				0,
+				+OFFSET_STEP,
+				0
+				);
 			break;
 		case DOWN_CHAR: // pitch down
-			add_motor_offset(10,0,-10,0);
+			add_motor_offset(
+				+OFFSET_STEP,
+				0,
+				-OFFSET_STEP,
+				0
+				);
 			break;
 		case 'q': // yaw left
-			add_motor_offset(-10,10,-10,10);
+			add_motor_offset(
+				-OFFSET_STEP,
+				+OFFSET_STEP,
+				-OFFSET_STEP,
+				+OFFSET_STEP
+				);
 			break;
 		case 'w': // yaw right
-			add_motor_offset(10,-10,10,-10);
+			add_motor_offset(
+				+OFFSET_STEP,
+				-OFFSET_STEP,
+				+OFFSET_STEP,
+				-OFFSET_STEP
+				);
 			break;
 		case 'u':
 		case 'j':
