@@ -25,6 +25,8 @@
 #define RIGHT_CHAR 'h'
 #define UP_CHAR 't'
 #define DOWN_CHAR 'g'
+#define QR_INPUT_BUFFERSIZE 100
+#define MESSAGESIZE 5
 
 void keyInit(void);
 int joystickInit(void);
@@ -34,6 +36,8 @@ void rs232_open(void);
 void rs232_close(void);
 int rs232_putchar(char c);
 int	rs232_getchar_nb(void);
+void parse_QR_input(char rec_c);
+void print_QR_input(void);
 void col_on(int col);
 void col_off(int col);
 
@@ -43,6 +47,10 @@ int fd_RS232;
  */
 int	axis[6];
 int	button[12];
+char received_chars[QR_INPUT_BUFFERSIZE];
+int charpos = 0;
+int	ae[4];
+int offset[4];
 
 
 int main (int argc, char **argv)
@@ -53,8 +61,8 @@ int main (int argc, char **argv)
 	int c, last_c;
 	struct timeval timeold, timenew;
 	char rec_c;
-	char received_chars[1000];
-	int charpos = 0;
+	
+
 
     // init keyspress functionality
     keyInit();
@@ -112,16 +120,7 @@ int main (int argc, char **argv)
 		
 		if(fd_RS232>0){
 			while ((rec_c = rs232_getchar_nb())!= -1){
-				if(rec_c == '#'){
-				for(i = 0;i<10 &i+charpos<1000;i++){
-					received_chars[charpos++] = '\n';
-				}
-					charpos = 0;
-				}
-				received_chars[charpos++] = rec_c;
-				if(charpos>=1000){
-					charpos = 0;
-				}
+				parse_QR_input(rec_c);
 			}
 		}
 		
@@ -146,7 +145,7 @@ int main (int argc, char **argv)
 		}
 		col_off(2);
 
-		mvprintw(10,0,"\n\nreceived messages: \n%s\n", received_chars);
+		
 		
 		// terminate program if user presses panic button or ESC
 		if (button[0] || c ==27){
@@ -156,7 +155,7 @@ int main (int argc, char **argv)
 			return 0;
 			
 		}
-		printw("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+		printw("\n\n"); // this is for clearing a part of the screen
 	}
 	
 	endwin();
@@ -316,6 +315,39 @@ void sendJSData(int number,int valueInt){
 	}
 }
 
+void parse_QR_message(int size){
+	if(size%MESSAGESIZE==0){
+		//TODO check checksum
+		//TODO switch case statement with all possibilities
+	}
+}
+
+void parse_QR_input(char rec_c){
+	int i;
+	int padding = 10;
+	if(rec_c == '#'){
+		parse_QR_message(charpos);
+		/*for(i = 0;i<10 &i+charpos<QR_INPUT_BUFFERSIZE;i++){
+			received_chars[charpos++] = '\n';
+		}*/
+
+		charpos = 0;
+		print_QR_input();
+	} else{
+		received_chars[charpos++] = rec_c;
+	}
+	if(charpos>=QR_INPUT_BUFFERSIZE){
+		charpos = 0;
+	}
+	print_QR_input();
+}
+
+void print_QR_input(void){
+	// TODO print ae and offset and maybe more
+	mvprintw(10,0,"\n\nreceived messages: \n%s\n", received_chars);
+}
+
+
 #include <termios.h>
 #include <assert.h>
 /* Open RS232 connection
@@ -338,15 +370,18 @@ void rs232_open(void)
 	else if ( (serial_device == 1) || (serial_device == 2) ) 
 	{
         	fd_RS232 = open(USB_DEVICE0, O_RDWR | O_NOCTTY);
+			printw("fd usb0 = %i\n",fd_RS232);
 		fprintf(stderr,"using /dev/ttyUSB0\n"); 
 		if(fd_RS232<0){ // try other name
 			fd_RS232 = open(USB_DEVICE1, O_RDWR | O_NOCTTY);
+			printw("fd usb1 = %i\n",fd_RS232);
 		}
 	} 
 
-  	if(isatty(fd_RS232)!=0 | ttyname(fd_RS232) ==0| tcgetattr(fd_RS232, &tty)!=0){
+  	if(isatty(fd_RS232)<0 | ttyname(fd_RS232) ==0| tcgetattr(fd_RS232, &tty)!=0){
+		
+		printw("RS232 not found?!     <<press a key to continue>>\nfd = %i;isatty(fd_RS232)= %i;ttyname(fd_RS232) = %i; tcgetattr(fd_RS232, &tty) = %i",fd_RS232,isatty(fd_RS232),ttyname(fd_RS232),tcgetattr(fd_RS232, &tty));
 		fd_RS232 = -1;
-		printw("RS232 not found?! <<press a key to continue>>");
 		nodelay(stdscr, false);
 		getch();
 		nodelay(stdscr, true);

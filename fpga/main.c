@@ -49,7 +49,7 @@ int	ae[4];
 int 	offset[4];
 int 	R=0, P=0, Y=0, T=0;
 int	s0, s1, s2, s3, s4, s5;
-bool	expect_value = false, new_user_input= false;
+bool	expect_value = false, new_user_input= false, sensor_active = false;
 
 /* Add offset to the four motors
  * No need to check for negative numbers since offset can be negative
@@ -172,8 +172,8 @@ void trim(char c){
 		case 'o':
 		case 'l':
 		default:
-			printf("#offset = {%i,%i,%i,%i}\n",offset[0],offset[1],offset[2],offset[3]);
-			printf("ae = {%i,%i,%i,%i}\n",ae[0],ae[1],ae[2],ae[3]);
+			printf("#\xFE%c%c%c%c\n",offset[0]/10,offset[1]/10,offset[2]/10,offset[3]/10);
+			printf("\xFF%c%c%c%c\n",ae[0]/10,ae[1]/10,ae[2]/10,ae[3]/10);
 			break;
 	}
 }
@@ -232,6 +232,14 @@ void isr_rs232_rx(void)
 		//printf("#Control: >%c<, Mode: >%i<\n",control,mode);
 		//X32_leds = 1<<mode;
 	}
+
+	if(new_user_input & !sensor_active){ 
+		new_user_input = false;
+		ae[0] = offset[0]+T  +P+Y;
+		ae[1] = offset[1]+T-R  -Y;
+		ae[2] = offset[2]+T  -P+Y;
+		ae[3] = offset[3]+T+R  -Y;
+	}
 }
 
 
@@ -258,6 +266,7 @@ void isr_qr_link(void)
 	isr_qr_counter++;
 	if (isr_qr_counter % 500 == 0) {
 		toggle_led(2);
+		sensor_active = true;
 	}
 
 
