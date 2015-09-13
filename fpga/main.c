@@ -68,7 +68,7 @@ void add_motor_offset(int motor0, int motor1, int motor2, int motor3)
 */
 void reset_motors()
 {
-	offset[0]=offset[1]=offset[2]=offset[3]=0;
+	offset[0] = offset[1] = offset[2] = offset[3] = 0;
 }
 
 /*
@@ -166,7 +166,7 @@ void trim(char c){
 				);
 			break;
 		case 'r': //reset
-		  reset_motors();
+			reset_motors();
 			break;
 		case 'u':
 		case 'j':
