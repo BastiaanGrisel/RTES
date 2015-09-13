@@ -72,19 +72,22 @@ void reset_motors()
 }
 
 /*
-  Check if is it permitted to switch to the received mode
-	and eventually do it
-	Author: Alessio
-*/
-void set_mode(int new_mode)
+ * Changes the mode to either: SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL or FULL_CONTROL. 
+ * Motor RPM needs to be zero to change mode except when changing to SAFE and PANIC
+ * Returns a boolean indicating whether the mode change was succesful or not.
+ * Author: Alessio
+ */
+bool set_mode(int new_mode)
 {
-	if((mode != SAFE) && (new_mode!=SAFE || new_mode !=PANIC))
-	{
-		//NOT ALLOWED
-		//logging 
+	if(new_mode >= MANUAL) {
+		// If at least one of the motor's RPM is not zero, return false
+		int i;
+		for(i = 0; i < 4; i++)
+			if(ae[i] > 0) return false;
 	}
 
 	mode = new_mode;
+	return true;
 }
 
 void toggle_led(int i)
