@@ -43,12 +43,12 @@
 typedef enum {false,true} bool;
 enum { SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL, FULL_CONTROL } mode = SAFE;
 
-int	isr_qr_time = 0, isr_qr_counter =0;
-char	control;
-int	ae[4];
+int		isr_qr_time = 0, isr_qr_counter =0;
+char	control; //is the first byte of every packet, it defines the type of the packet.
+int		ae[4];
 int 	offset[4];
 int 	R=0, P=0, Y=0, T=0;
-int	s0, s1, s2, s3, s4, s5;
+int		s0, s1, s2, s3, s4, s5;
 bool	expect_value = false, new_user_input= false, sensor_active = false;
 
 /* Add offset to the four motors
@@ -72,13 +72,16 @@ void reset_motors()
 }
 
 /*
- * Changes the mode to either: SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL or FULL_CONTROL. 
+ * Changes the mode to either: SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL or FULL_CONTROL.
  * Motor RPM needs to be zero to change mode except when changing to SAFE and PANIC
  * Returns a boolean indicating whether the mode change was succesful or not.
  * Author: Alessio
  */
-bool set_mode(int new_mode)
+bool set_mode(char new_mode)
 {
+  new_mode-= '0'; //Turn the char into an int. It is guaranteed by the standard to work
+	if(new_mode < SAFE || new_mode > FULL_CONTROL) return false;
+
 	if(new_mode >= MANUAL) {
 		// If at least one of the motor's RPM is not zero, return false
 		int i;
@@ -87,7 +90,7 @@ bool set_mode(int new_mode)
 	}
 
 	mode = new_mode;
-	return true;
+  return true;
 }
 
 void toggle_led(int i)
@@ -187,9 +190,12 @@ void trim(char c){
 void set_value(char c){
 	switch(control){
 		case 'M':
-			//mode = c; // add mode check
-			set_mode(c);
-			printf("#Control: >%c<, Mode: >%i<\n",control,mode);
+			if(set_mode(c))
+			  puts("Mode succesfully changed.");
+			else
+			   puts("Invalid or not permitted mode!");
+
+		  printf("#Control: >%c<, Current Mode: >%i<\n",control,mode);
 			break;
 		case 'R':
 			R = c;
@@ -236,7 +242,7 @@ void isr_rs232_rx(void)
 		//X32_leds = 1<<mode;
 	}
 
-	if(new_user_input & !sensor_active){ 
+	if(new_user_input & !sensor_active){
 		new_user_input = false;
 		ae[0] = offset[0]+T  +P+Y;
 		ae[1] = offset[1]+T-R  -Y;
@@ -289,8 +295,9 @@ void isr_qr_link(void)
 	 */
 	for (ae_index = 0; ae_index < 4; ae_index++)
 	{
-		if (ae[ae_index] < 0)
-			ae[ae_index] = 0;
+	/*	if (ae[ae_index] < 0)
+			ae[ae_index] = 0;*/
+		 ae[ae_index] = (ae[ae_index] < 0) ? 0 : ae[ae_index];
 
 		ae[ae_index] &= 0x3ff;
 	}
