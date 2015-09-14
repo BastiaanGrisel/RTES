@@ -79,17 +79,19 @@ void reset_motors()
  */
 bool set_mode(char new_mode)
 {
-  new_mode-= '0'; //Turn the char into an int. It is guaranteed by the standard to work
-	if(new_mode < SAFE || new_mode > FULL_CONTROL) return false;
+  new_mode -= '0'; /*Turn the char into an int. It is guaranteed by the standard to work.
+	 								  Maybe this isn't necessary if we find where - during the communication - we read chars instead of ints.*/
 
-	if(new_mode >= MANUAL) {
+  if(new_mode < SAFE || new_mode > FULL_CONTROL) return false;
+
+  if(new_mode >= MANUAL) {
 		// If at least one of the motor's RPM is not zero, return false
 		int i;
 		for(i = 0; i < 4; i++)
 			if(ae[i] > 0) return false;
 	}
 
-	mode = new_mode;
+  mode = new_mode;
   return true;
 }
 
