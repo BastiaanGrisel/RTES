@@ -72,13 +72,15 @@ void reset_motors()
 }
 
 /*
- * Changes the mode to either: SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL or FULL_CONTROL. 
+ * Changes the mode to either: SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL or FULL_CONTROL.
  * Motor RPM needs to be zero to change mode except when changing to SAFE and PANIC
  * Returns a boolean indicating whether the mode change was succesful or not.
  * Author: Alessio
  */
 bool set_mode(int new_mode)
 {
+	if(new_mode < SAFE || new_mode > FULL_CONTROL) return false;
+
 	if(new_mode >= MANUAL) {
 		// If at least one of the motor's RPM is not zero, return false
 		int i;
@@ -187,9 +189,13 @@ void trim(char c){
 void set_value(char c){
 	switch(control){
 		case 'M':
-			//mode = c; // add mode check
-			set_mode(c);
-			printf("#Control: >%c<, Mode: >%i<\n",control,mode);
+		if(set_mode(c))
+			puts("Mode succesfully changed.");
+		else
+			puts("Invalid or not permitted mode!");
+
+		printf("#Control: >%c<, Current Mode: >%i<\n",control,mode);
+		break;
 			break;
 		case 'R':
 			R = c;
@@ -236,7 +242,7 @@ void isr_rs232_rx(void)
 		//X32_leds = 1<<mode;
 	}
 
-	if(new_user_input & !sensor_active){ 
+	if(new_user_input & !sensor_active){
 		new_user_input = false;
 		ae[0] = offset[0]+T  +P+Y;
 		ae[1] = offset[1]+T-R  -Y;
@@ -291,6 +297,7 @@ void isr_qr_link(void)
 	{
 		if (ae[ae_index] < 0)
 			ae[ae_index] = 0;
+//		ae[ae_index] = (ae[ae_index] < 0) ? 0 : ae[ae_index];
 
 		ae[ae_index] &= 0x3ff;
 	}
