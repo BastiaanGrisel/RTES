@@ -1,6 +1,6 @@
 # variables: compiler to use and flags for it
 CC = gcc
-CFLAGS = -lncurses
+CFLAGS = -lncurses -I../include
 
 kj.o: keysandjs.c
 	$(CC) $^ -o $@ $(CFLAGS)

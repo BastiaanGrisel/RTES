@@ -1,4 +1,3 @@
-
 #include <sys/ioctl.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -8,8 +7,11 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <termios.h>
+#include <assert.h>
 
 #include "joystick.h"
+#include "queue.h"
 
 #include <ncurses.h> /*for user key input*/
 
@@ -28,14 +30,14 @@
 #define QR_INPUT_BUFFERSIZE 1000
 #define MESSAGESIZE 5
 
-void keyInit(void);
+void init_keyboard(void);
 int joystickInit(void);
 void sendKeyData(int c);
 void sendJSData(int number,int valueInt);
 void rs232_open(void);
 void rs232_close(void);
 int rs232_putchar(char c);
-int	rs232_getchar_nb(void);
+int rs232_getchar_nb(void);
 void parse_QR_input(char rec_c);
 void print_QR_input(void);
 void col_on(int col);
@@ -61,17 +63,12 @@ int main (int argc, char **argv)
 	int c, last_c;
 	struct timeval timeold, timenew;
 	char rec_c;
-	
 
+	init_keyboard();
+	fd_js = init_joystick();
 
-    // init keyspress functionality
-    keyInit();
-	
-	// init joystick functionality 
-    fd_js = joystickInit();
-
-    // open connection to X32
-    rs232_open();
+	// open connection to X32
+	rs232_open();
 
 	gettimeofday(&timeold,NULL);
 
@@ -170,7 +167,7 @@ int main (int argc, char **argv)
  *  
  * Henko Aantjes
  */
-void keyInit(void){
+void init_keyboard(void){
 	setenv("ESCDELAY", "25", 0); // necessary to a fast detection of pressing esc (char == 27)
 	initscr();
 	keypad(stdscr, TRUE); // enable arrowkey-detection
@@ -200,9 +197,9 @@ void col_off(int col){
 /* Initialize joystick connection
  * author: Henko
  */
-int joystickInit(void){
-    int fd,i;
-    if ((fd = open(JS_DEV, O_RDONLY)) < 0) { // open connection
+int init_joystick(void){
+	int fd,i;
+	if ((fd = open(JS_DEV, O_RDONLY)) < 0) { // open connection
 		/*endwin();
 		perror("joystick /dev/input/js0 ");
 		exit(1);*/
@@ -211,7 +208,7 @@ int joystickInit(void){
 		getch();
 		nodelay(stdscr, true);
 		clear();
-	} else{
+	} else {
 		fcntl(fd, F_SETFL, O_NONBLOCK); // set joystick reading non-blocking
 	}
 
@@ -222,7 +219,7 @@ int joystickInit(void){
 	for (i = 0; i < 12; i++) {
 		button[i]= 0;
 	}
-	
+
 	return fd;
 } 
 
@@ -380,8 +377,6 @@ void print_QR_input(void){
 }
 
 
-#include <termios.h>
-#include <assert.h>
 /* Open RS232 connection
  * copy pasted by: Henko Aantjes
  */
