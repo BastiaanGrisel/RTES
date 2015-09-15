@@ -57,7 +57,7 @@ int main (int argc, char **argv)
 {
 	int fd_js = 0;
 	struct js_event js;
-	unsigned int i;
+	int i, loopcount=0;
 	int c, last_c;
 	struct timeval timeold, timenew;
 	char rec_c;
@@ -77,10 +77,13 @@ int main (int argc, char **argv)
 
 	while (1) {
 		move(0,0);
-		gettimeofday(&timenew,NULL);
-		int frametime = timenew.tv_usec+1000000*timenew.tv_sec-timeold.tv_usec-1000000*timeold.tv_sec;
-		printw("%i usec %i Hz   ",frametime,1000000/frametime);
-		timeold = timenew;
+		if(loopcount++>99){
+			loopcount=0;
+			gettimeofday(&timenew,NULL);
+			int frametime = (timenew.tv_usec+1000000*timenew.tv_sec-timeold.tv_usec-1000000*timeold.tv_sec)/100;
+			printw("%i usec %i Hz   ",frametime,1000000/frametime);
+			timeold = timenew;
+		}
 	    /* check keypress */
 	    c = getch();
 
@@ -263,6 +266,7 @@ void sendKeyData(int c){
 			case 'k':
 			case 'o':
 			case 'l':
+			case 'r':
 				value = c;
 				break;
 			default:
@@ -353,7 +357,7 @@ void parse_QR_input(char rec_c){
 	int padding = 10;
 	if(rec_c == '#'){
 		//parse_QR_message(charpos);
-		for(i = 0;i<10 & charpos<QR_INPUT_BUFFERSIZE;i++){
+		for(i = 0;i<100 & charpos<QR_INPUT_BUFFERSIZE;i++){
 			received_chars[charpos++] = '\n';
 		}
 

@@ -46,10 +46,10 @@ enum { SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL, FULL_CONTROL } mode = SAFE;
 
 int	isr_qr_time = 0, isr_qr_counter =0;
 char	control;
-int	ae[4];
+int		ae[4];
 int 	offset[4];
 int 	R=0, P=0, Y=0, T=0;
-int	s0, s1, s2, s3, s4, s5;
+int		s0, s1, s2, s3, s4, s5;
 bool	expect_value = false, new_user_input= false, sensor_active = false;
 
 /* Add offset to the four motors
@@ -70,6 +70,7 @@ void add_motor_offset(int motor0, int motor1, int motor2, int motor3)
 void reset_motors()
 {
 	offset[0] = offset[1] = offset[2] = offset[3] = 0;
+	R= P= Y= T=0;
 }
 
 /*
@@ -178,8 +179,8 @@ void trim(char c){
 		case 'o':
 		case 'l':
 		default:
-			printf("#offset = [%c%c%c%c]\n",offset[0]/10,offset[1]/10,offset[2]/10,offset[3]/10);
-			printf("ae = [%c%c%c%c]\n",ae[0]/10,ae[1]/10,ae[2]/10,ae[3]/10);
+			printf("offset = [%c%c%c%c]\n",offset[0]/10,offset[1]/10,offset[2]/10,offset[3]/10);
+			printf("ae = [%c%c%c%c]\n#",ae[0]/10,ae[1]/10,ae[2]/10,ae[3]/10);
 			break;
 	}
 }
@@ -192,11 +193,11 @@ void set_value(char c){
 		case 'M':
 	//	c = c - '0'; leave this here just for trying with myterm.c when kj.o is not working @Alessio
 		if(set_mode(c))
-			printf("#Mode succesfully changed.\n");
+			printf("Mode succesfully changed.\n");
 		else
-			printf("#Invalid or not permitted mode!\n");
+			printf("Invalid or not permitted mode!\n");
 
-		printf("Control: >%c<, Current Mode: >%i<\n",control,mode);
+		printf("Control: >%c<, Current Mode: >%i<\n#",control,mode);
 		break;
 			break;
 		case 'R':
@@ -370,7 +371,7 @@ void exit()
 
 int main()
 {
-	printf("Program started in mode: %d \r\n", mode);
+	printf("Program started in mode: %d \r\n#", mode);
 
 	setup();
 
