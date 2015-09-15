@@ -161,6 +161,7 @@ void isr_rs232_rx(void)
 
 	// Read the data of serial comm
 	c = X32_rs232_data;
+	//printf("Char received: %cn", c);
 
 	// Add the message to the message queue
 	pc_msg_q.push(&pc_msg_q, c);
@@ -192,7 +193,7 @@ void isr_qr_link(void)
 }
 
 void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {
-	/* TODO: Does this code belong here?
+	/* TODO: Does this checking code belong here? + arguments should be floats if we have them
 	 * Clip engine values to be positive and 10 bits.
 	 */
 	int ae_index;
@@ -258,15 +259,7 @@ void quit()
 }
 
 void packet_received(char control, char value) {
-	printf("Message Received: %d %d\n", control, value);
-
-	/*if(new_user_input & !sensor_active){
-		new_user_input = false;
-		ae[0] = offset[0]+T  +P+Y;
-		ae[1] = offset[1]+T-R  -Y;
-		ae[2] = offset[2]+T  -P+Y;
-		ae[3] = offset[3]+T+R  -Y;
-	}*/
+	//printf("Packet Received: %c %c\n", control, value);
 
 	switch(control){
 		case 'M':
@@ -341,6 +334,11 @@ int main()
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
 
 		// Calculate motor RPM
+		set_motor_rpm(
+			offset[0] + T  +P+Y,
+			offset[1] + T-R  -Y,
+			offset[2] + T  -P+Y,
+			offset[3] + T+R  -Y);
 	}
 
 	quit();
