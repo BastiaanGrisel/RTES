@@ -1,5 +1,5 @@
 CC=lcc-x32
-CFLAGS=-I$(X32INC)
+CFLAGS=-I$(X32INC) -I../include
 OBJS=main.o
 
 .PHONY: clean stubbed stubbedrun uploadrun test
