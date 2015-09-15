@@ -99,11 +99,6 @@ bool set_mode(int new_mode)
 	return true;
 }
 
-void toggle_led(int i)
-{
-	X32_leds = (X32_leds ^ (1 << i));
-}
-
 /* trim the QR
  * always use this offset when sending the motor commands
  * Author: Henko
@@ -181,13 +176,6 @@ void isr_qr_link(void)
 	 * get sensor and timestamp values */
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
-
-	/* Where do we need this for?
-	isr_qr_counter++;
-	if (isr_qr_counter % 500 == 0) {
-		toggle_led(2);
-		sensor_active = true;
-	}*/
 
 	isr_qr_time = X32_us_clock - isr_qr_time;
 }
