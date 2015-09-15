@@ -239,7 +239,7 @@ void sendKeyData(int c){
 			rs232_putchar(control);
 			rs232_putchar(value);
 			rs232_putchar(packet_checksum(control,value));
-			mvprintw(1,0,"sending: %c%i%c\n",control, (int) value, packet_checksum(control,value));
+			mvprintw(1,0,"sending: %c%i%i\n",control, (int) value, packet_checksum(control,value));
 		}
 		else{
 			mvprintw(1,0,"NOT sending: %c%i   (RS232 = DISABLED)\n",control, (int) value);
@@ -283,7 +283,7 @@ void sendKeyData(int c){
 			rs232_putchar(control);
 			rs232_putchar(value);
 			rs232_putchar(packet_checksum(control,value));
-			mvprintw(1,0,"sending: %c%c%c\n",control, value, packet_checksum(control,value));
+			mvprintw(1,0,"sending: %c%c%i\n",control, value, packet_checksum(control,value));
 		}
 		else{
 			mvprintw(1,0,"NOT sending: %c%c %s\n",control, value,value==0?"key = not a control!":"(RS232 = DISABLED)");

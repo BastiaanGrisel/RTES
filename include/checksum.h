@@ -21,7 +21,7 @@ unsigned char checksum(char * data, int length)
 
 	/*In addition we can add this line to shift the sum2 value. If the bytes order is wrong, the shift will be different
 	and we can detect that the order is wrong.*/
-	return sum2 << data[0];
+	//return sum2 << data[0];
 
 
 	//just the simplest checksum evah
@@ -38,10 +38,11 @@ unsigned char checksum(char * data, int length)
  * Author: Alessio
  */
 unsigned char packet_checksum(char control, char value) {
-	char data[2];
+	return control ^ value;
+	/*char data[2];
 	data[0] = control;
 	data[1] = value;
-	return checksum(data,PACKET_LENGTH);
+	return checksum(data,PACKET_LENGTH);*/
 }
 
 /*  Check if the checksums match and return a boolean value
