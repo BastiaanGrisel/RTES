@@ -190,41 +190,6 @@ void trim(char c){
 	}
 }
 
-/* set the value to the right place
- * Author: Henko
- */
-void set_value(char c){
-	switch(control){
-		case 'M':
-	//	c = c - '0'; leave this here just for trying with myterm.c when kj.o is not working @Alessio
-		if(set_mode(c))
-			printf("Mode succesfully changed.\n");
-		else
-			printf("Invalid or not permitted mode!\n");
-
-		printf("Control: >%c<, Current Mode: >%i<\n#",control,mode);
-		break;
-			break;
-		case 'R':
-			R = c;
-			break;
-		case 'P':
-			P = c;
-			break;
-		case 'Y':
-			Y = c;
-			break;
-		case 'T':
-			T = c;
-			break;
-		case 'A':
-			trim(c);
-			break;
-		default:
-			break;
-	}
-}
-
 /*
  * Process interrupts from serial connection
  * Author: Bastiaan Grisel
@@ -232,13 +197,13 @@ void set_value(char c){
 void isr_rs232_rx(void)
 {
 	char c;
-	//printf("Intrpt:");
 	isr_qr_time = X32_us_clock;
 
 	// Read the data of serial comm
 	c = X32_rs232_data;
-
-	pc_msg_q.push(&pc_msg_q,c);
+	
+	// Add the message to the message queue
+	pc_msg_q.push(&pc_msg_q, c);
 
 	/*if(!expect_value){
 		control = c;
@@ -262,7 +227,6 @@ void isr_rs232_rx(void)
 	}*/
 
 	isr_qr_time = X32_us_clock - isr_qr_time; //data to be logged
-
 }
 
 
@@ -291,7 +255,6 @@ void isr_qr_link(void)
 		toggle_led(2);
 		sensor_active = true;
 	}
-
 
 	/*
 	 * calculate engine values
@@ -382,7 +345,37 @@ bool check_packet(char input, char value, char checksum) {
 }
 
 void packet_received(char control, char value) {
-	printf("Message Received: %d %d\r\n#", control, value);
+	printf("Message Received: %d %d\n", control, value);
+
+	switch(control){
+		case 'M':
+	//	c = c - '0'; leave this here just for trying with myterm.c when kj.o is not working @Alessio
+		if(set_mode(value))
+			printf("Mode succesfully changed.\n");
+		else
+			printf("Invalid or not permitted mode!\n");
+
+		printf("Control: >%c<, Current Mode: >%i<\n#",control,mode);
+		break;
+			break;
+		case 'R':
+			R = value;
+			break;
+		case 'P':
+			P = value;
+			break;
+		case 'Y':
+			Y = value;
+			break;
+		case 'T':
+			T = value;
+			break;
+		case 'A':
+			trim(value);
+			break;
+		default:
+			break;
+	}
 }
 
 int main()
