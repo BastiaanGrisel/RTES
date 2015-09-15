@@ -37,6 +37,7 @@
 *.c~
 *.h~
 *.*~
+.temp.c.swp
 
 # Tex
 *.aux
