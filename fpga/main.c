@@ -193,18 +193,13 @@ void isr_qr_link(void)
 }
 
 void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {
-	/* TODO: Does this checking code belong here? + arguments should be floats if we have them
+	/* TODO: Arguments should be floats if we have them
 	 * Clip engine values to be positive and 10 bits.
 	 */
-	int ae_index;
-	for (ae_index = 0; ae_index < 4; ae_index++)
-	{
-		if (ae[ae_index] < 0)
-			ae[ae_index] = 0;
-//		ae[ae_index] = (ae[ae_index] < 0) ? 0 : ae[ae_index];
-
-		ae[ae_index] &= 0x3ff;
-	}
+	motor1 = (motor1 < 0 ? 0 : motor1) & 0x3ff; 
+	motor2 = (motor2 < 0 ? 0 : motor2) & 0x3ff; 
+	motor3 = (motor3 < 0 ? 0 : motor3) & 0x3ff; 
+	motor4 = (motor4 < 0 ? 0 : motor4) & 0x3ff; 
 
 	/* Send actuator values
 	 * (Need to supply a continous stream, otherwise
@@ -214,6 +209,43 @@ void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {
 	X32_QR_a1 = motor1;
 	X32_QR_a2 = motor2;
 	X32_QR_a3 = motor3;
+}
+
+/* Callback that gets executed when a packet has arrived
+ * Author: Bastiaan
+ */
+void packet_received(char control, char value) {
+	//printf("Packet Received: %c %c\n", control, value);
+
+	switch(control){
+		case 'M':
+	//	control = control - '0'; //leave this here just for trying with myterm.c when kj.o is not working @Alessio
+		if(set_mode(value))
+			printf("Mode succesfully changed.\n");
+		else
+			printf("Invalid or not permitted mode!\n");
+
+		printf("Control: >%c<, Current Mode: >%i<\n#",control,mode);
+		break;
+			break;
+		case 'R':
+			R = value;
+			break;
+		case 'P':
+			P = value;
+			break;
+		case 'Y':
+			Y = value;
+			break;
+		case 'T':
+			T = value;
+			break;
+		case 'A':
+			trim(value);
+			break;
+		default:
+			break;
+	}
 }
 
 /* The startup routine.
@@ -258,39 +290,6 @@ void quit()
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
 }
 
-void packet_received(char control, char value) {
-	//printf("Packet Received: %c %c\n", control, value);
-
-	switch(control){
-		case 'M':
-	//	control = control - '0'; //leave this here just for trying with myterm.c when kj.o is not working @Alessio
-		if(set_mode(value))
-			printf("Mode succesfully changed.\n");
-		else
-			printf("Invalid or not permitted mode!\n");
-
-		printf("Control: >%c<, Current Mode: >%i<\n#",control,mode);
-		break;
-			break;
-		case 'R':
-			R = value;
-			break;
-		case 'P':
-			P = value;
-			break;
-		case 'Y':
-			Y = value;
-			break;
-		case 'T':
-			T = value;
-			break;
-		case 'A':
-			trim(value);
-			break;
-		default:
-			break;
-	}
-}
 
 /* Function that is used to blink the LEDs. 
  * Returns a boolean whode value depends on the time the function is called
