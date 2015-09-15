@@ -1,4 +1,4 @@
-#define PACKET_LENGTH 2	
+#define PACKET_LENGTH 2
 
 /* Perform an 8-bits checksum
    Author: Alessio */
@@ -37,12 +37,13 @@ unsigned char checksum(char * data, int length)
     Author: Alessio
 */
 bool check_packet(char control, char value, unsigned char in_checksum) {
-	return true;
+	//return true; // for testing if everything works before using the checksum
+
 	char data[2];
 	unsigned char curr_checksum;
 	data[0] = control;
 	data[1] = value;
 	curr_checksum = checksum(data,PACKET_LENGTH);
-  return true; // for testing if everything works before using the checksum
+
 	return curr_checksum == in_checksum;
 }
