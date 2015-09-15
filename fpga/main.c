@@ -49,12 +49,10 @@ typedef enum {false,true} bool;
 enum { SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL, FULL_CONTROL } mode = SAFE;
 
 int	isr_qr_time = 0, isr_qr_counter =0;
-char	control;
-int		ae[4];
+int	ae[4];
 int 	offset[4];
 int 	R=0, P=0, Y=0, T=0;
-int		s0, s1, s2, s3, s4, s5;
-bool	expect_value = false, new_user_input= false, sensor_active = false;
+int	s0, s1, s2, s3, s4, s5;
 Queue	pc_msg_q;
 
 /* Add offset to the four motors
@@ -165,71 +163,39 @@ void isr_rs232_rx(void)
 	// Add the message to the message queue
 	pc_msg_q.push(&pc_msg_q, c);
 
-	/*if(!expect_value){
-		control = c;
-		expect_value = true;
-	}
-	else // expect a value
-	{
-		set_value(c);
-		new_user_input= true;
-		expect_value = false; // reset expect_value
-		//printf("#Control: >%c<, Mode: >%i<\n",control,mode);
-		//X32_leds = 1<<mode;
-	}
-
-	if(new_user_input & !sensor_active){
-		new_user_input = false;
-		ae[0] = offset[0]+T  +P+Y;
-		ae[1] = offset[1]+T-R  -Y;
-		ae[2] = offset[2]+T  -P+Y;
-		ae[3] = offset[3]+T+R  -Y;
-	}*/
-
 	isr_qr_time = X32_us_clock - isr_qr_time; //data to be logged
 }
 
 
 
-/*------------------------------------------------------------------
- * isr_qr_link -- QR link rx interrupt handler
- *------------------------------------------------------------------
+/* ISR when new sensor readings are read from the QR
  */
 void isr_qr_link(void)
 {
-	int	ae_index;
-	/* record time
-	 */
+	int ae_index;
+
 	isr_qr_time = X32_us_clock;
-        /* inst = X32_instruction_counter;*/
-	/* get sensor and timestamp values
-	 */
+
+	/* TODO: do filtering here?
+	 * get sensor and timestamp values */
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
-	//timestamp = X32_QR_timestamp;
 
-	/* monitor presence of interrupts
-	 */
+	/* Where do we need this for?
 	isr_qr_counter++;
 	if (isr_qr_counter % 500 == 0) {
 		toggle_led(2);
 		sensor_active = true;
-	}
+	}*/
 
-	/*
-	 * calculate engine values
+	isr_qr_time = X32_us_clock - isr_qr_time;
+}
+
+void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {
+	/* TODO: Does this code belong here?
+	 * Clip engine values to be positive and 10 bits.
 	 */
-	 if(new_user_input){
-		new_user_input = false;
-		ae[0] = offset[0]+T  +P+Y;
-		ae[1] = offset[1]+T-R  -Y;
-		ae[2] = offset[2]+T  -P+Y;
-		ae[3] = offset[3]+T+R  -Y;
-	}
-
-
-	/* Clip engine values to be positive and 10 bits.
-	 */
+	int ae_index;
 	for (ae_index = 0; ae_index < 4; ae_index++)
 	{
 		if (ae[ae_index] < 0)
@@ -243,15 +209,10 @@ void isr_qr_link(void)
 	 * (Need to supply a continous stream, otherwise
 	 * QR will go to safe mode, so just send every ms)
 	 */
-	X32_QR_a0 = ae[0];
-	X32_QR_a1 = ae[1];
-	X32_QR_a2 = ae[2];
-	X32_QR_a3 = ae[3];
-
-	/* record isr execution time (ignore overflow)
-	 */
-       /* inst = X32_instruction_counter - inst;*/
-	isr_qr_time = X32_us_clock - isr_qr_time;
+	X32_QR_a0 = motor0;
+	X32_QR_a1 = motor1;
+	X32_QR_a2 = motor2;
+	X32_QR_a3 = motor3;
 }
 
 /* The startup routine.
@@ -261,16 +222,14 @@ void setup()
 {
 	int c;
 
-	/* Initialize Variables
-	 */
+	/* Initialize Variables */
 	
 	isr_qr_counter = isr_qr_time = 0;
 	ae[0] = ae[1] = ae[2] = ae[3] = 0;
 	offset[0] = offset[1] = offset[2] = offset[3] =0;
 	pc_msg_q = createQueue();
 
-	/* Prepare Interrupts
-	 */
+	/* Prepare Interrupts */
 
 	// FPGA -> X32
 	SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
@@ -281,14 +240,12 @@ void setup()
         SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_RX, 20);
 	while (X32_rs232_char) c = X32_rs232_data; // empty the buffer
 
-	/* Enable Interrupts
-	 */
+	/* Enable Interrupts */
 
     	ENABLE_INTERRUPT(INTERRUPT_XUFO);
         ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX);
 
-	/* Enable all interupts after init code
-	 */
+	/* Enable all interupts after init code */
 	ENABLE_INTERRUPT(INTERRUPT_GLOBAL);
 }
 
@@ -306,6 +263,14 @@ bool check_packet(char input, char value, char checksum) {
 
 void packet_received(char control, char value) {
 	printf("Message Received: %d %d\n", control, value);
+
+	/*if(new_user_input & !sensor_active){
+		new_user_input = false;
+		ae[0] = offset[0]+T  +P+Y;
+		ae[1] = offset[1]+T-R  -Y;
+		ae[2] = offset[2]+T  -P+Y;
+		ae[3] = offset[3]+T+R  -Y;
+	}*/
 
 	switch(control){
 		case 'M':
@@ -350,16 +315,18 @@ int main()
 		X32_leds = 1 << mode;
 		
 		// Process messages
-        	DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX);
+        	DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
 		
-		while(pc_msg_q.size >= 3) {
+		while(pc_msg_q.size >= 3) { // Check if there are one or more packets in the queue
 			char control  = pc_msg_q.peek(&pc_msg_q, 0);
 			char value    = pc_msg_q.peek(&pc_msg_q, 1);
 			char checksum = pc_msg_q.peek(&pc_msg_q, 2);
 
 			if(!check_packet(control,value,checksum)) {
+				// If the checksum is not correct, pop the first message off the queue and repeat the loop
 				pc_msg_q.pop(&pc_msg_q);
 			} else {
+				// If the checksum is correct, pop the packet off the queue and notify a callback
 				pc_msg_q.pop(&pc_msg_q);
 				pc_msg_q.pop(&pc_msg_q);
 				pc_msg_q.pop(&pc_msg_q);
@@ -368,7 +335,9 @@ int main()
 			}
 		}
 
-		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX);
+		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
+
+		// Calculate motor RPM
 	}
 
 	quit();
