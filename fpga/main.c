@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include "x32.h"
+#include "queue.h"
 
 /* define some peripheral short hands
  */
@@ -41,6 +42,9 @@
 
 /* Define global variables
  */
+char malloc_memory[1024];
+int malloc_memory_size = 1024;
+
 typedef enum {false,true} bool;
 enum { SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL, FULL_CONTROL } mode = SAFE;
 
@@ -51,6 +55,7 @@ int 	offset[4];
 int 	R=0, P=0, Y=0, T=0;
 int	s0, s1, s2, s3, s4, s5;
 bool	expect_value = false, new_user_input= false, sensor_active = false;
+Queue	pc_msg_q;
 
 /* Add offset to the four motors
  * No need to check for negative numbers since offset can be negative
@@ -232,6 +237,8 @@ void isr_rs232_rx(void)
 	// Read the data of serial comm
 	c = X32_rs232_data;
 
+	pc_msg_q.push(&pc_msg_q,c);
+
 	if(!expect_value){
 		control = c;
 		expect_value = true;
@@ -332,10 +339,11 @@ void setup()
 
 	/* Initialize Variables
 	 */
-
+	
 	isr_qr_counter = isr_qr_time = 0;
 	ae[0] = ae[1] = ae[2] = ae[3] = 0;
 	offset[0] = offset[1] = offset[2] = offset[3] =0;
+	pc_msg_q = createQueue();
 
 	/* Prepare Interrupts
 	 */
@@ -363,9 +371,13 @@ void setup()
 /* Function that is called when the program terminates
  * Originally created by: Bastiaan
  */
-void exit()
+void quit()
 {
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
+}
+
+bool check_packet(char input, char value, char checksum) {
+	return true;
 }
 
 int main()
@@ -378,9 +390,28 @@ int main()
 	while (1) {
 		// Turn on the LED corresponding to the mode
 		X32_leds = 1 << mode;
+
+		// Process messages
+        	DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX);
+			
+		while(pc_msg_q.size >= 3) {
+			char control  = pc_msg_q.peek(pc_msg_q, 0);
+			char value    = pc_msg_q.peek(pc_msg_q, 1);
+			char checksum = pc_msg_q.peek(pc_msg_q, 2);
+
+			if(!check_packet(control,value,checksum)){
+				pc_msg_q.pop();
+			} else {
+				pc_msg_q.pop();
+				pc_msg_q.pop();
+				pc_msg_q.pop();
+			}
+		}
+
+		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX);
 	}
 
-	exit();
+	quit();
 
 	return 0;
 }
