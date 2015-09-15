@@ -111,68 +111,28 @@ void toggle_led(int i)
 void trim(char c){
 	switch(c){
 		case 'a': // throttle up
-			add_motor_offset(
-				+OFFSET_STEP,
-				+OFFSET_STEP,
-				+OFFSET_STEP,
-				+OFFSET_STEP
-				);
+			add_motor_offset(+OFFSET_STEP, +OFFSET_STEP, +OFFSET_STEP, +OFFSET_STEP);
 			break;
 		case 'z': // throttle down
-			add_motor_offset(
-				-OFFSET_STEP,
-				-OFFSET_STEP,
-				-OFFSET_STEP,
-				-OFFSET_STEP
-				);
+			add_motor_offset(-OFFSET_STEP, -OFFSET_STEP, -OFFSET_STEP, -OFFSET_STEP);
 			break;
 		case LEFT_CHAR: // roll left
-			add_motor_offset(
-				0,
-				+OFFSET_STEP,
-				0,
-				-OFFSET_STEP
-				);
+			add_motor_offset(0, +OFFSET_STEP, 0, -OFFSET_STEP);
 			break;
 		case RIGHT_CHAR: // roll right
-			add_motor_offset(
-				0,
-				-OFFSET_STEP,
-				0,
-				+OFFSET_STEP
-				);
+			add_motor_offset(0, -OFFSET_STEP, 0, +OFFSET_STEP);
 			break;
 		case UP_CHAR: // pitch up
-			add_motor_offset(
-				-OFFSET_STEP,
-				0,
-				+OFFSET_STEP,
-				0
-				);
+			add_motor_offset(-OFFSET_STEP, 0, +OFFSET_STEP, 0);
 			break;
 		case DOWN_CHAR: // pitch down
-			add_motor_offset(
-				+OFFSET_STEP,
-				0,
-				-OFFSET_STEP,
-				0
-				);
+			add_motor_offset(+OFFSET_STEP, 0, -OFFSET_STEP, 0);
 			break;
 		case 'q': // yaw left
-			add_motor_offset(
-				-OFFSET_STEP,
-				+OFFSET_STEP,
-				-OFFSET_STEP,
-				+OFFSET_STEP
-				);
+			add_motor_offset(-OFFSET_STEP, +OFFSET_STEP, -OFFSET_STEP, +OFFSET_STEP);
 			break;
 		case 'w': // yaw right
-			add_motor_offset(
-				+OFFSET_STEP,
-				-OFFSET_STEP,
-				+OFFSET_STEP,
-				-OFFSET_STEP
-				);
+			add_motor_offset(+OFFSET_STEP, -OFFSET_STEP, +OFFSET_STEP, -OFFSET_STEP);
 			break;
 		case 'r': //reset
 			reset_motors();
