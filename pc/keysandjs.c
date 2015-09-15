@@ -316,9 +316,35 @@ void sendJSData(int number,int valueInt){
 }
 
 void parse_QR_message(int size){
-	if(size%MESSAGESIZE==0){
-		//TODO check checksum
-		//TODO switch case statement with all possibilities
+	int message_number = 0;
+	int mOffs = 0;
+	while(size-mOffs>0){ // if size == 0 then 0%MESSAGESIZE will give a nasty exception
+		if((size-mOffs)%MESSAGESIZE==0){ 
+			
+			//TODO check checksum
+			switch(received_chars[0+mOffs]){
+				case '\xFE':
+					offset[0]=received_chars[1+mOffs];
+					offset[1]=received_chars[2+mOffs];
+					offset[2]=received_chars[3+mOffs];
+					offset[3]=received_chars[4+mOffs];
+					
+				break; 
+				case '\xFF':
+					ae[0]=received_chars[1+mOffs];
+					ae[1]=received_chars[2+mOffs];
+					ae[2]=received_chars[3+mOffs];
+					ae[3]=received_chars[4+mOffs];
+					
+				break; 
+				default:
+				break;
+			
+			}
+			mOffs = ++message_number*MESSAGESIZE;
+		} else {
+			break;
+		}
 	}
 }
 
@@ -344,7 +370,9 @@ void parse_QR_input(char rec_c){
 
 void print_QR_input(void){
 	// TODO print ae and offset and maybe more
-	mvprintw(10,0,"\n\nreceived messages: \n%s\n", received_chars);
+	mvprintw(10,0,"received messages:(X32 -> pc) == {%s}\n", received_chars);
+	//mvprintw(13,0,"received messages:(X32 -> pc) \n{%i,%i,%i,%i,%i,%i,%i,%i}\n", received_chars[0],received_chars[1],received_chars[2],received_chars[3],received_chars[4],received_chars[5],received_chars[6],received_chars[7]);
+	printw("#offset%i%i%i%i\n\n",offset[0]*10,offset[1]*10,offset[2]*10,offset[3]*10);
 }
 
 
@@ -370,11 +398,11 @@ void rs232_open(void)
 	else if ( (serial_device == 1) || (serial_device == 2) ) 
 	{
         	fd_RS232 = open(USB_DEVICE0, O_RDWR | O_NOCTTY);
-			printw("fd usb0 = %i\n",fd_RS232);
+			//printw("fd usb0 = %i\n",fd_RS232);
 		fprintf(stderr,"using /dev/ttyUSB0\n"); 
 		if(fd_RS232<0){ // try other name
 			fd_RS232 = open(USB_DEVICE1, O_RDWR | O_NOCTTY);
-			printw("fd usb1 = %i\n",fd_RS232);
+			//printw("fd usb1 = %i\n",fd_RS232);
 		}
 	} 
 

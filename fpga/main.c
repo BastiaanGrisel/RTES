@@ -11,7 +11,8 @@
  */
 #define X32_leds		peripherals[PERIPHERAL_LEDS]
 #define X32_buttons		peripherals[PERIPHERAL_BUTTONS]
-#define X32_clock		peripherals[PERIPHERAL_MS_CLOCK]
+#define X32_ms_clock		peripherals[PERIPHERAL_MS_CLOCK]
+#define X32_us_clock 	(X32_ms_clock *1000)
 
 #define X32_QR_a0 		peripherals[PERIPHERAL_XUFO_A0]
 #define X32_QR_a1 		peripherals[PERIPHERAL_XUFO_A1]
@@ -72,13 +73,15 @@ void reset_motors()
 }
 
 /*
- * Changes the mode to either: SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL or FULL_CONTROL. 
+ * Changes the mode to either: SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL or FULL_CONTROL.
  * Motor RPM needs to be zero to change mode except when changing to SAFE and PANIC
  * Returns a boolean indicating whether the mode change was succesful or not.
  * Author: Alessio
  */
 bool set_mode(int new_mode)
 {
+	if(new_mode < SAFE || new_mode > FULL_CONTROL) return false;
+
 	if(new_mode >= MANUAL) {
 		// If at least one of the motor's RPM is not zero, return false
 		int i;
@@ -187,9 +190,14 @@ void trim(char c){
 void set_value(char c){
 	switch(control){
 		case 'M':
-			//mode = c; // add mode check
-			set_mode(c);
-			printf("#Control: >%c<, Mode: >%i<\n",control,mode);
+	//	c = c - '0'; leave this here just for trying with myterm.c when kj.o is not working @Alessio
+		if(set_mode(c))
+			printf("#Mode succesfully changed.\n");
+		else
+			printf("#Invalid or not permitted mode!\n");
+
+		printf("Control: >%c<, Current Mode: >%i<\n",control,mode);
+		break;
 			break;
 		case 'R':
 			R = c;
@@ -219,6 +227,7 @@ void isr_rs232_rx(void)
 {
 	char c;
 	//printf("Intrpt:");
+	isr_qr_time = X32_us_clock;
 
 	// Read the data of serial comm
 	c = X32_rs232_data;
@@ -236,13 +245,16 @@ void isr_rs232_rx(void)
 		//X32_leds = 1<<mode;
 	}
 
-	if(new_user_input & !sensor_active){ 
+	if(new_user_input & !sensor_active){
 		new_user_input = false;
 		ae[0] = offset[0]+T  +P+Y;
 		ae[1] = offset[1]+T-R  -Y;
 		ae[2] = offset[2]+T  -P+Y;
 		ae[3] = offset[3]+T+R  -Y;
 	}
+
+	isr_qr_time = X32_us_clock - isr_qr_time; //data to be logged
+
 }
 
 
@@ -256,8 +268,8 @@ void isr_qr_link(void)
 	int	ae_index;
 	/* record time
 	 */
-	/*isr_qr_time = X32_us_clock;
-        inst = X32_instruction_counter;*/
+	isr_qr_time = X32_us_clock;
+        /* inst = X32_instruction_counter;*/
 	/* get sensor and timestamp values
 	 */
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
@@ -291,6 +303,7 @@ void isr_qr_link(void)
 	{
 		if (ae[ae_index] < 0)
 			ae[ae_index] = 0;
+//		ae[ae_index] = (ae[ae_index] < 0) ? 0 : ae[ae_index];
 
 		ae[ae_index] &= 0x3ff;
 	}
@@ -306,8 +319,8 @@ void isr_qr_link(void)
 
 	/* record isr execution time (ignore overflow)
 	 */
-       /* inst = X32_instruction_counter - inst;
-	isr_qr_time = X32_us_clock - isr_qr_time;*/
+       /* inst = X32_instruction_counter - inst;*/
+	isr_qr_time = X32_us_clock - isr_qr_time;
 }
 
 /* The startup routine.
