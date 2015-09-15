@@ -25,7 +25,7 @@
 #define RIGHT_CHAR 'h'
 #define UP_CHAR 't'
 #define DOWN_CHAR 'g'
-#define QR_INPUT_BUFFERSIZE 100
+#define QR_INPUT_BUFFERSIZE 1000
 #define MESSAGESIZE 5
 
 void keyInit(void);
@@ -341,7 +341,7 @@ void parse_QR_message(int size){
 				break;
 			
 			}
-			mOffs = ++message_number*MESSAGESIZE;
+			mOffs += MESSAGESIZE;
 		} else {
 			break;
 		}
@@ -352,10 +352,10 @@ void parse_QR_input(char rec_c){
 	int i;
 	int padding = 10;
 	if(rec_c == '#'){
-		parse_QR_message(charpos);
-		/*for(i = 0;i<10 &i+charpos<QR_INPUT_BUFFERSIZE;i++){
+		//parse_QR_message(charpos);
+		for(i = 0;i<10 & charpos<QR_INPUT_BUFFERSIZE;i++){
 			received_chars[charpos++] = '\n';
-		}*/
+		}
 
 		charpos = 0;
 		print_QR_input();
@@ -365,14 +365,14 @@ void parse_QR_input(char rec_c){
 	if(charpos>=QR_INPUT_BUFFERSIZE){
 		charpos = 0;
 	}
-	print_QR_input();
+	//print_QR_input();
 }
 
 void print_QR_input(void){
 	// TODO print ae and offset and maybe more
 	mvprintw(10,0,"received messages:(X32 -> pc) == {%s}\n", received_chars);
 	//mvprintw(13,0,"received messages:(X32 -> pc) \n{%i,%i,%i,%i,%i,%i,%i,%i}\n", received_chars[0],received_chars[1],received_chars[2],received_chars[3],received_chars[4],received_chars[5],received_chars[6],received_chars[7]);
-	printw("#offset%i%i%i%i\n\n",offset[0]*10,offset[1]*10,offset[2]*10,offset[3]*10);
+	//printw("#offset%i%i%i%i\n\n",offset[0]*10,offset[1]*10,offset[2]*10,offset[3]*10);
 }
 
 

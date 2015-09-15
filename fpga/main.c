@@ -183,8 +183,8 @@ void trim(char c){
 		case 'o':
 		case 'l':
 		default:
-			printf("#\xFE%c%c%c%c\n",offset[0]/10,offset[1]/10,offset[2]/10,offset[3]/10);
-			printf("\xFF%c%c%c%c\n",ae[0]/10,ae[1]/10,ae[2]/10,ae[3]/10);
+			printf("#offset = [%c%c%c%c]\n",offset[0]/10,offset[1]/10,offset[2]/10,offset[3]/10);
+			printf("ae = [%c%c%c%c]\n",ae[0]/10,ae[1]/10,ae[2]/10,ae[3]/10);
 			break;
 	}
 }
