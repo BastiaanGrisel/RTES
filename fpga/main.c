@@ -62,7 +62,6 @@ Mode    mode = SAFE;
  */
 void add_motor_offset(int motor0, int motor1, int motor2, int motor3)
 {
-	printf("QR: Add motor offset (%d%d%d%d)",motor0,motor1,motor2,motor3);
 	offset[0] += motor0;
 	offset[1] += motor1;
 	offset[2] += motor2;
