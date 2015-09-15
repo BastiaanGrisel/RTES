@@ -31,9 +31,13 @@
 #define MESSAGESIZE 5
 
 void init_keyboard(void);
+struct timeval updateFPS(struct timeval oldtime);
 int joystickInit(void);
 void sendKeyData(int c);
+void process_JS_event(int type, int number,int value);
 void sendJSData(int number,int valueInt);
+void printJSstate(void);
+
 void rs232_open(void);
 void rs232_close(void);
 int rs232_putchar(char c);
@@ -42,128 +46,125 @@ void parse_QR_input(char rec_c);
 void print_QR_input(void);
 void col_on(int col);
 void col_off(int col);
+void exitmain(void);
 
-int fd_RS232;
+int fd_RS232, fd_js;
 
 /* current axis and button readings
  */
 int	axis[6];
 int	button[12];
 char received_chars[QR_INPUT_BUFFERSIZE];
-int charpos = 0;
+int charpos = 0, loopcount = 0;
 int	ae[4];
 int offset[4];
 
-
+/* Main function that mainly consists of polling the different connections
+ * which are: Keyboard, Joystick, RS232 (connection to QR)
+ */
 int main (int argc, char **argv)
 {
-	int fd_js = 0;
 	struct js_event js;
-	int i, loopcount=0;
+	int i;
 	int c, last_c;
-	struct timeval timeold, timenew;
+	struct timeval time;
 	char rec_c;
-
+	
+	// init
 	init_keyboard();
-	fd_js = init_joystick();
-
-	// open connection to X32
+	init_joystick();
 	rs232_open();
+	gettimeofday(&time,NULL);
 
-	gettimeofday(&timeold,NULL);
-
+	/* Main loop to process/send user input and to show QR input */
 	while (1) {
-		move(0,0);
-		if(loopcount++>99){
-			loopcount=0;
-			gettimeofday(&timenew,NULL);
-			int frametime = (timenew.tv_usec+1000000*timenew.tv_sec-timeold.tv_usec-1000000*timeold.tv_sec)/100;
-			printw("%i usec %i Hz   ",frametime,1000000/frametime);
-			timeold = timenew;
-		}
-	    /* check keypress */
-	    c = getch();
+		time = updateFPS(time);
 
-	    if (c != -1){
-	        last_c = c;
-	    }
-	    //refresh();
-		//clear();
-		move(2,0);
-		if (c != -1){
+	    /* Check keypress */
+	    if ((c= getch()) != -1){
 			sendKeyData(c); // send a message if user gave input
-	    } else{
-			col_on(1);
-	    	printw("NOTHING TO SEND  (last char was:  \'%c\' == %i\n", last_c=='\n'?'<':last_c,last_c);
-			col_off(1);	    
-		}
+	    } 
 	    
+		/* Check joystick */
 		if(fd_js>0){
-		/* check joystick */
 			if (read(fd_js, &js, sizeof(struct js_event)) == 
 				   			sizeof(struct js_event))  {
-
-				/* register data
-				 */
-				// fprintw(stderr,".");
-				switch(js.type & ~JS_EVENT_INIT) {
-					case JS_EVENT_BUTTON:
-						button[js.number] = js.value;
-						break;
-					case JS_EVENT_AXIS:
-						axis[js.number] = js.value/256;
-						sendJSData(js.number,js.value);
-						break;
-				}
+				process_JS_event(js.type,js.number,js.value);
 			}
 		}
 		
+		/* Check QR to pc communication */
 		if(fd_RS232>0){
 			while ((rec_c = rs232_getchar_nb())!= -1){
 				parse_QR_input(rec_c);
 			}
 		}
-		
-		/*if (errno != EAGAIN) {
-		    endwin();
-			perror("\njs: error reading (EAGAIN)");
-			// this error might be thrown because I changed the while(read) to if(read)
-			exit (1);
-		}*/
-		
-		move(4,0);
-		printw("Joystick axis: ");
-		col_on(2);
-		for (i = 0; i < 6; i++) {
-			printw("%6d ",axis[i]);
-		}
-		col_off(2);
-		printw("\nJoystick buttons: ");
-		col_on(2);		
-		for (i = 0; i < 12; i++) {
-			printw("%d ",button[i]);
-		}
-		col_off(2);
 
-		
-		
-		// terminate program if user presses panic button or ESC
+		/* Print the Joystick state */
+		printJSstate();		
+				
+		/* Terminate program if user presses panic button or ESC */
 		if (button[0] || c ==27){
-			endwin();
-			rs232_close();
-			//printf("Having fun?!\n");
-			return 0;
-			
+			break;
 		}
-		printw("\n\n"); // this is for clearing a part of the screen
 	}
 	
-	endwin();
+	exitmain();
 	return 0;
 
 }
 
-/* initialize the key input
+/* Calculate the mean loop frequency (100 loopcount mean) 
+ * Author: Henko Aantjes
+ */
+struct timeval updateFPS(struct timeval timeold){
+	struct timeval timenew;
+	if(loopcount++>99){
+		loopcount=0;
+		gettimeofday(&timenew,NULL);
+		int frametime = (timenew.tv_usec+1000000*timenew.tv_sec-timeold.tv_usec-1000000*timeold.tv_sec)/100;
+		mvprintw(0,0,"pc looptime: %i \tusec (%i \tHz) ",frametime,1000000/frametime);
+		return timenew;
+	} else {
+		return timeold;
+	}
+}
+/* Process a joystick event
+ * Author: Henko Aantjes
+ */
+void process_JS_event(int type, int number,int value){
+	switch(type & ~JS_EVENT_INIT) {
+		case JS_EVENT_BUTTON:
+			button[number] = value;
+			break;
+		case JS_EVENT_AXIS:
+			axis[number] = value/256;
+			sendJSData(number,value);
+			break;
+	}
+}
+
+/* Print joystick state
+ * Author: Henko Aantjes
+ */
+void printJSstate(void){
+	int i;
+	move(4,0);
+	printw("Joystick axis: ");
+	col_on(2);
+	for (i = 0; i < 6; i++) {
+		printw("%6d ",axis[i]);
+	}
+	col_off(2);
+	printw("\nJoystick buttons: ");
+	col_on(2);		
+	for (i = 0; i < 12; i++) {
+		printw("%d ",button[i]);
+	}
+	col_off(2);
+}
+
+/* Initialize the key input
  *  
  * Henko Aantjes
  */
@@ -187,15 +188,17 @@ void init_keyboard(void){
 	init_pair(3, COLOR_BLUE, COLOR_BLACK);
 }
 
+/* Change color of terminal output */
 void col_on(int col){
 	attron(COLOR_PAIR(col));
 }
+/* reset color of terminal output */
 void col_off(int col){
 	attroff(COLOR_PAIR(col));
 }
 
 /* Initialize joystick connection
- * author: Henko
+ * Author: Henko Aantjes
  */
 int init_joystick(void){
 	int fd,i;
@@ -223,6 +226,10 @@ int init_joystick(void){
 	return fd;
 } 
 
+/* Send the user keyboard input
+ * First construct the message and call the send function
+ * Author: Henko Aantjes
+ */
 void sendKeyData(int c){
 	char control, value; // the control and value to send
 	if(c >= '0' && c<='5'){
@@ -232,10 +239,10 @@ void sendKeyData(int c){
 			
 			rs232_putchar(control);
 			rs232_putchar(value);
-			printw("sending: %c%i\n",control, (int) value);
+			mvprintw(1,0,"sending: %c%i\n",control, (int) value);
 		}
 		else{
-			printw("NOT sending: %c%i   (RS232 = DISABLED)\n",control, (int) value);
+			mvprintw(1,0,"NOT sending: %c%i   (RS232 = DISABLED)\n",control, (int) value);
 		}
 		
 	} else {
@@ -275,16 +282,16 @@ void sendKeyData(int c){
 			
 			rs232_putchar(control);
 			rs232_putchar(value);
-			printw("sending: %c  %c\n",control, value);
+			mvprintw(1,0,"sending: %c%c\n",control, value);
 		}
 		else{
-			printw("NOT sending: %c  %c   (RS232 = DISABLED)\n",control, value);
+			mvprintw(1,0,"NOT sending: %c%c %s\n",control, value,value==0?"key = not a control!":"(RS232 = DISABLED)");
 		}
 	}
 }
 
 /* Send Joystick data
- *
+ * Construct a message and send
  * Author: Henko Aantjes
  */
 void sendJSData(int number,int valueInt){
@@ -316,6 +323,9 @@ void sendJSData(int number,int valueInt){
 	}
 }
 
+/* Parse QR message and 
+ * Author: Henko Aantjes
+ */
 void parse_QR_message(int size){
 	int message_number = 0;
 	int mOffs = 0;
@@ -349,6 +359,10 @@ void parse_QR_message(int size){
 	}
 }
 
+/* Parse the QR input (one char at the time)
+ * Call parse message if a message is complete
+ * Author: Henko Aantjes
+ */
 void parse_QR_input(char rec_c){
 	int i;
 	int padding = 10;
@@ -366,9 +380,11 @@ void parse_QR_input(char rec_c){
 	if(charpos>=QR_INPUT_BUFFERSIZE){
 		charpos = 0;
 	}
-	//print_QR_input();
 }
 
+/* Print messages that the QR has send to the pc
+ * Author: Henko Aantjes
+ */
 void print_QR_input(void){
 	// TODO print ae and offset and maybe more
 	mvprintw(10,0,"received messages:(X32 -> pc) == {%s}\n", received_chars);
@@ -378,7 +394,7 @@ void print_QR_input(void){
 
 
 /* Open RS232 connection
- * copy pasted by: Henko Aantjes
+ * Copy pasted by: Henko Aantjes
  */
 void rs232_open(void)
 {
@@ -445,12 +461,19 @@ void rs232_open(void)
 	}
 }
 
-void 	rs232_close(void){
+/* Exit routine
+ * Author: Henko Aantjes
+ */
+void exitmain(void){
 	if(fd_RS232>0){
   		close(fd_RS232);
 	}
+	endwin();
 }
 
+/* Get a char from the RS232 (NON-Blocking)
+ * copy pasted by: Henko Aantjes
+ */
 int	rs232_getchar_nb(void)
 {
 	int 		result;
@@ -466,18 +489,10 @@ int	rs232_getchar_nb(void)
 	}
 }
 
-
-/*int 	rs232_getchar()
-{
-	int 	c;
-
-	while ((c = rs232_getchar_nb()) == -1) 
-		;
-	return c;
-}*/
-
-
-int 	rs232_putchar(char c)
+/* Send a char over the RS232 to the pc (Blocking)
+ * copy pasted by: Henko Aantjes
+ */
+int	rs232_putchar(char c)
 { 
 	int result;
 
