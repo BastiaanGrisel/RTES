@@ -310,10 +310,12 @@ void isr_qr_link(void)
 	isr_qr_time = X32_us_clock - isr_qr_time;*/
 }
 
-int main()
+/* The startup routine.
+ * Originally created by: Bastiaan
+ */
+void setup()
 {
 	int c;
-	printf("Program started in mode: %d \r\n", mode);
 
 	/* Initialize Variables
 	 */
@@ -343,6 +345,21 @@ int main()
 	/* Enable all interupts after init code
 	 */
 	ENABLE_INTERRUPT(INTERRUPT_GLOBAL);
+}
+
+/* Function that is called when the program terminates
+ * Originally created by: Bastiaan
+ */
+void exit()
+{
+	DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
+}
+
+int main()
+{
+	printf("Program started in mode: %d \r\n", mode);
+
+	setup();
 
 	// Main loop
 	while (1) {
@@ -350,8 +367,7 @@ int main()
 		X32_leds = 1 << mode;
 	}
 
-	/* Exit routine
-	*/
-	DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
+	exit();
+
 	return 0;
 }
