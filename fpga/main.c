@@ -6,7 +6,10 @@
 
 #include <stdio.h>
 #include "x32.h"
+
+#include "types.h"
 #include "queue.h"
+#include "checksum.h"
 
 /* define some peripheral short hands
  */
@@ -44,9 +47,6 @@
  */
 char malloc_memory[1024];
 int malloc_memory_size = 1024;
-
-typedef enum {false,true} bool;
-enum { SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL, FULL_CONTROL } mode = SAFE;
 
 int	isr_qr_time = 0, isr_qr_counter =0;
 int	ae[4];
@@ -166,8 +166,6 @@ void isr_rs232_rx(void)
 	isr_qr_time = X32_us_clock - isr_qr_time; //data to be logged
 }
 
-
-
 /* ISR when new sensor readings are read from the QR
  */
 void isr_qr_link(void)
@@ -256,56 +254,6 @@ void quit()
 {
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
 }
-
-
-/* Perform an 8-bits checksum
-   Author: Alessio */
-unsigned char checksum(char * data, int length)
-{
-	/*With 8-bits checksum there's always the issue of being insensitive to the order of the bytes.
-	This happens for example if we only do a sum of the bytes.
-	The Fletcher checksum should avoid this problem */
-
-	unsigned char sum1 = sum2 = 0;
-  int i;
-
- /* Fletcher checksum */
-  for(i=0; i < index; i++)
- {
-    sum1 = (sum1 + data[i]) % 255;
-    sum2 = (sum2 + sum1)    % 255;
- }
-
- /*In addition we can add this line to shift the sum2 value. If the bytes order is wrong, the shift will be different
- and we can detect that the order is wrong.*/
- return sum2 << data[0];
-
- //printf("%#06X \n",ck);
-
-//just the simplest checksum evah
-	/*unsigned char sum;
-	int i;
-	for(i=0; i < length; i++)
-	{
-		sum+=*(data++);
-	}
-	return sum;*/
-}
-
-
-/*  Check if the checksums match and return a boolean value
-    Author. Alessio
-*/
-bool check_packet(char control, char value, unsigned char in_checksum) {
-  char data[2];
-	unsigned char curr_checksum;
-	data[0] = input;
-	data[1] = value;
-	curr_checksum = checksum(data,PACKET_LENGTH);
-
-	return curr_checksum == in_checksum;
-}
-
 
 void packet_received(char control, char value) {
 	printf("Message Received: %d %d\n", control, value);
