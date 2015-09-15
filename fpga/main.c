@@ -240,7 +240,7 @@ void isr_rs232_rx(void)
 
 	pc_msg_q.push(&pc_msg_q,c);
 
-	if(!expect_value){
+	/*if(!expect_value){
 		control = c;
 		expect_value = true;
 	}
@@ -259,7 +259,7 @@ void isr_rs232_rx(void)
 		ae[1] = offset[1]+T-R  -Y;
 		ae[2] = offset[2]+T  -P+Y;
 		ae[3] = offset[3]+T+R  -Y;
-	}
+	}*/
 
 	isr_qr_time = X32_us_clock - isr_qr_time; //data to be logged
 
@@ -381,6 +381,10 @@ bool check_packet(char input, char value, char checksum) {
 	return true;
 }
 
+void packet_received(char control, char value) {
+	printf("Message Received: %d %d\r\n#", control, value);
+}
+
 int main()
 {
 	printf("Program started in mode: %d \r\n#", mode);
@@ -391,21 +395,23 @@ int main()
 	while (1) {
 		// Turn on the LED corresponding to the mode
 		X32_leds = 1 << mode;
-
+		
 		// Process messages
         	DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX);
-			
+		
 		while(pc_msg_q.size >= 3) {
-			char control  = pc_msg_q.peek(pc_msg_q, 0);
-			char value    = pc_msg_q.peek(pc_msg_q, 1);
-			char checksum = pc_msg_q.peek(pc_msg_q, 2);
+			char control  = pc_msg_q.peek(&pc_msg_q, 0);
+			char value    = pc_msg_q.peek(&pc_msg_q, 1);
+			char checksum = pc_msg_q.peek(&pc_msg_q, 2);
 
-			if(!check_packet(control,value,checksum)){
-				pc_msg_q.pop();
+			if(!check_packet(control,value,checksum)) {
+				pc_msg_q.pop(&pc_msg_q);
 			} else {
-				pc_msg_q.pop();
-				pc_msg_q.pop();
-				pc_msg_q.pop();
+				pc_msg_q.pop(&pc_msg_q);
+				pc_msg_q.pop(&pc_msg_q);
+				pc_msg_q.pop(&pc_msg_q);
+				
+				packet_received(control,value);
 			}
 		}
 
