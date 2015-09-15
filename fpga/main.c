@@ -268,7 +268,7 @@ void packet_received(char control, char value) {
 
 	switch(control){
 		case 'M':
-	//	c = c - '0'; leave this here just for trying with myterm.c when kj.o is not working @Alessio
+	//	control = control - '0'; //leave this here just for trying with myterm.c when kj.o is not working @Alessio
 		if(set_mode(value))
 			printf("Mode succesfully changed.\n");
 		else
