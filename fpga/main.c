@@ -159,7 +159,7 @@ void isr_rs232_rx(void)
 
 	// Read the data of serial comm
 	c = X32_rs232_data;
-	
+
 	// Add the message to the message queue
 	pc_msg_q.push(&pc_msg_q, c);
 
@@ -223,7 +223,7 @@ void setup()
 	int c;
 
 	/* Initialize Variables */
-	
+
 	isr_qr_counter = isr_qr_time = 0;
 	ae[0] = ae[1] = ae[2] = ae[3] = 0;
 	offset[0] = offset[1] = offset[2] = offset[3] =0;
@@ -257,9 +257,55 @@ void quit()
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
 }
 
-bool check_packet(char input, char value, char checksum) {
-	return true;
+
+/* Perform an 8-bits checksum
+   Author: Alessio */
+unsigned char checksum(char * data, int length)
+{
+	/*With 8-bits checksum there's always the issue of being insensitive to the order of the bytes.
+	This happens for example if we only do a sum of the bytes.
+	The Fletcher checksum should avoid this problem */
+
+	unsigned char sum1 = sum2 = 0;
+  int i;
+
+ /* Fletcher checksum */
+  for(i=0; i < index; i++)
+ {
+    sum1 = (sum1 + data[i]) % 255;
+    sum2 = (sum2 + sum1)    % 255;
+ }
+
+ /*In addition we can add this line to shift the sum2 value. If the bytes order is wrong, the shift will be different
+ and we can detect that the order is wrong.*/
+ return sum2 << data[0];
+
+ //printf("%#06X \n",ck);
+
+//just the simplest checksum evah
+	/*unsigned char sum;
+	int i;
+	for(i=0; i < length; i++)
+	{
+		sum+=*(data++);
+	}
+	return sum;*/
 }
+
+
+/*  Check if the checksums match and return a boolean value
+    Author. Alessio
+*/
+bool check_packet(char control, char value, unsigned char in_checksum) {
+  char data[2];
+	unsigned char curr_checksum;
+	data[0] = input;
+	data[1] = value;
+	curr_checksum = checksum(data,PACKET_LENGTH);
+
+	return curr_checksum == in_checksum;
+}
+
 
 void packet_received(char control, char value) {
 	printf("Message Received: %d %d\n", control, value);
@@ -313,10 +359,10 @@ int main()
 	while (1) {
 		// Turn on the LED corresponding to the mode
 		X32_leds = 1 << mode;
-		
+
 		// Process messages
         	DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
-		
+
 		while(pc_msg_q.size >= 3) { // Check if there are one or more packets in the queue
 			char control  = pc_msg_q.peek(&pc_msg_q, 0);
 			char value    = pc_msg_q.peek(&pc_msg_q, 1);
@@ -330,7 +376,7 @@ int main()
 				pc_msg_q.pop(&pc_msg_q);
 				pc_msg_q.pop(&pc_msg_q);
 				pc_msg_q.pop(&pc_msg_q);
-				
+
 				packet_received(control,value);
 			}
 		}
