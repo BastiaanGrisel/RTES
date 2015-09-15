@@ -11,7 +11,8 @@
  */
 #define X32_leds		peripherals[PERIPHERAL_LEDS]
 #define X32_buttons		peripherals[PERIPHERAL_BUTTONS]
-#define X32_clock		peripherals[PERIPHERAL_MS_CLOCK]
+#define X32_ms_clock		peripherals[PERIPHERAL_MS_CLOCK]
+#define X32_us_clock 	(X32_ms_clock *1000)
 
 #define X32_QR_a0 		peripherals[PERIPHERAL_XUFO_A0]
 #define X32_QR_a1 		peripherals[PERIPHERAL_XUFO_A1]
@@ -189,10 +190,11 @@ void trim(char c){
 void set_value(char c){
 	switch(control){
 		case 'M':
+	//	c = c - '0'; leave this here just for trying with myterm.c when kj.o is not working @Alessio
 		if(set_mode(c))
-			puts("Mode succesfully changed.");
+			printf("Mode succesfully changed.\n");
 		else
-			puts("Invalid or not permitted mode!");
+			puts("Invalid or not permitted mode!\n");
 
 		printf("#Control: >%c<, Current Mode: >%i<\n",control,mode);
 		break;
@@ -225,6 +227,7 @@ void isr_rs232_rx(void)
 {
 	char c;
 	//printf("Intrpt:");
+	isr_qr_time = X32_us_clock;
 
 	// Read the data of serial comm
 	c = X32_rs232_data;
@@ -249,6 +252,10 @@ void isr_rs232_rx(void)
 		ae[2] = offset[2]+T  -P+Y;
 		ae[3] = offset[3]+T+R  -Y;
 	}
+
+	isr_qr_time = X32_us_clock - isr_qr_time;
+	//	printf("microsec -> %i\n", isr_qr_time);
+
 }
 
 
@@ -262,8 +269,8 @@ void isr_qr_link(void)
 	int	ae_index;
 	/* record time
 	 */
-	/*isr_qr_time = X32_us_clock;
-        inst = X32_instruction_counter;*/
+	isr_qr_time = X32_us_clock;
+        /* inst = X32_instruction_counter;*/
 	/* get sensor and timestamp values
 	 */
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
@@ -313,8 +320,8 @@ void isr_qr_link(void)
 
 	/* record isr execution time (ignore overflow)
 	 */
-       /* inst = X32_instruction_counter - inst;
-	isr_qr_time = X32_us_clock - isr_qr_time;*/
+       /* inst = X32_instruction_counter - inst;*/
+	isr_qr_time = X32_us_clock - isr_qr_time;
 }
 
 /* The startup routine.
