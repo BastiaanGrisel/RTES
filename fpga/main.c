@@ -184,10 +184,10 @@ void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {
 	/* TODO: Arguments should be floats if we have them
 	 * Clip engine values to be positive and 10 bits.
 	 */
+	motor0 = (motor0 < 0 ? 0 : motor0) & 0x3ff; 
 	motor1 = (motor1 < 0 ? 0 : motor1) & 0x3ff; 
 	motor2 = (motor2 < 0 ? 0 : motor2) & 0x3ff; 
 	motor3 = (motor3 < 0 ? 0 : motor3) & 0x3ff; 
-	motor4 = (motor4 < 0 ? 0 : motor4) & 0x3ff; 
 
 	/* Send actuator values
 	 * (Need to supply a continous stream, otherwise
