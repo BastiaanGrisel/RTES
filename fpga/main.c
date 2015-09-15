@@ -50,7 +50,6 @@ int malloc_memory_size = 1024;
 
 int 	time_at_last_led_switch = 0;
 int	isr_qr_time = 0, isr_qr_counter =0;
-int	ae[4];
 int 	offset[4];
 int 	R=0, P=0, Y=0, T=0;
 int	s0, s1, s2, s3, s4, s5;
@@ -92,7 +91,7 @@ bool set_mode(int new_mode)
 		// If at least one of the motor's RPM is not zero, return false
 		int i;
 		for(i = 0; i < 4; i++)
-			if(ae[i] > 0) return false;
+			if(get_motor_rpm(i) > 0) return false;
 	}
 
 	mode = new_mode;
@@ -140,7 +139,7 @@ void trim(char c){
 		case 'l':
 		default:
 			printf("offset = [%c%c%c%c]\n",offset[0]/10,offset[1]/10,offset[2]/10,offset[3]/10);
-			printf("ae = [%c%c%c%c]\n#",ae[0]/10,ae[1]/10,ae[2]/10,ae[3]/10);
+			printf("motor RPM= [%c%c%c%c]\n#",get_motor_rpm(0)/10,get_motor_rpm(1)/10,get_motor_rpm(2)/10,get_motor_rpm(3)/10);
 			break;
 	}
 }
@@ -168,8 +167,6 @@ void isr_rs232_rx(void)
  */
 void isr_qr_link(void)
 {
-	int ae_index;
-
 	isr_qr_time = X32_us_clock;
 
 	/* TODO: do filtering here?
@@ -197,6 +194,19 @@ void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {
 	X32_QR_a1 = motor1;
 	X32_QR_a2 = motor2;
 	X32_QR_a3 = motor3;
+}
+
+/* Gets the RPM of a certain motor.
+ * Author: Bastiaan
+ */
+int get_motor_rpm(int i) {
+	switch(i) {
+		case 0: return X32_QR_a0;
+		case 1: return X32_QR_a1;
+		case 2: return X32_QR_a2;
+		case 3: return X32_QR_a3;
+		default: return 0;
+	}
 }
 
 /* Callback that gets executed when a packet has arrived
@@ -246,7 +256,6 @@ void setup()
 	/* Initialize Variables */
 
 	isr_qr_counter = isr_qr_time = 0;
-	ae[0] = ae[1] = ae[2] = ae[3] = 0;
 	offset[0] = offset[1] = offset[2] = offset[3] =0;
 	pc_msg_q = createQueue();
 
