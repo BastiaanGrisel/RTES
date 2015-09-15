@@ -29,8 +29,8 @@ typedef struct Queue {
 	void (*push) (struct Queue*, char); // add item to tail
 	// get item from head and remove it from queue
 	char (*pop) (struct Queue*);
-	// get item from head but keep it in queue
-	char (*peek) (struct Queue*);
+	// get item from queue but keep it in queue
+	char (*peek) (struct Queue*, int n);
 	// display all element in queue
 	void (*display) (struct Queue*);
 	// size of this queue
@@ -69,11 +69,17 @@ char pop (Queue* queue) {
 	free(head);
 	return item;
 }
+
 /**
- * Return but not remove the first item.
+ * Return but not remove the n-th item.
+ * Does not check for NULL!!
  */
-char peek (Queue* queue) {
+char peek (Queue* queue, int n) {
 	Node* head = queue->head;
+	while(n > 0) {
+		head = head->next;
+		n--;
+	}
 	return head->item;
 }
 /**
