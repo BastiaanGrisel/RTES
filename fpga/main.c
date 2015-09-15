@@ -54,7 +54,7 @@ int 	offset[4];
 int 	R=0, P=0, Y=0, T=0;
 int	s0, s1, s2, s3, s4, s5;
 Queue	pc_msg_q;
-Mode    mode = PANIC;
+Mode    mode = MANUAL;
 
 /* Add offset to the four motors
  * No need to check for negative numbers since offset can be negative

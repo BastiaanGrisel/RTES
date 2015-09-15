@@ -12,6 +12,7 @@
 
 #include "joystick.h"
 #include "queue.h"
+#include "checksum.h"
 
 #include <ncurses.h> /*for user key input*/
 
@@ -80,11 +81,11 @@ int main (int argc, char **argv)
 	while (1) {
 		time = updateFPS(time);
 
-	    /* Check keypress */
-	    if ((c= getch()) != -1){
+		/* Check keypress */
+		if ((c= getch()) != -1){
 			sendKeyData(c); // send a message if user gave input
-	    } 
-	    
+		} 
+
 		/* Check joystick */
 		if(fd_js>0){
 			if (read(fd_js, &js, sizeof(struct js_event)) == 
@@ -111,7 +112,6 @@ int main (int argc, char **argv)
 	
 	exitmain();
 	return 0;
-
 }
 
 /* Calculate the mean loop frequency (100 loopcount mean) 
@@ -236,10 +236,10 @@ void sendKeyData(int c){
 		value = (char) c-'0';
 		control = 'M';
 		if(fd_RS232>0){
-			
 			rs232_putchar(control);
 			rs232_putchar(value);
-			mvprintw(1,0,"sending: %c%i\n",control, (int) value);
+			rs232_putchar(packet_checksum(control,value));
+			mvprintw(1,0,"sending: %c%i%c\n",control, (int) value, packet_checksum(control,value));
 		}
 		else{
 			mvprintw(1,0,"NOT sending: %c%i   (RS232 = DISABLED)\n",control, (int) value);
@@ -282,7 +282,8 @@ void sendKeyData(int c){
 			
 			rs232_putchar(control);
 			rs232_putchar(value);
-			mvprintw(1,0,"sending: %c%c\n",control, value);
+			rs232_putchar(packet_checksum(control,value));
+			mvprintw(1,0,"sending: %c%c%c\n",control, value, packet_checksum(control,value));
 		}
 		else{
 			mvprintw(1,0,"NOT sending: %c%c %s\n",control, value,value==0?"key = not a control!":"(RS232 = DISABLED)");
