@@ -192,11 +192,11 @@ void set_value(char c){
 		case 'M':
 	//	c = c - '0'; leave this here just for trying with myterm.c when kj.o is not working @Alessio
 		if(set_mode(c))
-			printf("Mode succesfully changed.\n");
+			printf("#Mode succesfully changed.\n");
 		else
-			puts("Invalid or not permitted mode!\n");
+			printf("#Invalid or not permitted mode!\n");
 
-		printf("#Control: >%c<, Current Mode: >%i<\n",control,mode);
+		printf("Control: >%c<, Current Mode: >%i<\n",control,mode);
 		break;
 			break;
 		case 'R':
@@ -253,8 +253,7 @@ void isr_rs232_rx(void)
 		ae[3] = offset[3]+T+R  -Y;
 	}
 
-	isr_qr_time = X32_us_clock - isr_qr_time;
-	//	printf("microsec -> %i\n", isr_qr_time);
+	isr_qr_time = X32_us_clock - isr_qr_time; //data to be logged
 
 }
 
