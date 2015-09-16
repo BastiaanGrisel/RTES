@@ -138,8 +138,8 @@ void trim(char c){
 		case 'o':
 		case 'l':
 		default:
-			printf("offset = [%c%c%c%c]\n",offset[0]/10,offset[1]/10,offset[2]/10,offset[3]/10);
-			printf("motor RPM= [%c%c%c%c]\n#",get_motor_rpm(0)/10,get_motor_rpm(1)/10,get_motor_rpm(2)/10,get_motor_rpm(3)/10);
+			printf("offset = [%i%i%i%i]\n",offset[0]/10,offset[1]/10,offset[2]/10,offset[3]/10);
+			printf("motor RPM= [%i%i%i%i]\n#",get_motor_rpm(0)/10,get_motor_rpm(1)/10,get_motor_rpm(2)/10,get_motor_rpm(3)/10);
 			break;
 	}
 }
@@ -226,7 +226,7 @@ void packet_received(char control, char value) {
 		case 'M':
 	//	control = control - '0'; //leave this here just for trying with myterm.c when kj.o is not working @Alessio
 		if(set_mode(value))
-			printf("Mode succesfully changed.\n");
+			printf("Mode succesfully changed. clock = %i, %i\n",X32_QR_timestamp,X32_ms_clock);
 		else
 			printf("Invalid or not permitted mode!\n");
 
@@ -304,7 +304,7 @@ bool flicker_fast() { return (X32_ms_clock % 100 < 20); }
 
 int main()
 {
-	printf("Program started in mode: %d \r\n#", mode);
+	//printf("Program started in mode: %d \r\n#", mode);
 
 	setup();
 
