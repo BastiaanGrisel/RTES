@@ -38,6 +38,7 @@ void sendKeyData(int c);
 void process_JS_event(int type, int number,int value);
 void sendJSData(int number,int valueInt);
 void printJSstate(void);
+void send_message(char control, char value);
 
 void rs232_open(void);
 void rs232_close(void);
