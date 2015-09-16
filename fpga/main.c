@@ -153,12 +153,18 @@ void isr_rs232_rx(void)
 	char c;
 	isr_qr_time = X32_us_clock;
 
-	// Read the data of serial comm
-	c = X32_rs232_data;
-	//printf("Char received: %cn", c);
+	/* handle all bytes, note that the processor will sometimes generate
+		* an interrupt while there is no byte available, make sure the handler
+		* checks the state of the com channel before fetching a character from
+		* the buffer. Also it is recommended to use a while loop to handle all
+		* available characters.
+		*/
+	while (COM_BYTE_AVAILABLE(X32_rs232_stat)) {
+		c = X32_rs232_data;
 
-	// Add the message to the message queue
-	pc_msg_q.push(&pc_msg_q, c);
+		// Add the message to the message queue
+		pc_msg_q.push(&pc_msg_q, c);
+	}
 
 	isr_qr_time = X32_us_clock - isr_qr_time; //data to be logged
 }
