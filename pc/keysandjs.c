@@ -40,6 +40,7 @@ void sendJSData(int number,int valueInt);
 void printJSstate(void);
 void send_message(char control, char value);
 
+void init_log(void);
 void rs232_open(void);
 void rs232_close(void);
 int rs232_putchar(char c);
@@ -75,10 +76,11 @@ int main (int argc, char **argv)
 	char rec_c;
 	
 	// init
-	log_file = fopen("flight_log.txt", "w");
+
 	init_keyboard();
 	init_joystick();
 	rs232_open();
+	init_log();
 	gettimeofday(&time,NULL);
 
 	/* Main loop to process/send user input and to show QR input */
@@ -328,12 +330,23 @@ void send_message(char control, char value){
 	rs232_putchar(packet_checksum(control,value));
 }
 
+void init_log(void){
+	log_file = fopen("flight_log.txt", "w");
+	if (log_file == NULL)
+	{
+		printw("Error opening file!\n");
+		nodelay(stdscr, false);
+		getch();
+		nodelay(stdscr, true);
+	}
+}
+
 /* Print a char to a file
  * Author: Henko Aantjes
  */
 void print_log_to_file(char c){
 	if(c == '\n'){
-		fprintf(log_file,"\n%i ",c);
+		fprintf(log_file,"%i\n ",c);
 	} else {
 		fprintf(log_file,"%i ",c);
 	}
