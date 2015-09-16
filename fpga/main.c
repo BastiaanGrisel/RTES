@@ -186,7 +186,7 @@ void isr_qr_link(void)
 		sensor_active = true;
 	}*/
 
-	isr_qr_time = X32_us_clock - isr_qr_time;
+	isr_qr_time = X32_us_clock - isr_qr_time; // why does this happen her and also at the end of the other ISR?
 }
 
 void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {

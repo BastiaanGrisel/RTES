@@ -54,8 +54,10 @@ int fd_RS232, fd_js;
  */
 int	axis[6];
 int	button[12];
+FILE *log_file;
 char received_chars[QR_INPUT_BUFFERSIZE];
-int charpos = 0, loopcount = 0;
+int charpos = 0;
+int loopcount = 0; // to calculate the FPS
 int	ae[4];
 int offset[4];
 
@@ -71,6 +73,7 @@ int main (int argc, char **argv)
 	char rec_c;
 	
 	// init
+	log_file = fopen("flight_log.txt", "w");
 	init_keyboard();
 	init_joystick();
 	rs232_open();
@@ -323,6 +326,17 @@ void sendJSData(int number,int valueInt){
 	}
 }
 
+/* Print a char to a file
+ * Author: Henko Aantjes
+ */
+void print_log_to_file(char c){
+	if(c == '\n'){
+		fprintf(log_file,"\n%i ",c);
+	} else {
+		fprintf(log_file,"%i ",c);
+	}
+}
+
 /* Parse QR message and 
  * Author: Henko Aantjes
  */
@@ -380,6 +394,8 @@ void parse_QR_input(char rec_c){
 	if(charpos>=QR_INPUT_BUFFERSIZE){
 		charpos = 0;
 	}
+
+	print_log_to_file(rec_c); // print all incoming info to a logfile
 }
 
 /* Print messages that the QR has send to the pc
@@ -469,6 +485,7 @@ void exitmain(void){
   		close(fd_RS232);
 	}
 	endwin();
+	fclose(log_file);
 }
 
 /* Get a char from the RS232 (NON-Blocking)

@@ -12,6 +12,12 @@ stubbed: main.ce
 
 stubbedrun: stubbed uploadrun
 
+init:
+	sudo chmod 777 /dev/ttyUSB0
+
+init2:
+	sudo chmod 777 /dev/ttyUSB0
+
 clean:
 	rm -f main.ce $(OBJS) $(OBJS:.o=.d)
 
