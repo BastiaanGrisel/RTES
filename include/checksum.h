@@ -9,8 +9,8 @@
 	This happens for example if we only do a sum of the bytes.
 	The Fletcher checksum should avoid this problem */
 
-	unsigned char sum1, sum2 = 0;
-	int i;
+	//unsigned char sum1, sum2 = 0;
+	//int i;
 
 	/* Fletcher checksum */
 	/*for(i=0; i < length; i++)
