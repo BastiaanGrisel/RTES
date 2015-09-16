@@ -37,9 +37,13 @@
 *.c~
 *.h~
 *.*~
+*~
 .temp.c.swp
 
 # Tex
 *.aux
 *.log
 *.pdf
+
+# log files
+*log.txt
