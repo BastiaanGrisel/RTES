@@ -159,7 +159,7 @@ void isr_rs232_rx(void)
 		* the buffer. Also it is recommended to use a while loop to handle all
 		* available characters.
 		*/
-	while (COM_BYTE_AVAILABLE(X32_rs232_stat)) {
+	while (X32_rs232_char) {
 		c = X32_rs232_data;
 
 		// Add the message to the message queue
