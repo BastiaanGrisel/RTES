@@ -1,3 +1,4 @@
+#include "types.h"
 #define PACKET_LENGTH 2
 
 /* Perform an 8-bits checksum
@@ -20,7 +21,7 @@ unsigned char checksum(char * data, int length)
 
 	/*In addition we can add this line to shift the sum2 value. If the bytes order is wrong, the shift will be different
 	and we can detect that the order is wrong.*/
-	return sum2 << data[0];
+	//return sum2 << data[0];
 
 
 	//just the simplest checksum evah
@@ -33,17 +34,30 @@ unsigned char checksum(char * data, int length)
 	  return sum;*/
 }
 
+/* Generates a checksum based on a control variable and a value
+ * Author: Alessio
+ */
+unsigned char packet_checksum(char control, char value) {
+	return control ^ value;
+	/*char data[2];
+	data[0] = control;
+	data[1] = value;
+	return checksum(data,PACKET_LENGTH);*/
+}
+
 /*  Check if the checksums match and return a boolean value
     Author: Alessio
 */
 bool check_packet(char control, char value, unsigned char in_checksum) {
+	return packet_checksum(control, value) == in_checksum;
+
 	//return true; // for testing if everything works before using the checksum
 
-	char data[2];
+	/*char data[2];
 	unsigned char curr_checksum;
 	data[0] = control;
 	data[1] = value;
 	curr_checksum = checksum(data,PACKET_LENGTH);
 
-	return curr_checksum == in_checksum;
+	return curr_checksum == in_checksum;*/
 }

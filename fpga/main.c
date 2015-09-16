@@ -48,12 +48,13 @@
 char malloc_memory[1024];
 int malloc_memory_size = 1024;
 
+int 	time_at_last_led_switch = 0;
 int	isr_qr_time = 0, isr_qr_counter =0;
-int	ae[4];
 int 	offset[4];
 int 	R=0, P=0, Y=0, T=0;
 int	s0, s1, s2, s3, s4, s5;
 Queue	pc_msg_q;
+Mode    mode = SAFE;
 
 /* Add offset to the four motors
  * No need to check for negative numbers since offset can be negative
@@ -90,16 +91,11 @@ bool set_mode(int new_mode)
 		// If at least one of the motor's RPM is not zero, return false
 		int i;
 		for(i = 0; i < 4; i++)
-			if(ae[i] > 0) return false;
+			if(get_motor_rpm(i) > 0) return false;
 	}
 
 	mode = new_mode;
 	return true;
-}
-
-void toggle_led(int i)
-{
-	X32_leds = (X32_leds ^ (1 << i));
 }
 
 /* trim the QR
@@ -143,7 +139,7 @@ void trim(char c){
 		case 'l':
 		default:
 			printf("offset = [%c%c%c%c]\n",offset[0]/10,offset[1]/10,offset[2]/10,offset[3]/10);
-			printf("ae = [%c%c%c%c]\n#",ae[0]/10,ae[1]/10,ae[2]/10,ae[3]/10);
+			printf("motor RPM= [%c%c%c%c]\n#",get_motor_rpm(0)/10,get_motor_rpm(1)/10,get_motor_rpm(2)/10,get_motor_rpm(3)/10);
 			break;
 	}
 }
@@ -159,6 +155,7 @@ void isr_rs232_rx(void)
 
 	// Read the data of serial comm
 	c = X32_rs232_data;
+	//printf("Char received: %cn", c);
 
 	// Add the message to the message queue
 	pc_msg_q.push(&pc_msg_q, c);
@@ -170,8 +167,6 @@ void isr_rs232_rx(void)
  */
 void isr_qr_link(void)
 {
-	int ae_index;
-
 	isr_qr_time = X32_us_clock;
 
 	/* TODO: do filtering here?
@@ -186,22 +181,17 @@ void isr_qr_link(void)
 		sensor_active = true;
 	}*/
 
-	isr_qr_time = X32_us_clock - isr_qr_time; // why does this happen her and also at the end of the other ISR?
+	isr_qr_time = X32_us_clock - isr_qr_time; // why does this happen here and also at the end of the other ISR?
 }
 
 void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {
-	/* TODO: Does this code belong here?
+	/* TODO: Arguments should be floats if we have them
 	 * Clip engine values to be positive and 10 bits.
 	 */
-	int ae_index;
-	for (ae_index = 0; ae_index < 4; ae_index++)
-	{
-		if (ae[ae_index] < 0)
-			ae[ae_index] = 0;
-//		ae[ae_index] = (ae[ae_index] < 0) ? 0 : ae[ae_index];
-
-		ae[ae_index] &= 0x3ff;
-	}
+	motor0 = (motor0 < 0 ? 0 : motor0) & 0x3ff; 
+	motor1 = (motor1 < 0 ? 0 : motor1) & 0x3ff; 
+	motor2 = (motor2 < 0 ? 0 : motor2) & 0x3ff; 
+	motor3 = (motor3 < 0 ? 0 : motor3) & 0x3ff; 
 
 	/* Send actuator values
 	 * (Need to supply a continous stream, otherwise
@@ -213,58 +203,24 @@ void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {
 	X32_QR_a3 = motor3;
 }
 
-/* The startup routine.
- * Originally created by: Bastiaan
+/* Gets the RPM of a certain motor.
+ * Author: Bastiaan
  */
-void setup()
-{
-	int c;
-
-	/* Initialize Variables */
-
-	isr_qr_counter = isr_qr_time = 0;
-	ae[0] = ae[1] = ae[2] = ae[3] = 0;
-	offset[0] = offset[1] = offset[2] = offset[3] =0;
-	pc_msg_q = createQueue();
-
-	/* Prepare Interrupts */
-
-	// FPGA -> X32
-	SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
-    	SET_INTERRUPT_PRIORITY(INTERRUPT_XUFO, 21);
-
-	// PC -> X32
-	SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_RX, &isr_rs232_rx);
-        SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_RX, 20);
-	while (X32_rs232_char) c = X32_rs232_data; // empty the buffer
-
-	/* Enable Interrupts */
-
-    	ENABLE_INTERRUPT(INTERRUPT_XUFO);
-        ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX);
-
-	/* Enable all interupts after init code */
-	ENABLE_INTERRUPT(INTERRUPT_GLOBAL);
+int get_motor_rpm(int i) {
+	switch(i) {
+		case 0: return X32_QR_a0;
+		case 1: return X32_QR_a1;
+		case 2: return X32_QR_a2;
+		case 3: return X32_QR_a3;
+		default: return 0;
+	}
 }
 
-/* Function that is called when the program terminates
- * Originally created by: Bastiaan
+/* Callback that gets executed when a packet has arrived
+ * Author: Bastiaan
  */
-void quit()
-{
-	DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
-}
-
 void packet_received(char control, char value) {
-	printf("Message Received: %d %d\n", control, value);
-
-	/*if(new_user_input & !sensor_active){
-		new_user_input = false;
-		ae[0] = offset[0]+T  +P+Y;
-		ae[1] = offset[1]+T-R  -Y;
-		ae[2] = offset[2]+T  -P+Y;
-		ae[3] = offset[3]+T+R  -Y;
-	}*/
+	//printf("Packet Received: %c %c\n", control, value);
 
 	switch(control){
 		case 'M':
@@ -297,6 +253,55 @@ void packet_received(char control, char value) {
 	}
 }
 
+/* The startup routine.
+ * Originally created by: Bastiaan
+ */
+void setup()
+{
+	int c;
+
+	/* Initialize Variables */
+
+	isr_qr_counter = isr_qr_time = 0;
+	offset[0] = offset[1] = offset[2] = offset[3] =0;
+	pc_msg_q = createQueue();
+
+	/* Prepare Interrupts */
+
+	// FPGA -> X32
+	SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
+    	SET_INTERRUPT_PRIORITY(INTERRUPT_XUFO, 21);
+
+	// PC -> X32
+	SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_RX, &isr_rs232_rx);
+        SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_RX, 20);
+	while (X32_rs232_char) c = X32_rs232_data; // empty the buffer
+
+	/* Enable Interrupts */
+
+    	ENABLE_INTERRUPT(INTERRUPT_XUFO);
+        ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX);
+
+	/* Enable all interupts after init code */
+	ENABLE_INTERRUPT(INTERRUPT_GLOBAL);
+}
+
+/* Function that is called when the program terminates
+ * Originally created by: Bastiaan
+ */
+void quit()
+{
+	DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
+}
+
+
+/* Function that is used to blink the LEDs. 
+ * Returns a boolean whode value depends on the time the function is called
+ * Author: Bastiaan
+ */
+bool flicker_slow() { return (X32_ms_clock % 1000 < 200); } 
+bool flicker_fast() { return (X32_ms_clock % 100 < 20); } 
+
 int main()
 {
 	printf("Program started in mode: %d \r\n#", mode);
@@ -306,7 +311,7 @@ int main()
 	// Main loop
 	while (1) {
 		// Turn on the LED corresponding to the mode
-		X32_leds = 1 << mode;
+		X32_leds = (1 << mode) & (flicker_slow() << mode);
 
 		// Process messages
         	DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
@@ -332,6 +337,11 @@ int main()
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
 
 		// Calculate motor RPM
+		set_motor_rpm(
+			offset[0] + T  +P+Y,
+			offset[1] + T-R  -Y,
+			offset[2] + T  -P+Y,
+			offset[3] + T+R  -Y);
 	}
 
 	quit();
