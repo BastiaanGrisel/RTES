@@ -53,6 +53,7 @@ int 	time_at_last_led_switch = 0;
 int	isr_qr_time = 0, isr_qr_counter = 0;
 int 	offset[4];
 int 	R=0, P=0, Y=0, T=0;
+int 	P_yaw=0;
 int	s0, s1, s2, s3, s4, s5;
 void send_logs();
 Queue	pc_msg_q;
@@ -138,7 +139,11 @@ void trim(char c){
 			reset_motors();
 			break;
 		case 'u':
+			P_yaw++;
+			break;
 		case 'j':
+			P_yaw--;
+			break;
 		case 'i':
 		case 'k':
 		case 'o':
