@@ -325,13 +325,15 @@ void send_logs() {
 			char low  =  sensor_log[i][j]       & 0xff;
 			char high = (sensor_log[i][j] >> 8) & 0xff;
 
-			putchar(low);
 			putchar(high);
-			if(j != 5)
-				putchar(' ');	
+			putchar(low);
+
+			//if(j != 5)
+			//	putchar(' ');	
 		}
 		putchar('\n');
 	}
+	putchar('#');
 }
 
 int main()

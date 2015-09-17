@@ -349,7 +349,7 @@ void init_log(void){
 /* Print a char to a file
  * Author: Henko Aantjes
  */
-void print_log_to_file(char c){
+void print_char_to_file(char c){
 	if(c == '\n'){
 		fprintf(log_file,"%i\n ",c);
 	} else {
@@ -401,13 +401,12 @@ void parse_QR_input(char rec_c){
 	int i;
 	int padding = 10;
 	if(rec_c == '#'){
+		print_QR_input();
 		//parse_QR_message(charpos);
 		for(i = 0;i<100 & charpos<QR_INPUT_BUFFERSIZE;i++){
 			received_chars[charpos++] = '\n';
 		}
-
 		charpos = 0;
-		print_QR_input();
 	} else{
 		received_chars[charpos++] = rec_c;
 	}
@@ -415,7 +414,7 @@ void parse_QR_input(char rec_c){
 		charpos = 0;
 	}
 
-	print_log_to_file(rec_c); // print all incoming info to a logfile
+	print_char_to_file(rec_c); // print all incoming info to a logfile
 }
 
 /* Print messages that the QR has send to the pc
@@ -425,7 +424,7 @@ void print_QR_input(void){
 	// TODO print ae and offset and maybe more
 	mvprintw(10,0,"received messages:(X32 -> pc) == {%s}\n", received_chars);
 	//mvprintw(13,0,"received messages:(X32 -> pc) \n{%i,%i,%i,%i,%i,%i,%i,%i}\n", received_chars[0],received_chars[1],received_chars[2],received_chars[3],received_chars[4],received_chars[5],received_chars[6],received_chars[7]);
-	//printw("#offset%i%i%i%i\n\n",offset[0]*10,offset[1]*10,offset[2]*10,offset[3]*10);
+	//printw("#offset%i%i%i%i\n\n",offset[0]*10,offset[1]*10,offset[2]*10,offset[3]*10);\
 }
 
 
