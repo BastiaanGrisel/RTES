@@ -43,6 +43,7 @@
 #define DOWN_CHAR 'g'
 
 #define OFFSET_STEP 10
+#define TIMEOUT 300 //ms after which - if not receiving packets - the QR goes to panic mode
 
 /* Define global variables
  */
@@ -50,6 +51,7 @@ char malloc_memory[1024];
 int malloc_memory_size = 1024;
 
 int 	time_at_last_led_switch = 0;
+int x32_ms_last_packet = 1000; //ms of the last received packet. 1s for booting up and starting sending values without
 int	isr_qr_time = 0, isr_qr_counter = 0;
 int 	offset[4];
 int 	R=0, P=0, Y=0, T=0;
@@ -60,8 +62,8 @@ Queue	pc_msg_q;
 Mode mode = SAFE;
 Loglevel log_level = SENSORS;
 
-//int sensor_log[10000][7];
-//int sensor_log_counter = 0;
+int sensor_log[100000][7];
+int sensor_log_counter = 0;
 
 /* Add offset to the four motors
  * No need to check for negative numbers since offset can be negative
@@ -163,6 +165,8 @@ void isr_rs232_rx(void)
 {
 	char c;
 	isr_qr_time = X32_us_clock;
+	x32_ms_last_packet = X32_ms_clock; //update the time the last packet was received
+
 	//printf("#");
 	/* handle all bytes, note that the processor will sometimes generate
 		* an interrupt while there is no byte available, make sure the handler
@@ -193,7 +197,7 @@ void isr_qr_link(void)
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
 
-	/*if(sensor_log_counter < 10000) {
+	if(sensor_log_counter < 10000) {
 		sensor_log[sensor_log_counter][0] = X32_QR_timestamp;
 		sensor_log[sensor_log_counter][1] = s0;
 		sensor_log[sensor_log_counter][2] = s1;
@@ -202,7 +206,7 @@ void isr_qr_link(void)
 		sensor_log[sensor_log_counter][5] = s4;
 		sensor_log[sensor_log_counter][6] = s5;
 		sensor_log_counter++;
-	}*/
+	}
 
 	isr_qr_time = X32_us_clock - isr_qr_time; // why does this happen here and also at the end of the other ISR?
 																						// coz we need to measure every ISR to see if and how our protocol is feasible
@@ -272,7 +276,7 @@ void packet_received(char control, char value) {
 			trim(value);
 			break;
 		case 'L':
-			//send_logs();
+			send_logs();
 			break;
 		default:
 			break;
@@ -327,10 +331,37 @@ void quit()
 bool flicker_slow() { return (X32_ms_clock % 1000 < 200); }
 bool flicker_fast() { return (X32_ms_clock % 100 < 20); }
 
-/*void send_logs() {
+/*checks if the QR is receiving packet in terms of ms defined by the TIMEOUT variable,
+otherwise panic() is called.
+Author: Alessio
+*/
+void check_alive_connection()
+{
+	int current_ms = X32_ms_clock;
+	if(current_ms - x32_ms_last_packet > TIMEOUT )
+	{
+		panic();
+	}
+}
+
+/*Set panic mode and provide a soft landing.
+Then resets the motors and quits.
+Author: Alessio */
+void panic()
+{
+	set_mode(PANIC);
+	set_motor_rpm(20,20,20,20);
+	sleep(2);
+	reset_motors();
+	quit();
+}
+
+
+void send_logs() {
 	int i;
 	int j;
 
+  //we need also timestamp and mode, inside here?
 	for(i = 0; i < 10000; i++) {
 		for(j = 0; j < 7; j++) {
 			char low  =  sensor_log[i][j]       & 0xff;
@@ -338,11 +369,14 @@ bool flicker_fast() { return (X32_ms_clock % 100 < 20); }
 
 			putchar(high);
 			putchar(low);
+
+			//if(j != 5)
+			//	putchar(' ');
 		}
-		//putchar('\n');
+		putchar('\n');
 	}
 	putchar('#');
-}*/
+}
 
 int main()
 {
@@ -352,6 +386,8 @@ int main()
 
 	// Main loop
 	while (1) {
+
+		check_alive_connection();
 		// Turn on the LED corresponding to the mode
 		X32_leds = (1 << mode) & (flicker_slow() << mode);
 
@@ -386,20 +422,9 @@ int main()
 			offset[3] + T+R  -Y);
 
 		// Send the sensor values
-		/*if(sensor_log_counter < 10000) {
-			sensor_log[sensor_log_counter][0] = 0;
-			sensor_log[sensor_log_counter][1] = 1;
-			sensor_log[sensor_log_counter][2] = 2;
-			sensor_log[sensor_log_counter][3] = 3;
-			sensor_log[sensor_log_counter][4] = 4;
-			sensor_log[sensor_log_counter][5] = 5;
-			sensor_log[sensor_log_counter][6] = 6;
-			sensor_log_counter++;
-		}*/
-	
-		//if(sensor_log_counter >= 10000) {
-		//	X32_leds = X32_leds | 10000000;
-		//}
+		if(sensor_log_counter >= 10000) {
+			X32_leds = X32_leds | 10000000;
+		}
 	}
 
 	quit();
