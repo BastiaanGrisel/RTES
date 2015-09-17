@@ -424,7 +424,7 @@ void print_QR_input(void){
 	// TODO print ae and offset and maybe more
 	mvprintw(10,0,"received messages:(X32 -> pc) == {%s}\n", received_chars);
 	//mvprintw(13,0,"received messages:(X32 -> pc) \n{%i,%i,%i,%i,%i,%i,%i,%i}\n", received_chars[0],received_chars[1],received_chars[2],received_chars[3],received_chars[4],received_chars[5],received_chars[6],received_chars[7]);
-	//printw("#offset%i%i%i%i\n\n",offset[0]*10,offset[1]*10,offset[2]*10,offset[3]*10);\
+	//printw("#offset%i%i%i%i\n\n",offset[0]*10,offset[1]*10,offset[2]*10,offset[3]*10);
 }
 
 
