@@ -275,11 +275,11 @@ void sendKeyData(int c){
 			case 'i':
 			case 'k':
 			case 'o':
+			case 'r':
+				value = c;
+				break;
 			case 'l':
 				control = 'L';
-				value = '1';
-				break;
-			case 'r':
 				value = c;
 				break;
 			default:

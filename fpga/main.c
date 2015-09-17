@@ -60,8 +60,8 @@ Queue	pc_msg_q;
 Mode mode = SAFE;
 Loglevel log_level = SENSORS;
 
-int sensor_log[10000][7];
-int sensor_log_counter = 0;
+//int sensor_log[10000][7];
+//int sensor_log_counter = 0;
 
 /* Add offset to the four motors
  * No need to check for negative numbers since offset can be negative
@@ -193,7 +193,7 @@ void isr_qr_link(void)
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
 
-	if(sensor_log_counter < 10000) {
+	/*if(sensor_log_counter < 10000) {
 		sensor_log[sensor_log_counter][0] = X32_QR_timestamp;
 		sensor_log[sensor_log_counter][1] = s0;
 		sensor_log[sensor_log_counter][2] = s1;
@@ -202,7 +202,7 @@ void isr_qr_link(void)
 		sensor_log[sensor_log_counter][5] = s4;
 		sensor_log[sensor_log_counter][6] = s5;
 		sensor_log_counter++;
-	}
+	}*/
 
 	isr_qr_time = X32_us_clock - isr_qr_time; // why does this happen here and also at the end of the other ISR?
 																						// coz we need to measure every ISR to see if and how our protocol is feasible
@@ -272,7 +272,7 @@ void packet_received(char control, char value) {
 			trim(value);
 			break;
 		case 'L':
-			send_logs();
+			//send_logs();
 			break;
 		default:
 			break;
@@ -327,7 +327,7 @@ void quit()
 bool flicker_slow() { return (X32_ms_clock % 1000 < 200); }
 bool flicker_fast() { return (X32_ms_clock % 100 < 20); }
 
-void send_logs() {
+/*void send_logs() {
 	int i;
 	int j;
 
@@ -342,7 +342,7 @@ void send_logs() {
 		//putchar('\n');
 	}
 	putchar('#');
-}
+}*/
 
 int main()
 {
@@ -397,9 +397,9 @@ int main()
 			sensor_log_counter++;
 		}*/
 	
-		if(sensor_log_counter >= 10000) {
-			X32_leds = X32_leds | 10000000;
-		}
+		//if(sensor_log_counter >= 10000) {
+		//	X32_leds = X32_leds | 10000000;
+		//}
 	}
 
 	quit();
