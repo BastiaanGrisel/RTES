@@ -59,7 +59,7 @@ Queue	pc_msg_q;
 Mode mode = SAFE;
 Loglevel log_level = SENSORS;
 
-int sensor_log[100000][7];
+int sensor_log[10000][7];
 int sensor_log_counter = 0;
 
 /* Add offset to the four motors
@@ -326,7 +326,6 @@ void send_logs() {
 	int i;
 	int j;
 
-  //we need also timestamp and mode, inside here?
 	for(i = 0; i < 10000; i++) {
 		for(j = 0; j < 7; j++) {
 			char low  =  sensor_log[i][j]       & 0xff;
@@ -334,9 +333,6 @@ void send_logs() {
 
 			putchar(high);
 			putchar(low);
-
-			//if(j != 5)
-			//	putchar(' ');
 		}
 		putchar('\n');
 	}
@@ -385,6 +381,17 @@ int main()
 			offset[3] + T+R  -Y);
 
 		// Send the sensor values
+		/*if(sensor_log_counter < 10000) {
+			sensor_log[sensor_log_counter][0] = 0;
+			sensor_log[sensor_log_counter][1] = 1;
+			sensor_log[sensor_log_counter][2] = 2;
+			sensor_log[sensor_log_counter][3] = 3;
+			sensor_log[sensor_log_counter][4] = 4;
+			sensor_log[sensor_log_counter][5] = 5;
+			sensor_log[sensor_log_counter][6] = 6;
+			sensor_log_counter++;
+		}*/
+	
 		if(sensor_log_counter >= 10000) {
 			X32_leds = X32_leds | 10000000;
 		}
