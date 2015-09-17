@@ -33,6 +33,7 @@
 #define X32_rs232_data		peripherals[PERIPHERAL_PRIMARY_DATA]
 #define X32_rs232_stat		peripherals[PERIPHERAL_PRIMARY_STATUS]
 #define X32_rs232_char		(X32_rs232_stat & 0x02)
+#define X32_rs232_write		(X32_rs232_stat & 0x01)
 
 /* User defines
  */
@@ -49,12 +50,13 @@ char malloc_memory[1024];
 int malloc_memory_size = 1024;
 
 int 	time_at_last_led_switch = 0;
-int	isr_qr_time = 0, isr_qr_counter =0;
+int	isr_qr_time = 0, isr_qr_counter = 0;
 int 	offset[4];
 int 	R=0, P=0, Y=0, T=0;
 int	s0, s1, s2, s3, s4, s5;
 Queue	pc_msg_q;
 Mode    mode = SAFE;
+Loglevel log_level = SENSORS;
 
 /* Add offset to the four motors
  * No need to check for negative numbers since offset can be negative
@@ -300,6 +302,12 @@ void quit()
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
 }
 
+/* Sends a character to the PC
+ */
+void send_rs232_data(char c) {
+	while(!X32_rs232_write){ /*wait a bit*/ }
+	X32_rs232_data = c;
+}
 
 /* Function that is used to blink the LEDs. 
  * Returns a boolean whode value depends on the time the function is called
@@ -348,6 +356,9 @@ int main()
 			offset[1] + T-R  -Y,
 			offset[2] + T  -P+Y,
 			offset[3] + T+R  -Y);
+
+		// Send the sensor values to the PC
+		send_rs232_data('a');
 	}
 
 	quit();
