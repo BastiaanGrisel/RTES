@@ -328,7 +328,7 @@ void send_logs() {
 
   //we need also timestamp and mode, inside here?
 	for(i = 0; i < 10000; i++) {
-		for(j = 0; j < 6; j++) {
+		for(j = 0; j < 7; j++) {
 			char low  =  sensor_log[i][j]       & 0xff;
 			char high = (sensor_log[i][j] >> 8) & 0xff;
 
