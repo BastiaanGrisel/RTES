@@ -60,7 +60,7 @@ Queue	pc_msg_q;
 Mode mode = SAFE;
 Loglevel log_level = SENSORS;
 
-int sensor_log[10000][6];
+int sensor_log[100000][7];
 int sensor_log_counter = 0;
 
 /* Add offset to the four motors
@@ -193,12 +193,16 @@ void isr_qr_link(void)
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
 
-	/* Where do we need this for?
-	isr_qr_counter++;
-	if (isr_qr_counter % 500 == 0) {
-		toggle_led(2);
-		sensor_active = true;
-	}*/
+	if(sensor_log_counter < 10000) {
+		sensor_log[sensor_log_counter][0] = X32_QR_timestamp;
+		sensor_log[sensor_log_counter][1] = s0;
+		sensor_log[sensor_log_counter][2] = s1;
+		sensor_log[sensor_log_counter][3] = s2;
+		sensor_log[sensor_log_counter][4] = s3;
+		sensor_log[sensor_log_counter][5] = s4;
+		sensor_log[sensor_log_counter][6] = s5;
+		sensor_log_counter++;
+	}
 
 	isr_qr_time = X32_us_clock - isr_qr_time; // why does this happen here and also at the end of the other ISR?
 																						// coz we need to measure every ISR to see if and how our protocol is feasible
@@ -329,7 +333,7 @@ void send_logs() {
 
   //we need also timestamp and mode, inside here?
 	for(i = 0; i < 10000; i++) {
-		for(j = 0; j < 6; j++) {
+		for(j = 0; j < 7; j++) {
 			char low  =  sensor_log[i][j]       & 0xff;
 			char high = (sensor_log[i][j] >> 8) & 0xff;
 
@@ -386,18 +390,9 @@ int main()
 			offset[3] + T+R  -Y);
 
 		// Send the sensor values
-		if(sensor_log_counter < 10000) {
-			sensor_log[sensor_log_counter][0] = 1;
-			sensor_log[sensor_log_counter][1] = 2;
-			sensor_log[sensor_log_counter][2] = 3;
-			sensor_log[sensor_log_counter][3] = 4;
-			sensor_log[sensor_log_counter][4] = 5;
-			sensor_log[sensor_log_counter][5] = 6;
-			sensor_log_counter++;
-		} else {
+		if(sensor_log_counter >= 10000) {
 			X32_leds = X32_leds | 10000000;
 		}
-
 	}
 
 	quit();
