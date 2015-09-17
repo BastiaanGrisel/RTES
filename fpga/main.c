@@ -56,7 +56,7 @@ int 	R=0, P=0, Y=0, T=0;
 int	s0, s1, s2, s3, s4, s5;
 void send_logs();
 Queue	pc_msg_q;
-Mode    mode = SAFE;
+Mode mode = SAFE;
 Loglevel log_level = SENSORS;
 
 int sensor_log[10000][6];
@@ -80,7 +80,7 @@ void add_motor_offset(int motor0, int motor1, int motor2, int motor3)
 void reset_motors()
 {
 	offset[0] = offset[1] = offset[2] = offset[3] = 0;
-	R= P= Y= T=0;
+	R = P = Y = T = 0;
 }
 
 /*
@@ -196,16 +196,17 @@ void isr_qr_link(void)
 	}*/
 
 	isr_qr_time = X32_us_clock - isr_qr_time; // why does this happen here and also at the end of the other ISR?
+																						// coz we need to measure every ISR to see if and how our protocol is feasible
 }
 
 void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {
 	/* TODO: Arguments should be floats if we have them
 	 * Clip engine values to be positive and 10 bits.
 	 */
-	motor0 = (motor0 < 0 ? 0 : motor0) & 0x3ff; 
-	motor1 = (motor1 < 0 ? 0 : motor1) & 0x3ff; 
-	motor2 = (motor2 < 0 ? 0 : motor2) & 0x3ff; 
-	motor3 = (motor3 < 0 ? 0 : motor3) & 0x3ff; 
+	motor0 = (motor0 < 0 ? 0 : motor0) & 0x3ff;
+	motor1 = (motor1 < 0 ? 0 : motor1) & 0x3ff;
+	motor2 = (motor2 < 0 ? 0 : motor2) & 0x3ff;
+	motor3 = (motor3 < 0 ? 0 : motor3) & 0x3ff;
 
 	/* Send actuator values
 	 * (Need to supply a continous stream, otherwise
@@ -310,17 +311,18 @@ void quit()
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
 }
 
-/* Function that is used to blink the LEDs. 
+/* Function that is used to blink the LEDs.
  * Returns a boolean whode value depends on the time the function is called
  * Author: Bastiaan
  */
-bool flicker_slow() { return (X32_ms_clock % 1000 < 200); } 
-bool flicker_fast() { return (X32_ms_clock % 100 < 20); } 
+bool flicker_slow() { return (X32_ms_clock % 1000 < 200); }
+bool flicker_fast() { return (X32_ms_clock % 100 < 20); }
 
 void send_logs() {
 	int i;
 	int j;
 
+  //we need also timestamp and mode, inside here?
 	for(i = 0; i < 10000; i++) {
 		for(j = 0; j < 6; j++) {
 			char low  =  sensor_log[i][j]       & 0xff;
@@ -330,7 +332,7 @@ void send_logs() {
 			putchar(low);
 
 			//if(j != 5)
-			//	putchar(' ');	
+			//	putchar(' ');
 		}
 		putchar('\n');
 	}
@@ -390,7 +392,7 @@ int main()
 		} else {
 			X32_leds = X32_leds | 10000000;
 		}
-		
+
 	}
 
 	quit();
