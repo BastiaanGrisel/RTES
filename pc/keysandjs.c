@@ -350,11 +350,7 @@ void init_log(void){
  * Author: Henko Aantjes
  */
 void print_char_to_file(char c){
-	if(c == '\n'){
-		fprintf(log_file,"%i\n ",c);
-	} else {
-		fprintf(log_file,"%i ",c);
-	}
+	fprintf(log_file,"%i ",c);
 }
 
 /* Parse QR message and 

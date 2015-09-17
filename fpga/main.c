@@ -334,7 +334,7 @@ void send_logs() {
 			putchar(high);
 			putchar(low);
 		}
-		putchar('\n');
+		//putchar('\n');
 	}
 	putchar('#');
 }
