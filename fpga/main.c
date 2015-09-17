@@ -58,6 +58,9 @@ Queue	pc_msg_q;
 Mode    mode = SAFE;
 Loglevel log_level = SENSORS;
 
+int sensor_log[10000][6];
+int sensor_log_counter = 0;
+
 /* Add offset to the four motors
  * No need to check for negative numbers since offset can be negative
  * Author: Bastiaan
@@ -154,7 +157,7 @@ void isr_rs232_rx(void)
 {
 	char c;
 	isr_qr_time = X32_us_clock;
-
+	//printf("#");
 	/* handle all bytes, note that the processor will sometimes generate
 		* an interrupt while there is no byte available, make sure the handler
 		* checks the state of the com channel before fetching a character from
@@ -164,9 +167,11 @@ void isr_rs232_rx(void)
 	while (X32_rs232_char) {
 		c = X32_rs232_data;
 
+		//printf("Char received: %c\n",c);
 		// Add the message to the message queue
 		pc_msg_q.push(&pc_msg_q, c);
 	}
+
 
 	isr_qr_time = X32_us_clock - isr_qr_time; //data to be logged
 }
@@ -228,18 +233,17 @@ int get_motor_rpm(int i) {
  * Author: Bastiaan
  */
 void packet_received(char control, char value) {
-	//printf("Packet Received: %c %c\n", control, value);
+	//printf("Packet Received: %c %c\n#", control, value);
 
 	switch(control){
 		case 'M':
-	//	control = control - '0'; //leave this here just for trying with myterm.c when kj.o is not working @Alessio
-		if(set_mode(value))
-			printf("Mode succesfully changed. clock = %i, %i\n",X32_QR_timestamp,X32_ms_clock);
-		else
-			printf("Invalid or not permitted mode!\n");
+		//	control = control - '0'; //leave this here just for trying with myterm.c when kj.o is not working @Alessio
+			if(set_mode(value))
+				printf("Mode succesfully changed. clock = %i, %i\n",X32_QR_timestamp,X32_ms_clock);
+			else
+				printf("Invalid or not permitted mode!\n");
 
-		printf("Control: >%c<, Current Mode: >%i<\n#",control,mode);
-		break;
+			printf("Control: >%c<, Current Mode: >%i<\n#",control,mode);
 			break;
 		case 'R':
 			R = value;
@@ -255,6 +259,9 @@ void packet_received(char control, char value) {
 			break;
 		case 'A':
 			trim(value);
+			break;
+		case 'L':
+			send_logs();
 			break;
 		default:
 			break;
@@ -302,19 +309,30 @@ void quit()
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
 }
 
-/* Sends a character to the PC
- */
-void send_rs232_data(char c) {
-	while(!X32_rs232_write){ /*wait a bit*/ }
-	X32_rs232_data = c;
-}
-
 /* Function that is used to blink the LEDs. 
  * Returns a boolean whode value depends on the time the function is called
  * Author: Bastiaan
  */
 bool flicker_slow() { return (X32_ms_clock % 1000 < 200); } 
 bool flicker_fast() { return (X32_ms_clock % 100 < 20); } 
+
+void send_logs() {
+	int i;
+	int j;
+
+	for(i = 0; i < 10000; i++) {
+		for(j = 0; j < 6; j++) {
+			char low  =  sensor_log[i][j]       & 0xff;
+			char high = (sensor_log[i][j] >> 8) & 0xff;
+
+			putchar(low);
+			putchar(high);
+			if(j != 5)
+				putchar(' ');	
+		}
+		putchar('\n');
+	}
+}
 
 int main()
 {
@@ -357,8 +375,19 @@ int main()
 			offset[2] + T  -P+Y,
 			offset[3] + T+R  -Y);
 
-		// Send the sensor values to the PC
-		send_rs232_data('a');
+		// Send the sensor values
+		if(sensor_log_counter < 10000) {
+			sensor_log[sensor_log_counter][0] = 1;
+			sensor_log[sensor_log_counter][1] = 2;
+			sensor_log[sensor_log_counter][2] = 3;
+			sensor_log[sensor_log_counter][3] = 4;
+			sensor_log[sensor_log_counter][4] = 5;
+			sensor_log[sensor_log_counter][5] = 6;
+			sensor_log_counter++;
+		} else {
+			X32_leds = X32_leds | 10000000;
+		}
+		
 	}
 
 	quit();

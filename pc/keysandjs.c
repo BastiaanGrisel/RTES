@@ -250,6 +250,8 @@ void sendKeyData(int c){
 		}
 		
 	} else {
+		control = 'A'; // A == Adjust trimming
+
 		switch(c){
 			case KEY_LEFT:
 				value = LEFT_CHAR;
@@ -274,6 +276,9 @@ void sendKeyData(int c){
 			case 'k':
 			case 'o':
 			case 'l':
+				control = 'L';
+				value = '1';
+				break;
 			case 'r':
 				value = c;
 				break;
@@ -281,7 +286,7 @@ void sendKeyData(int c){
 				value = 0;
 				break;
 		}
-		control = 'A'; // A == Adjust trimming
+
 		if(fd_RS232>0 & value !=0){
 			send_message(control, value);
 			mvprintw(1,0,"sending: %c%c{%i}\n",control, value, packet_checksum(control,value));
