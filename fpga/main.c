@@ -55,7 +55,14 @@ int x32_ms_last_packet = 1000; //ms of the last received packet. 1s for booting 
 int	isr_qr_time = 0, isr_qr_counter = 0;
 int 	offset[4];
 int 	R=0, P=0, Y=0, T=0;
-int 	P_yaw=0;
+/* filter parameters*/
+int Ybias = 0;
+int filtered_dY = 0; // 
+int Y_BIAS_UPDATE = 13; // update bias each sample with a fraction of 1/2^13 
+int Y_FILTER = 3; // simple filter that updates 1/2^Y_filter
+int 	P_yaw=4; // P = 2^4     Y_TO_ENGINE_SCALE 
+int Y_stabilize;
+
 int	s0, s1, s2, s3, s4, s5;
 void send_logs();
 Queue	pc_msg_q;
@@ -148,6 +155,8 @@ void trim(char c){
 			break;
 		case 'i':
 		case 'k':
+			printf("fix = %i,  Ybias = %i, filtered_dY = %i\n#",Y_stabilize,Ybias, filtered_dY);
+			break;
 		case 'o':
 		case 'l':
 		default:
@@ -206,6 +215,15 @@ void isr_qr_link(void)
 		sensor_log[sensor_log_counter][5] = s4;
 		sensor_log[sensor_log_counter][6] = s5;
 		sensor_log_counter++;
+	}
+
+	if(mode == YAW_CONTROL) {
+		
+		dY = (s5 << Y_BIAS_UPDATE)-Ybias; 			// dY is now scaled up with Y_BIAS_UPDATE
+		Ybias += -1*(Ybias >> Y_BIAS_UPDATE) + s5; 	// update Ybias with 1/2^Y_BIAS_UPDATE each sample
+		filtered_dY += -1*(filtered_dY<<Y_FILTER) + dY; // filter dY
+		//Y +=filtered_dY;								// integrate dY to get yaw (but if I remem correct then we need the rate not the yaw)
+		Y_stabilize = (0-filtered_dY)<< (Y_BIAS_UPDATE-P_yaw); // calculate error of yaw rate
 	}
 
 	isr_qr_time = X32_us_clock - isr_qr_time; // why does this happen here and also at the end of the other ISR?
