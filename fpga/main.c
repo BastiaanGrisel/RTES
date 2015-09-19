@@ -62,7 +62,7 @@ Queue	pc_msg_q;
 Mode mode = SAFE;
 Loglevel log_level = SENSORS;
 
-int sensor_log[100000][7];
+int sensor_log[10000][7];
 int sensor_log_counter = 0;
 
 /* Add offset to the four motors
@@ -351,9 +351,12 @@ void panic()
 {
 	set_mode(PANIC);
 	set_motor_rpm(20,20,20,20);
+	X32_leds = 0xFF;
+	sleep(10);
+	X32_leds = 0x00;
 	sleep(2);
 	reset_motors();
-	quit();
+	//quit();
 }
 
 
