@@ -207,8 +207,8 @@ void col_off(int col){
  * Author: Henko Aantjes
  */
 int init_joystick(void){
-	int fd,i;
-	if ((fd = open(JS_DEV, O_RDONLY)) < 0) { // open connection
+	int i;
+	if ((fd_js = open(JS_DEV, O_RDONLY)) < 0) { // open connection
 		/*endwin();
 		perror("joystick /dev/input/js0 ");
 		exit(1);*/
@@ -218,7 +218,7 @@ int init_joystick(void){
 		nodelay(stdscr, true);
 		clear();
 	} else {
-		fcntl(fd, F_SETFL, O_NONBLOCK); // set joystick reading non-blocking
+		fcntl(fd_js, F_SETFL, O_NONBLOCK); // set joystick reading non-blocking
 	}
 
 	for (i = 0; i < 6; i++) {
@@ -229,7 +229,7 @@ int init_joystick(void){
 		button[i]= 0;
 	}
 
-	return fd;
+	return 0;
 } 
 
 /* Send the user keyboard input
@@ -275,11 +275,11 @@ void sendKeyData(int c){
 			case 'i':
 			case 'k':
 			case 'o':
+			case 'r':
+				value = c;
+				break;
 			case 'l':
 				control = 'L';
-				value = '1';
-				break;
-			case 'r':
 				value = c;
 				break;
 			default:
@@ -350,11 +350,7 @@ void init_log(void){
  * Author: Henko Aantjes
  */
 void print_char_to_file(char c){
-	if(c == '\n'){
-		fprintf(log_file,"%i\n ",c);
-	} else {
-		fprintf(log_file,"%i ",c);
-	}
+	fprintf(log_file,"%i ",c);
 }
 
 /* Parse QR message and 

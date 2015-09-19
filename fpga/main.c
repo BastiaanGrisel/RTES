@@ -43,6 +43,7 @@
 #define DOWN_CHAR 'g'
 
 #define OFFSET_STEP 10
+#define TIMEOUT 300 //ms after which - if not receiving packets - the QR goes to panic mode
 
 /* Define global variables
  */
@@ -50,6 +51,7 @@ char malloc_memory[1024];
 int malloc_memory_size = 1024;
 
 int 	time_at_last_led_switch = 0;
+int x32_ms_last_packet = 1000; //ms of the last received packet. 1s for booting up and starting sending values without
 int	isr_qr_time = 0, isr_qr_counter = 0;
 int 	offset[4];
 int 	R=0, P=0, Y=0, T=0;
@@ -163,6 +165,8 @@ void isr_rs232_rx(void)
 {
 	char c;
 	isr_qr_time = X32_us_clock;
+	x32_ms_last_packet = X32_ms_clock; //update the time the last packet was received
+
 	//printf("#");
 	/* handle all bytes, note that the processor will sometimes generate
 		* an interrupt while there is no byte available, make sure the handler
@@ -327,6 +331,32 @@ void quit()
 bool flicker_slow() { return (X32_ms_clock % 1000 < 200); }
 bool flicker_fast() { return (X32_ms_clock % 100 < 20); }
 
+/*checks if the QR is receiving packet in terms of ms defined by the TIMEOUT variable,
+otherwise panic() is called.
+Author: Alessio
+*/
+void check_alive_connection()
+{
+	int current_ms = X32_ms_clock;
+	if(current_ms - x32_ms_last_packet > TIMEOUT )
+	{
+		panic();
+	}
+}
+
+/*Set panic mode and provide a soft landing.
+Then resets the motors and quits.
+Author: Alessio */
+void panic()
+{
+	set_mode(PANIC);
+	set_motor_rpm(20,20,20,20);
+	sleep(2);
+	reset_motors();
+	quit();
+}
+
+
 void send_logs() {
 	int i;
 	int j;
@@ -356,6 +386,8 @@ int main()
 
 	// Main loop
 	while (1) {
+
+		check_alive_connection();
 		// Turn on the LED corresponding to the mode
 		X32_leds = (1 << mode) & (flicker_slow() << mode);
 
