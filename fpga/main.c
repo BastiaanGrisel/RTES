@@ -199,6 +199,7 @@ void isr_rs232_rx(void)
  */
 void isr_qr_link(void)
 {
+	int dY;
 	isr_qr_time = X32_us_clock;
 
 	/* TODO: do filtering here?
