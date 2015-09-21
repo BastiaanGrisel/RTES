@@ -28,9 +28,7 @@
 #define X32_QR_s3 		peripherals[PERIPHERAL_XUFO_S3]
 #define X32_QR_s4 		peripherals[PERIPHERAL_XUFO_S4]
 #define X32_QR_s5 		peripherals[PERIPHERAL_XUFO_S5]
-#define nexys_display peripherals[PERIPHERAL_DISPLAY] //when needed
 #define X32_QR_timestamp 	peripherals[PERIPHERAL_XUFO_TIMESTAMP]
-
 
 #define X32_rs232_data		peripherals[PERIPHERAL_PRIMARY_DATA]
 #define X32_rs232_stat		peripherals[PERIPHERAL_PRIMARY_STATUS]
@@ -45,7 +43,7 @@
 #define DOWN_CHAR 'g'
 
 #define OFFSET_STEP 10
-#define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
+#define TIMEOUT 300 //ms after which - if not receiving packets - the QR goes to panic mode
 
 /* Define global variables
  */
@@ -53,26 +51,50 @@ char malloc_memory[1024];
 int malloc_memory_size = 1024;
 
 int 	time_at_last_led_switch = 0;
-int X32_ms_last_packet= 2000; //ms of the last received packet. 1s for booting up and starting sending values
+int x32_ms_last_packet = 1000; //ms of the last received packet. 1s for booting up and starting sending values without
 int	isr_qr_time = 0, isr_qr_counter = 0;
 int 	offset[4];
 int 	R=0, P=0, Y=0, T=0;
-/* filter parameters*/
-int Ybias = 0;
-int filtered_dY = 0; //
-int Y_BIAS_UPDATE = 13; // update bias each sample with a fraction of 1/2^13
-int Y_FILTER = 3; // simple filter that updates 1/2^Y_filter
-int 	P_yaw=4; // P = 2^4     Y_TO_ENGINE_SCALE
-int Y_stabilize;
-
+int 	P_yaw=0;
 int	s0, s1, s2, s3, s4, s5;
 void send_logs();
 Queue	pc_msg_q;
 Mode mode = SAFE;
 Loglevel log_level = SENSORS;
 
-int sensor_log[10000][7];
+// int sensor_log[100000][7];
 int sensor_log_counter = 0;
+
+typedef struct {
+	int timestamp2;
+	int[6] sensors;
+} log;
+
+log sensor_log[10000];
+
+
+void send_sensors() {
+	int i;
+	char time1, time2;
+	char low, high;
+	for(i=0; i < 10000; ++i)
+	{
+		 time1 = sensor_log[i].timestamp2 & 0xFF;
+		 time2 = (sensor_log[i].timestamp2 >> 8) & 0xFF;
+
+		 putchar(time1);
+		 putchar(time2);
+
+		 for(j=0; j < 6; j++)
+		{
+		 char low  =  sensor_log[i].sensors[j]       & 0xff;
+		 char high = (sensor_log[i].sensors[j] >> 8) & 0xff;
+		 putchar(low);
+		 putchar (high);
+	  }
+	}
+
+}
 
 /* Add offset to the four motors
  * No need to check for negative numbers since offset can be negative
@@ -84,11 +106,6 @@ void add_motor_offset(int motor0, int motor1, int motor2, int motor3)
 	offset[1] += motor1;
 	offset[2] += motor2;
 	offset[3] += motor3;
-}
-
-void lost_packet()
-{
-	nexys_display = 0x7777; // wrong packet code
 }
 
 /* Reset the offsets.
@@ -162,8 +179,6 @@ void trim(char c){
 			break;
 		case 'i':
 		case 'k':
-			printf("fix = %i,  Ybias = %i, filtered_dY = %i\n#",Y_stabilize,Ybias, filtered_dY);
-			break;
 		case 'o':
 		case 'l':
 		default:
@@ -181,8 +196,7 @@ void isr_rs232_rx(void)
 {
 	char c;
 	isr_qr_time = X32_us_clock;
-	X32_ms_last_packet= X32_ms_clock; //update the time the last packet was received
-	nexys_display = 0x00;
+	x32_ms_last_packet = X32_ms_clock; //update the time the last packet was received
 
 	//printf("#");
 	/* handle all bytes, note that the processor will sometimes generate
@@ -207,7 +221,6 @@ void isr_rs232_rx(void)
  */
 void isr_qr_link(void)
 {
-	int dY;
 	isr_qr_time = X32_us_clock;
 
 	/* TODO: do filtering here?
@@ -216,23 +229,14 @@ void isr_qr_link(void)
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
 
 	if(sensor_log_counter < 10000) {
-		sensor_log[sensor_log_counter][0] = X32_QR_timestamp;
-		sensor_log[sensor_log_counter][1] = s0;
-		sensor_log[sensor_log_counter][2] = s1;
-		sensor_log[sensor_log_counter][3] = s2;
-		sensor_log[sensor_log_counter][4] = s3;
-		sensor_log[sensor_log_counter][5] = s4;
-		sensor_log[sensor_log_counter][6] = s5;
+		sensor_log[sensor_log_counter].timestamp2 = X32_QR_timestamp;
+		sensor_log[sensor_log_counter].sensors[1] = 65;
+		sensor_log[sensor_log_counter].sensors[2] = -127;
+		sensor_log[sensor_log_counter].sensors[3] = 128;
+		sensor_log[sensor_log_counter].sensors[4] = 128;
+		sensor_log[sensor_log_counter].sensors[5] = 55;
+		sensor_log[sensor_log_counter].sensors[6] = 55;
 		sensor_log_counter++;
-	}
-
-	if(mode == YAW_CONTROL) {
-
-		dY = (s5 << Y_BIAS_UPDATE)-Ybias; 			// dY is now scaled up with Y_BIAS_UPDATE
-		Ybias += -1*(Ybias >> Y_BIAS_UPDATE) + s5; 	// update Ybias with 1/2^Y_BIAS_UPDATE each sample
-		filtered_dY += -1*(filtered_dY<<Y_FILTER) + dY; // filter dY
-		//Y +=filtered_dY;								// integrate dY to get yaw (but if I remem correct then we need the rate not the yaw)
-		Y_stabilize = (0-filtered_dY)<< (Y_BIAS_UPDATE-P_yaw); // calculate error of yaw rate
 	}
 
 	isr_qr_time = X32_us_clock - isr_qr_time; // why does this happen here and also at the end of the other ISR?
@@ -359,43 +363,27 @@ bool flicker_slow() { return (X32_ms_clock % 1000 < 200); }
 bool flicker_fast() { return (X32_ms_clock % 100 < 20); }
 
 /*checks if the QR is receiving packet in terms of ms defined by the TIMEOUT variable,
-otherwise panic() is called.
-Author: Alessio
-*/
-
+  otherwise panic() is called.
+  Author: Alessio */
 void check_alive_connection()
 {
-  int current_ms, diff;
-
-	if(X32_ms_last_packet == 2000) return; //does not perform the check till a new message arrive
-	current_ms = X32_ms_clock;
-  diff = current_ms - X32_ms_last_packet;
-//	printf("Valori: %d %d\n", current_ms,X32_ms_last_packet);
-//	nexys_display = diff ;
-
-	if(current_ms - X32_ms_last_packet> TIMEOUT )
+	int current_ms = X32_ms_clock;
+	if(current_ms - x32_ms_last_packet > TIMEOUT )
 	{
 		panic();
 	}
-
-	return;
 }
 
 /*Set panic mode and provide a soft landing.
-Then resets the motors and quits.
-Author: Alessio */
+  Then resets the motors and quits.
+  Author: Alessio */
 void panic()
 {
 	set_mode(PANIC);
 	set_motor_rpm(20,20,20,20);
-	X32_leds = 0xFF;
-	sleep(10);
-	X32_leds = 0x00;
 	sleep(2);
 	reset_motors();
-	nexys_display = 0xc1a0;
-	//quit();
-	exit(-1);
+	quit();
 }
 
 
@@ -403,7 +391,6 @@ void send_logs() {
 	int i;
 	int j;
 
-  //we need also timestamp and mode, inside here?
 	for(i = 0; i < 10000; i++) {
 		for(j = 0; j < 7; j++) {
 			char low  =  sensor_log[i][j]       & 0xff;
@@ -420,16 +407,16 @@ void send_logs() {
 	putchar('#');
 }
 
-int main(void)
+int main()
 {
 	//printf("Program started in mode: %d \r\n#", mode);
 
 	setup();
-  nexys_display = 0x00;
 
 	// Main loop
 	while (1) {
-//	   check_alive_connection();
+
+		check_alive_connection();
 		// Turn on the LED corresponding to the mode
 		X32_leds = (1 << mode) & (flicker_slow() << mode);
 
@@ -443,7 +430,6 @@ int main(void)
 
 			if(!check_packet(control,value,checksum)) {
 				// If the checksum is not correct, pop the first message off the queue and repeat the loop
-				lost_packet();
 				pc_msg_q.pop(&pc_msg_q);
 			} else {
 				// If the checksum is correct, pop the packet off the queue and notify a callback

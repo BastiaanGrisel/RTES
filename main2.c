@@ -86,11 +86,6 @@ void add_motor_offset(int motor0, int motor1, int motor2, int motor3)
 	offset[3] += motor3;
 }
 
-void lost_packet()
-{
-	nexys_display = 0x7777; // wrong packet code
-}
-
 /* Reset the offsets.
    Author: Alessio
 */
@@ -181,8 +176,7 @@ void isr_rs232_rx(void)
 {
 	char c;
 	isr_qr_time = X32_us_clock;
-	X32_ms_last_packet= X32_ms_clock; //update the time the last packet was received
-	nexys_display = 0x00;
+	X32_ms_last_packet = X32_ms_clock; //update the time the last packet was received
 
 	//printf("#");
 	/* handle all bytes, note that the processor will sometimes generate
@@ -371,7 +365,7 @@ void check_alive_connection()
 	current_ms = X32_ms_clock;
   diff = current_ms - X32_ms_last_packet;
 //	printf("Valori: %d %d\n", current_ms,X32_ms_last_packet);
-//	nexys_display = diff ;
+	nexys_display = diff ;
 
 	if(current_ms - X32_ms_last_packet> TIMEOUT )
 	{
@@ -395,7 +389,6 @@ void panic()
 	reset_motors();
 	nexys_display = 0xc1a0;
 	//quit();
-	exit(-1);
 }
 
 
@@ -420,7 +413,7 @@ void send_logs() {
 	putchar('#');
 }
 
-int main(void)
+int main()
 {
 	//printf("Program started in mode: %d \r\n#", mode);
 
@@ -429,7 +422,7 @@ int main(void)
 
 	// Main loop
 	while (1) {
-//	   check_alive_connection();
+		check_alive_connection();
 		// Turn on the LED corresponding to the mode
 		X32_leds = (1 << mode) & (flicker_slow() << mode);
 
@@ -443,7 +436,6 @@ int main(void)
 
 			if(!check_packet(control,value,checksum)) {
 				// If the checksum is not correct, pop the first message off the queue and repeat the loop
-				lost_packet();
 				pc_msg_q.pop(&pc_msg_q);
 			} else {
 				// If the checksum is correct, pop the packet off the queue and notify a callback
