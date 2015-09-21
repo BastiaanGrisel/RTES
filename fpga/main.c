@@ -28,7 +28,9 @@
 #define X32_QR_s3 		peripherals[PERIPHERAL_XUFO_S3]
 #define X32_QR_s4 		peripherals[PERIPHERAL_XUFO_S4]
 #define X32_QR_s5 		peripherals[PERIPHERAL_XUFO_S5]
+#define nexys_display peripherals[PERIPHERAL_DISPLAY] //when needed
 #define X32_QR_timestamp 	peripherals[PERIPHERAL_XUFO_TIMESTAMP]
+
 
 #define X32_rs232_data		peripherals[PERIPHERAL_PRIMARY_DATA]
 #define X32_rs232_stat		peripherals[PERIPHERAL_PRIMARY_STATUS]
@@ -43,7 +45,7 @@
 #define DOWN_CHAR 'g'
 
 #define OFFSET_STEP 10
-#define TIMEOUT 300 //ms after which - if not receiving packets - the QR goes to panic mode
+#define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
 
 /* Define global variables
  */
@@ -51,16 +53,16 @@ char malloc_memory[1024];
 int malloc_memory_size = 1024;
 
 int 	time_at_last_led_switch = 0;
-int x32_ms_last_packet = 1000; //ms of the last received packet. 1s for booting up and starting sending values without
+int X32_ms_last_packet= 2000; //ms of the last received packet. 1s for booting up and starting sending values
 int	isr_qr_time = 0, isr_qr_counter = 0;
 int 	offset[4];
 int 	R=0, P=0, Y=0, T=0;
 /* filter parameters*/
 int Ybias = 0;
-int filtered_dY = 0; // 
-int Y_BIAS_UPDATE = 13; // update bias each sample with a fraction of 1/2^13 
+int filtered_dY = 0; //
+int Y_BIAS_UPDATE = 13; // update bias each sample with a fraction of 1/2^13
 int Y_FILTER = 3; // simple filter that updates 1/2^Y_filter
-int 	P_yaw=4; // P = 2^4     Y_TO_ENGINE_SCALE 
+int 	P_yaw=4; // P = 2^4     Y_TO_ENGINE_SCALE
 int Y_stabilize;
 
 int	s0, s1, s2, s3, s4, s5;
@@ -174,7 +176,8 @@ void isr_rs232_rx(void)
 {
 	char c;
 	isr_qr_time = X32_us_clock;
-	x32_ms_last_packet = X32_ms_clock; //update the time the last packet was received
+	X32_ms_last_packet= X32_ms_clock; //update the time the last packet was received
+	nexys_display = 0x00;
 
 	//printf("#");
 	/* handle all bytes, note that the processor will sometimes generate
@@ -219,7 +222,7 @@ void isr_qr_link(void)
 	}
 
 	if(mode == YAW_CONTROL) {
-		
+
 		dY = (s5 << Y_BIAS_UPDATE)-Ybias; 			// dY is now scaled up with Y_BIAS_UPDATE
 		Ybias += -1*(Ybias >> Y_BIAS_UPDATE) + s5; 	// update Ybias with 1/2^Y_BIAS_UPDATE each sample
 		filtered_dY += -1*(filtered_dY<<Y_FILTER) + dY; // filter dY
@@ -354,13 +357,23 @@ bool flicker_fast() { return (X32_ms_clock % 100 < 20); }
 otherwise panic() is called.
 Author: Alessio
 */
+
 void check_alive_connection()
 {
-	int current_ms = X32_ms_clock;
-	if(current_ms - x32_ms_last_packet > TIMEOUT )
+  int current_ms, diff;
+
+	if(X32_ms_last_packet == 2000) return; //does not perform the check till a new message arrive
+	current_ms = X32_ms_clock;
+  diff = current_ms - X32_ms_last_packet;
+//	printf("Valori: %d %d\n", current_ms,X32_ms_last_packet);
+//	nexys_display = diff ;
+
+	if(current_ms - X32_ms_last_packet> TIMEOUT )
 	{
 		panic();
 	}
+
+	return;
 }
 
 /*Set panic mode and provide a soft landing.
@@ -375,7 +388,9 @@ void panic()
 	X32_leds = 0x00;
 	sleep(2);
 	reset_motors();
+	nexys_display = 0xc1a0;
 	//quit();
+	exit(-1);
 }
 
 
@@ -405,11 +420,11 @@ int main()
 	//printf("Program started in mode: %d \r\n#", mode);
 
 	setup();
+  nexys_display = 0x00;
 
 	// Main loop
 	while (1) {
-
-		check_alive_connection();
+//	   check_alive_connection();
 		// Turn on the LED corresponding to the mode
 		X32_leds = (1 << mode) & (flicker_slow() << mode);
 
