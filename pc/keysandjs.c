@@ -30,6 +30,7 @@
 #define DOWN_CHAR 'g'
 #define QR_INPUT_BUFFERSIZE 1000
 #define MESSAGESIZE 5
+#define TIMEOUT 150 //ms
 
 void init_keyboard(void);
 struct timeval updateFPS(struct timeval oldtime);
@@ -50,6 +51,7 @@ void print_QR_input(void);
 void col_on(int col);
 void col_off(int col);
 void exitmain(void);
+void check_alive_connection();
 
 int fd_RS232, fd_js;
 
@@ -63,6 +65,8 @@ int charpos = 0;
 int loopcount = 0; // to calculate the FPS
 int	ae[4];
 int offset[4];
+int ms_last_packet_sent;
+struct timeval keep_alive;
 
 /* Main function that mainly consists of polling the different connections
  * which are: Keyboard, Joystick, RS232 (connection to QR)
@@ -74,7 +78,7 @@ int main (int argc, char **argv)
 	int c, last_c;
 	struct timeval time;
 	char rec_c;
-	
+
 	// init
 
 	init_keyboard();
@@ -82,6 +86,7 @@ int main (int argc, char **argv)
 	rs232_open();
 	init_log();
 	gettimeofday(&time,NULL);
+	gettimeofday(&keep_alive,NULL);
 
 	/* Main loop to process/send user input and to show QR input */
 	while (1) {
@@ -90,16 +95,18 @@ int main (int argc, char **argv)
 		/* Check keypress */
 		if ((c= getch()) != -1){
 			sendKeyData(c); // send a message if user gave input
-		} 
+		}
 
 		/* Check joystick */
 		if(fd_js>0){
-			if (read(fd_js, &js, sizeof(struct js_event)) == 
+			if (read(fd_js, &js, sizeof(struct js_event)) ==
 				   			sizeof(struct js_event))  {
 				process_JS_event(js.type,js.number,js.value);
 			}
 		}
-		
+
+   // check_alive_connection();
+
 		/* Check QR to pc communication */
 		if(fd_RS232>0){
 			while ((rec_c = rs232_getchar_nb())!= -1){
@@ -108,19 +115,19 @@ int main (int argc, char **argv)
 		}
 
 		/* Print the Joystick state */
-		printJSstate();		
-				
+		printJSstate();
+
 		/* Terminate program if user presses panic button or ESC */
 		if (button[0] || c ==27){
 			break;
 		}
 	}
-	
+
 	exitmain();
 	return 0;
 }
 
-/* Calculate the mean loop frequency (100 loopcount mean) 
+/* Calculate the mean loop frequency (100 loopcount mean)
  * Author: Henko Aantjes
  */
 struct timeval updateFPS(struct timeval timeold){
@@ -163,7 +170,7 @@ void printJSstate(void){
 	}
 	col_off(2);
 	printw("\nJoystick buttons: ");
-	col_on(2);		
+	col_on(2);
 	for (i = 0; i < 12; i++) {
 		printw("%d ",button[i]);
 	}
@@ -171,7 +178,7 @@ void printJSstate(void){
 }
 
 /* Initialize the key input
- *  
+ *
  * Henko Aantjes
  */
 void init_keyboard(void){
@@ -179,14 +186,14 @@ void init_keyboard(void){
 	initscr();
 	keypad(stdscr, TRUE); // enable arrowkey-detection
 	noecho(); // don't print what is typed
-	cbreak(); // don't wait for an enter 
-	
+	cbreak(); // don't wait for an enter
+
 	/* ******************************************************
 	 * make a choice between one of the following 2 lines:  *
 	 * halfdelay for demonstration pruposes or              *
 	 * nodelay for real time programs                       *
 	 ********************************************************/
-    //halfdelay(1); // don't wait long for user input, give error instead	
+    //halfdelay(1); // don't wait long for user input, give error instead
 	nodelay(stdscr, TRUE); // don't wait for user input, give error instead
 	start_color();
 	init_pair(1, COLOR_RED, COLOR_BLACK);
@@ -230,7 +237,33 @@ int init_joystick(void){
 	}
 
 	return 0;
-} 
+}
+
+
+/* Checks if the PC has sent data in the last 200ms otherwise sends
+a packet to keep alive the connection.
+Author: Alessio */
+void check_alive_connection()
+{
+	struct timeval current_time;
+	gettimeofday(&current_time,NULL);
+	int current_ms = ((keep_alive.tv_usec+1000000*keep_alive.tv_sec) / 1000);
+	if(current_ms - ms_last_packet_sent > TIMEOUT)
+	{
+		send_message(0,0);
+	}
+	return;
+}
+
+/*Update the ms_last_packet_sent variable
+Author: Alessio*/
+void update_time()
+{
+	struct timeval current_time;
+	gettimeofday(&current_time,NULL);
+	ms_last_packet_sent = ((keep_alive.tv_usec+1000000*keep_alive.tv_sec) / 1000);
+}
+
 
 /* Send the user keyboard input
  * First construct the message and call the send function
@@ -243,12 +276,14 @@ void sendKeyData(int c){
 		control = 'M';
 		if(fd_RS232>0){
 			send_message(control, value);
+			//update the last packet timestamp
+      update_time();
 			mvprintw(1,0,"sending: %c%i{%i}\n",control, (int) value, packet_checksum(control,value));
 		}
 		else{
 			mvprintw(1,0,"NOT sending: %c%i   (RS232 = DISABLED)\n",control, (int) value);
 		}
-		
+
 	} else {
 		control = 'A'; // A == Adjust trimming
 
@@ -289,7 +324,8 @@ void sendKeyData(int c){
 
 		if(fd_RS232>0 & value !=0){
 			send_message(control, value);
-			mvprintw(1,0,"sending: %c%c{%i}\n",control, value, packet_checksum(control,value));
+			update_time();
+			mvprintw(1,0,"sending: %c%c {%i}\n",control, value, packet_checksum(control,value));
 		}
 		else{
 			mvprintw(1,0,"NOT sending: %c%c %s\n",control, value,value==0?"key = not a control!":"(RS232 = DISABLED)");
@@ -304,30 +340,32 @@ void sendKeyData(int c){
 void sendJSData(int number,int valueInt){
 	char control, value = (char)(valueInt/256);
 	switch(number){
-		case 0: 
+		case 0:
 			control = 'R'; // roll
 			break;
 		case 1:
 			control = 'P'; // pitch
 			break;
-		case 2: 
+		case 2:
 			control = 'Y'; // yaw
 			break;
-		case 3: 
+		case 3:
 			control = 'T'; // throttle
 			break;
 		default:
 			control = 0;
-			break;	
+			break;
 	}
 	if(fd_RS232>0 & control !=0){
 		send_message(control, value);
+		update_time();
 		printw("sending: %c  %i (%i/256)\n",control, value, valueInt);
 	}
 	else{
 		printw("NOT sending: %c  %c   (RS232 = DISABLED)\n",control, value);
 	}
 }
+
 
 void send_message(char control, char value){
 	rs232_putchar(control);
@@ -353,15 +391,15 @@ void print_char_to_file(char c){
 	fprintf(log_file,"%i ",c);
 }
 
-/* Parse QR message and 
+/* Parse QR message and
  * Author: Henko Aantjes
  */
 void parse_QR_message(int size){
 	int message_number = 0;
 	int mOffs = 0;
 	while(size-mOffs>0){ // if size == 0 then 0%MESSAGESIZE will give a nasty exception
-		if((size-mOffs)%MESSAGESIZE==0){ 
-			
+		if((size-mOffs)%MESSAGESIZE==0){
+
 			//TODO check checksum
 			switch(received_chars[0+mOffs]){
 				case '\xFE':
@@ -369,18 +407,18 @@ void parse_QR_message(int size){
 					offset[1]=received_chars[2+mOffs];
 					offset[2]=received_chars[3+mOffs];
 					offset[3]=received_chars[4+mOffs];
-					
-				break; 
+
+				break;
 				case '\xFF':
 					ae[0]=received_chars[1+mOffs];
 					ae[1]=received_chars[2+mOffs];
 					ae[2]=received_chars[3+mOffs];
 					ae[3]=received_chars[4+mOffs];
-					
-				break; 
+
+				break;
 				default:
 				break;
-			
+
 			}
 			mOffs += MESSAGESIZE;
 		} else {
@@ -430,30 +468,30 @@ void print_QR_input(void){
 void rs232_open(void)
 {
   	char 		*name;
-  	int 		result;  
+  	int 		result;
   	struct termios	tty;
   	int serial_device = 1;
-  	
 
-	if (serial_device == 0) 
-	{   
+
+	if (serial_device == 0)
+	{
 		fd_RS232 = open(SERIAL_DEVICE, O_RDWR | O_NOCTTY);
-		fprintf(stderr,"using /dev/ttyS0\n"); 
+		fprintf(stderr,"using /dev/ttyS0\n");
 
-	} 
-	else if ( (serial_device == 1) || (serial_device == 2) ) 
+	}
+	else if ( (serial_device == 1) || (serial_device == 2) )
 	{
         	fd_RS232 = open(USB_DEVICE0, O_RDWR | O_NOCTTY);
 			//printw("fd usb0 = %i\n",fd_RS232);
-		fprintf(stderr,"using /dev/ttyUSB0\n"); 
+		fprintf(stderr,"using /dev/ttyUSB0\n");
 		if(fd_RS232<0){ // try other name
 			fd_RS232 = open(USB_DEVICE1, O_RDWR | O_NOCTTY);
 			//printw("fd usb1 = %i\n",fd_RS232);
 		}
-	} 
+	}
 
   	if(isatty(fd_RS232)<0 | ttyname(fd_RS232) ==0| tcgetattr(fd_RS232, &tty)!=0){
-		
+
 		printw("RS232 not found?!     <<press a key to continue>>\nfd = %i;isatty(fd_RS232)= %i;ttyname(fd_RS232) = %i; tcgetattr(fd_RS232, &tty) = %i",fd_RS232,isatty(fd_RS232),ttyname(fd_RS232),tcgetattr(fd_RS232, &tty));
 		fd_RS232 = -1;
 		nodelay(stdscr, false);
@@ -466,19 +504,19 @@ void rs232_open(void)
 		tty.c_lflag = 0;
 
 		tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8; /* 8 bits-per-character */
-		tty.c_cflag |= CLOCAL | CREAD; /* Ignore model status + read input */		
+		tty.c_cflag |= CLOCAL | CREAD; /* Ignore model status + read input */
 
-		/* Set output and input baud rates. 
+		/* Set output and input baud rates.
 		 */
-		if (serial_device == 0 || serial_device == 1) // wired 
-		{  
-			cfsetospeed(&tty, B115200); 
-			cfsetispeed(&tty, B115200); 
-		} 
-			else if (serial_device == 2) // wireless 
-		{  
-			cfsetospeed(&tty, B9600); 
-			cfsetispeed(&tty, B9600); 
+		if (serial_device == 0 || serial_device == 1) // wired
+		{
+			cfsetospeed(&tty, B115200);
+			cfsetispeed(&tty, B115200);
+		}
+			else if (serial_device == 2) // wireless
+		{
+			cfsetospeed(&tty, B9600);
+			cfsetispeed(&tty, B9600);
 		}
 
 		tty.c_cc[VMIN]  = 0;
@@ -525,12 +563,12 @@ int	rs232_getchar_nb(void)
  * copy pasted by: Henko Aantjes
  */
 int	rs232_putchar(char c)
-{ 
+{
 	int result;
 
 	do {
 		result = (int) write(fd_RS232, &c, sizeof(char));
-	} while (result == 0);   
+	} while (result == 0);
 
 	assert(result == 1);
 	return result;
