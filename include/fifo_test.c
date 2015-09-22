@@ -58,14 +58,18 @@ int main() {
 	}	
 
 	printf("Size (127): %i\n", fifo_size(&fifo));
-	printf("in: %i, out: %i\n", fifo.in, fifo.out);
+
+	//printf("in: %i, out: %i\n", fifo.in, fifo.out);
 	printf("Pop 75: %i\n", fifo_pop(&fifo));	
-	printf("Pop 32: %i\n", fifo_pop(&fifo));	
+	printf("Pop 32: %i\n", fifo_pop(&fifo));
+
+	printf("Size (125): %i\n", fifo_size(&fifo));
 
 	// Second FIFO
 	Fifo fifo2;
 	fifo_init(&fifo);
 	fifo_put(&fifo2, 'b');
+	printf("Size: %i\n", fifo_size(&fifo2));
 	printf("Pop b: %c\n", fifo_pop(&fifo2));	
 
 	return 1;
