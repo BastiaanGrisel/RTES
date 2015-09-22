@@ -1,17 +1,13 @@
 #include <stdio.h>
 #include "types.h"
 
-#define FIFO_CAPACITY 127
+#define FIFO_CAPACITY 128 // Can store 127 values!
 
 typedef struct {
 	int in;
 	int out;
-	char elements[127];
+	char elements[128];
 } Fifo;
-
-
-#define QUEUE_SIZE (QUEUE_ELEMENTS + 1)
-int fifo_in, fifo_out;
 
 void fifo_init(Fifo *fifo)
 {
@@ -22,23 +18,27 @@ void fifo_init(Fifo *fifo)
 // Add char to queue
 bool fifo_put(Fifo* fifo, char c)
 {
-	if(fifo_size() == FIFO_CAPACITY)
+	if(fifo_size(fifo) == FIFO_CAPACITY - 1)
 		return false;
 
-	fifo->elements[fifo->in++] = c;
+	fifo->elements[(fifo->in)++] = c;
+	fifo->in %= FIFO_CAPACITY;
+
 	return true;
 }
 
 // pop
 int fifo_get(Fifo* fifo, char *old, bool remove, int n)
 {
-	if(fifo_size() == 0)
+	if(fifo_size(fifo) == 0)
 		return false;
 
 	*old = fifo->elements[((fifo->out + n) % FIFO_CAPACITY)];
 
 	if(remove)
 		fifo->out++;
+
+	fifo->out %= FIFO_CAPACITY;
 
 	return true;
 }
@@ -66,6 +66,8 @@ char fifo_pop(Fifo* fifo) {
 int fifo_size(Fifo* fifo) {
 	if(fifo->in > fifo->out)
 		return fifo->in - fifo->out;
+	else if(fifo->in == fifo->out)
+		return 0;
 	else
 		return FIFO_CAPACITY + fifo->in - fifo->out;
 }

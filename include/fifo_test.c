@@ -6,11 +6,16 @@ int main() {
 	Fifo fifo;
 	fifo_init(&fifo);
 
-	char c;
-	int i;	
+	printf("Size (0): %i\n", fifo_size(&fifo)); 
+
+	/*Fifo fifo2;
+	fifo_init(&fifo);
+	fifo_put(&fifo2, 'b');*/
 	
 	// put a char
 	fifo_put(&fifo, 'a');
+	printf("%i %i\n",fifo.in, fifo.out);
+	printf("Size (1): %i\n", fifo_size(&fifo)); 
 	printf("Pop a: %c\n",fifo_pop(&fifo));
 
 	// Print the size
@@ -25,7 +30,7 @@ int main() {
 	printf("Size (3): %i\n", fifo_size(&fifo));
 	printf("Pop a: %c\n",fifo_pop(&fifo));
 	printf("Pop b: %c\n",fifo_pop(&fifo));
-	printf("Pop b: %c\n",fifo_pop(&fifo));
+	printf("Pop c: %c\n",fifo_pop(&fifo));
 	
 	// Print int 1
 	fifo_put(&fifo, 1);
@@ -48,15 +53,19 @@ int main() {
 	printf("Size 2: %i\n", fifo_size(&fifo));
 
 	// overflowtest (does not add any elements)
+	printf("Size (2): %i\n", fifo_size(&fifo));
+
 	int j;
-	for(j = 0; j < 110; j++) {
+	for(j = 0; j < 130; j++) {
+		//printf("Size: %i (%i,%i)\n", fifo_size(&fifo), fifo.in, fifo.out);
 		fifo_put(&fifo, j);
 	}	
 
-	printf("Size (100): %i\n", fifo_size(&fifo));
+	printf("Size (127): %i\n", fifo_size(&fifo));
+	printf("in: %i, out: %i\n", fifo.in, fifo.out);
 	printf("Pop 75: %i\n", fifo_pop(&fifo));	
 	printf("Pop 32: %i\n", fifo_pop(&fifo));	
-	
+
 	return 1;
 }
 
