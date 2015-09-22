@@ -7,10 +7,6 @@ int main() {
 	fifo_init(&fifo);
 
 	printf("Size (0): %i\n", fifo_size(&fifo)); 
-
-	/*Fifo fifo2;
-	fifo_init(&fifo);
-	fifo_put(&fifo2, 'b');*/
 	
 	// put a char
 	fifo_put(&fifo, 'a');
@@ -65,6 +61,11 @@ int main() {
 	printf("in: %i, out: %i\n", fifo.in, fifo.out);
 	printf("Pop 75: %i\n", fifo_pop(&fifo));	
 	printf("Pop 32: %i\n", fifo_pop(&fifo));	
+
+	// Second FIFO
+	Fifo fifo2;
+	fifo_init(&fifo);
+	fifo_put(&fifo2, 'b');
 
 	return 1;
 }
