@@ -245,8 +245,8 @@ a packet to keep alive the connection.
 Author: Alessio */
 void check_alive_connection()
 {
-	struct timeval current_time;
-	gettimeofday(&current_time,NULL);
+ /*	struct timeval current_time;
+	gettimeofday(&current_time,NULL);*/
 	int current_ms = ((keep_alive.tv_usec+1000000*keep_alive.tv_sec) / 1000);
 	if(current_ms - ms_last_packet_sent > TIMEOUT)
 	{
@@ -259,8 +259,8 @@ void check_alive_connection()
 Author: Alessio*/
 void update_time()
 {
-	struct timeval current_time;
-	gettimeofday(&current_time,NULL);
+	/* struct timeval current_time;
+	gettimeofday(&current_time,NULL);*/
 	ms_last_packet_sent = ((keep_alive.tv_usec+1000000*keep_alive.tv_sec) / 1000);
 }
 
