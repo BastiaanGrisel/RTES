@@ -1,39 +1,58 @@
 #include <stdio.h>
+#include "types.h"
 
 #define QUEUE_ELEMENTS 100
 #define QUEUE_SIZE (QUEUE_ELEMENTS + 1)
-char fifo_[QUEUE_SIZE];
+char fifo_[QUEUE_ELEMENTS];
 int fifo_in, fifo_out;
 
 void fifo_init(void)
 {
-    fifo_in = fifo_out = 0;
+	fifo_in = fifo_out = 0;
 }
 
-int fifo_put(char c)
+// Add char to queue
+bool fifo_put(char c)
 {
-    if(fifo_in == (( fifo_out - 1 + QUEUE_SIZE) % QUEUE_SIZE)) {
-    	return -1; /* fifo_ Full*/
-    }
+	if(fifo_size() == QUEUE_ELEMENTS)
+		return false;
 
-    fifo_[fifo_in] = c;
-
-    fifo_in = (fifo_in + 1) % QUEUE_SIZE;
-
-    return 0; // No errors
+	fifo_[fifo_in++] = c;
+	return true;
 }
 
-char fifo_get(char *old)
+// pop
+int fifo_get(char *old, bool remove, int n)
 {
-    if(fifo_in == fifo_out) {
-        return -1; /* fifo_ Empty - nothing to get*/
-    }
+	if(fifo_size() == 0)
+		return false;
 
-    *old = fifo_[fifo_out];
+	*old = fifo_[((fifo_out + n) % QUEUE_ELEMENTS)];
 
-    fifo_out = (fifo_out + 1) % QUEUE_SIZE;
+	if(remove)
+		fifo_out++;
 
-    return 0; // No errors
+	return true;
+}
+
+// peek at first char
+char fifo_peek() {
+	char c;
+	fifo_get(&c, false, 0);
+	return c;
+}
+
+char fifo_peek_at(int n) {
+	char c;
+	fifo_get(&c, false, n);
+	return c;
+}
+
+// pop first char
+char fifo_pop() {
+	char c;
+	fifo_get(&c, true, 0);
+	return c;
 }
 
 int fifo_size() {
@@ -41,16 +60,4 @@ int fifo_size() {
 		return fifo_in - fifo_out;
 	else
 		return QUEUE_SIZE + fifo_in - fifo_out;
-}
-
-void fifo_print() {
-	int i = 0;
-	for(i = 0; i < QUEUE_ELEMENTS; i++) {
-		if(i == fifo_in)		
-			printf("(in) ");
-		if(i == fifo_out)
-			printf("(out) ");
-
-		printf("%i\n", fifo_[i]);
-	}
 }
