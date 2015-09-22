@@ -28,7 +28,7 @@
 #define X32_QR_s3 		peripherals[PERIPHERAL_XUFO_S3]
 #define X32_QR_s4 		peripherals[PERIPHERAL_XUFO_S4]
 #define X32_QR_s5 		peripherals[PERIPHERAL_XUFO_S5]
-#define nexys_display peripherals[PERIPHERAL_DISPLAY] //when needed
+#define nexys_display peripherals[0x05] //when needed
 #define X32_QR_timestamp 	peripherals[PERIPHERAL_XUFO_TIMESTAMP]
 
 
@@ -54,6 +54,7 @@ int malloc_memory_size = 1024;
 
 int 	time_at_last_led_switch = 0;
 int X32_ms_last_packet= 2000; //ms of the last received packet. 1s for booting up and starting sending values
+int packet_counter =0, packet_lost_counter =0;
 int	isr_qr_time = 0, isr_qr_counter = 0;
 int 	offset[4];
 int 	R=0, P=0, Y=0, T=0;
@@ -86,9 +87,14 @@ void add_motor_offset(int motor0, int motor1, int motor2, int motor3)
 	offset[3] += motor3;
 }
 
+void update_nexys_display(){
+	nexys_display = packet_counter<<8 + packet_lost_counter; 
+}
+
 void lost_packet()
 {
-	nexys_display = 0x7777; // wrong packet code
+	packet_lost_counter++;
+	update_nexys_display();
 }
 
 /* Reset the offsets.
@@ -182,7 +188,8 @@ void isr_rs232_rx(void)
 	char c;
 	isr_qr_time = X32_us_clock;
 	X32_ms_last_packet= X32_ms_clock; //update the time the last packet was received
-	nexys_display = 0x00;
+	packet_counter++;	
+	update_nexys_display();
 
 	//printf("#");
 	/* handle all bytes, note that the processor will sometimes generate
@@ -429,7 +436,7 @@ int main(void)
 
 	// Main loop
 	while (1) {
-//	   check_alive_connection();
+	   	check_alive_connection();
 		// Turn on the LED corresponding to the mode
 		X32_leds = (1 << mode) & (flicker_slow() << mode);
 

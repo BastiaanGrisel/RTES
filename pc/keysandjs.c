@@ -13,6 +13,7 @@
 #include "joystick.h"
 #include "queue.h"
 #include "checksum.h"
+#include "types.h"
 
 #include <ncurses.h> /*for user key input*/
 
@@ -36,8 +37,8 @@ void init_keyboard(void);
 struct timeval updateFPS(struct timeval oldtime);
 int joystickInit(void);
 void sendKeyData(int c);
-void process_JS_event(int type, int number,int value);
-void sendJSData(int number,int valueInt);
+void save_JS_event(int type, int number,int value);
+void sendJSData();
 void printJSstate(void);
 void send_message(char control, char value);
 
@@ -58,6 +59,7 @@ int fd_RS232, fd_js;
 /* current axis and button readings
  */
 int	axis[6];
+bool axisflags[6];
 int	button[12];
 FILE *log_file;
 char received_chars[QR_INPUT_BUFFERSIZE];
@@ -99,13 +101,14 @@ int main (int argc, char **argv)
 
 		/* Check joystick */
 		if(fd_js>0){
-			if (read(fd_js, &js, sizeof(struct js_event)) ==
+			while (read(fd_js, &js, sizeof(struct js_event)) ==
 				   			sizeof(struct js_event))  {
-				process_JS_event(js.type,js.number,js.value);
+				save_JS_event(js.type,js.number,js.value);
 			}
+			sendJSData();
 		}
 
-   // check_alive_connection();
+   		check_alive_connection();
 
 		/* Check QR to pc communication */
 		if(fd_RS232>0){
@@ -145,14 +148,14 @@ struct timeval updateFPS(struct timeval timeold){
 /* Process a joystick event
  * Author: Henko Aantjes
  */
-void process_JS_event(int type, int number,int value){
+void save_JS_event(int type, int number,int value){
 	switch(type & ~JS_EVENT_INIT) {
 		case JS_EVENT_BUTTON:
 			button[number] = value;
 			break;
 		case JS_EVENT_AXIS:
 			axis[number] = value/256;
-			sendJSData(number,value);
+			axisflags[number] = true;
 			break;
 	}
 }
@@ -247,6 +250,7 @@ void check_alive_connection()
 {
  /*	struct timeval current_time;
 	gettimeofday(&current_time,NULL);*/
+	gettimeofday(&keep_alive,NULL);
 	int current_ms = ((keep_alive.tv_usec+1000000*keep_alive.tv_sec) / 1000);
 	if(current_ms - ms_last_packet_sent > TIMEOUT)
 	{
@@ -261,6 +265,7 @@ void update_time()
 {
 	/* struct timeval current_time;
 	gettimeofday(&current_time,NULL);*/
+	gettimeofday(&keep_alive,NULL);
 	ms_last_packet_sent = ((keep_alive.tv_usec+1000000*keep_alive.tv_sec) / 1000);
 }
 
@@ -277,7 +282,6 @@ void sendKeyData(int c){
 		if(fd_RS232>0){
 			send_message(control, value);
 			//update the last packet timestamp
-      update_time();
 			mvprintw(1,0,"sending: %c%i{%i}\n",control, (int) value, checksum(control,value));
 		}
 		else{
@@ -324,7 +328,6 @@ void sendKeyData(int c){
 
 		if(fd_RS232>0 & value !=0){
 			send_message(control, value);
-			update_time();
 			mvprintw(1,0,"sending: %c%c {%i}\n",control, value, checksum(control,value));
 		}
 		else{
@@ -337,32 +340,36 @@ void sendKeyData(int c){
  * Construct a message and send
  * Author: Henko Aantjes
  */
-void sendJSData(int number,int valueInt){
-	char control, value = (char)(valueInt/256);
-	switch(number){
-		case 0:
-			control = 'R'; // roll
-			break;
-		case 1:
-			control = 'P'; // pitch
-			break;
-		case 2:
-			control = 'Y'; // yaw
-			break;
-		case 3:
-			control = 'T'; // throttle
-			break;
-		default:
-			control = 0;
-			break;
-	}
-	if(fd_RS232>0 & control !=0){
-		send_message(control, value);
-		update_time();
-		printw("sending: %c  %i (%i/256)\n",control, value, valueInt);
-	}
-	else{
-		printw("NOT sending: %c  %c   (RS232 = DISABLED)\n",control, value);
+void sendJSData(){
+	int number, control, value;
+	for(number=0;number<4;number++){
+		if(axisflags[number]){
+			axisflags[number] = false;
+			switch(number){
+				case 0:
+					control = 'R'; // roll
+					break;
+				case 1:
+					control = 'P'; // pitch
+					break;
+				case 2:
+					control = 'Y'; // yaw
+					break;
+				case 3:
+					control = 'T'; // throttle
+					break;
+				default:
+					control = 0;
+					break;
+			}
+			if(fd_RS232>0 & control !=0){
+				send_message(control, value);
+				printw("sending: %c  %i (%i/256)\n",control, value, value*256);
+			}
+			else{
+				printw("NOT sending: %c  %c   (RS232 = DISABLED)\n",control, value);
+			}
+		}
 	}
 }
 
@@ -371,6 +378,7 @@ void send_message(char control, char value){
 	rs232_putchar(control);
 	rs232_putchar(value);
 	rs232_putchar(checksum(control,value));
+	update_time();
 }
 
 void init_log(void){
