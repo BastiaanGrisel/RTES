@@ -48,7 +48,7 @@ int main() {
 	printf("Peek 32: %i\n",fifo_peek_at(&fifo, 1));
 	printf("Size 2: %i\n", fifo_size(&fifo));
 
-	// overflowtest (does not add any elements)
+	// overflowtest (does not add any more elements)
 	printf("Size (2): %i\n", fifo_size(&fifo));
 
 	int j;
@@ -66,6 +66,7 @@ int main() {
 	Fifo fifo2;
 	fifo_init(&fifo);
 	fifo_put(&fifo2, 'b');
+	printf("Pop b: %c\n", fifo_pop(&fifo2));	
 
 	return 1;
 }
