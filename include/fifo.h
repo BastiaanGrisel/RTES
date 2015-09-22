@@ -44,23 +44,17 @@ int fifo_get(Fifo* fifo, char *old, bool remove, int n)
 }
 
 // peek at first char
-char fifo_peek(Fifo* fifo) {
-	char c;
-	fifo_get(fifo, &c, false, 0);
-	return c;
+bool fifo_peek(Fifo* fifo, char *c) {
+	return fifo_get(fifo, c, false, 0);
 }
 
-char fifo_peek_at(Fifo* fifo, int n) {
-	char c;
-	fifo_get(fifo, &c, false, n);
-	return c;
+bool fifo_peek_at(Fifo* fifo, char *c, int n) {
+	return fifo_get(fifo, c, false, n);
 }
 
 // pop first char
-char fifo_pop(Fifo* fifo) {
-	char c;
-	fifo_get(fifo, &c, true, 0);
-	return c;
+bool fifo_pop(Fifo* fifo, char *c) {
+	return fifo_get(fifo, c, true, 0);
 }
 
 int fifo_size(Fifo* fifo) {
