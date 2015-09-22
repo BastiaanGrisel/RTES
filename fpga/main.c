@@ -123,6 +123,14 @@ bool set_mode(int new_mode)
 		for(i = 0; i < 4; i++)
 			if(get_motor_rpm(i) > 0) return false;
 	}
+	
+	if(mode >=MANUAL && new_mode>= MANUAL){
+		return false;
+	}
+
+	if(new_mode>=MANUAL){
+		reset_motors();
+	}
 
 	mode = new_mode;
 	return true;
@@ -285,6 +293,12 @@ int get_motor_rpm(int i) {
 void packet_received(char control, char value) {
 	//printf("Packet Received: %c %c\n#", control, value);
 
+
+	if(mode<MANUAL && control!='M'){
+		printf("Only mode change allowed!\n#");
+		return;
+	}
+	
 	switch(control){
 		case 'M':
 		//	control = control - '0'; //leave this here just for trying with myterm.c when kj.o is not working @Alessio
@@ -370,28 +384,7 @@ void quit()
 bool flicker_slow() { return (X32_ms_clock % 1000 < 200); }
 bool flicker_fast() { return (X32_ms_clock % 100 < 20); }
 
-/*checks if the QR is receiving packet in terms of ms defined by the TIMEOUT variable,
-otherwise panic() is called.
-Author: Alessio
-*/
 
-void check_alive_connection()
-{
-  int current_ms, diff;
-
-	if(X32_ms_last_packet == -1) return; //does not perform the check till a new message arrive
-	current_ms = X32_ms_clock;
-  diff = current_ms - X32_ms_last_packet;
-//	printf("Valori: %d %d\n", current_ms,X32_ms_last_packet);
-//	nexys_display = diff ;
-
-	if(current_ms - X32_ms_last_packet> TIMEOUT )
-	{
-		panic();
-	}
-
-	return;
-}
 
 
 /*Puts the FPGA to sleep performing an active waiting.
@@ -418,8 +411,29 @@ void panic()
 	X32_sleep(1000);
 	reset_motors();
 	nexys_display = 0xc1a0;
-	//quit(); // we need to be able to receive the packets again
-	exit(-1);
+}
+
+/*checks if the QR is receiving packet in terms of ms defined by the TIMEOUT variable,
+otherwise panic() is called.
+Author: Alessio
+*/
+
+void check_alive_connection()
+{
+  int current_ms, diff;
+
+	if(X32_ms_last_packet == -1) return; //does not perform the check till a new message arrive
+	current_ms = X32_ms_clock;
+  diff = current_ms - X32_ms_last_packet;
+//	printf("Valori: %d %d\n", current_ms,X32_ms_last_packet);
+//	nexys_display = diff ;
+
+	if(current_ms - X32_ms_last_packet> TIMEOUT )
+	{
+		panic();
+	}
+
+	return;
 }
 
 
