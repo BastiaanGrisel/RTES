@@ -154,7 +154,11 @@ void save_JS_event(int type, int number,int value){
 			button[number] = value;
 			break;
 		case JS_EVENT_AXIS:
-			axis[number] = value/256;
+			if(number == 3){
+				axis[number] = value/-256 + 127;
+			} else {
+				axis[number] = value/256;
+			}
 			axisflags[number] = true;
 			break;
 	}
@@ -282,7 +286,7 @@ void sendKeyData(int c){
 		if(fd_RS232>0){
 			send_message(control, value);
 			//update the last packet timestamp
-			mvprintw(1,0,"sending: %c%i{%i}\n",control, (int) value, checksum(control,value));
+			mvprintw(1,0,"last mode message: %c%i{%i}\n",control, (int) value, checksum(control,value));
 		}
 		else{
 			mvprintw(1,0,"NOT sending: %c%i   (RS232 = DISABLED)\n",control, (int) value);
@@ -328,7 +332,7 @@ void sendKeyData(int c){
 
 		if(fd_RS232>0 & value !=0){
 			send_message(control, value);
-			mvprintw(1,0,"sending: %c%c {%i}\n",control, value, checksum(control,value));
+			mvprintw(1,0,"last key message: %c%c {%i}\n",control, value, checksum(control,value));
 		}
 		else{
 			mvprintw(1,0,"NOT sending: %c%c %s\n",control, value,value==0?"key = not a control!":"(RS232 = DISABLED)");
@@ -363,11 +367,11 @@ void sendJSData(){
 					break;
 			}
 			if(fd_RS232>0 & control !=0){
-				send_message(control, value);
-				printw("sending: %c  %i (%i/256)\n",control, value, value*256);
+				send_message(control, axis[number]);
+				mvprintw(1,0,"last JS message: %c  %i (%i/256)\n",control, axis[number], axis[number]*256);
 			}
 			else{
-				printw("NOT sending: %c  %c   (RS232 = DISABLED)\n",control, value);
+				mvprintw(1,0,"NOT sending: %c  %c   (RS232 = DISABLED)\n",control, value);
 			}
 		}
 	}

@@ -89,6 +89,7 @@ void add_motor_offset(int motor0, int motor1, int motor2, int motor3)
 
 void update_nexys_display(){
 	nexys_display = packet_counter<<8 + packet_lost_counter;
+	///nexys_display = [debugValue];
 }
 
 void lost_packet()
@@ -304,7 +305,11 @@ void packet_received(char control, char value) {
 			Y = value;
 			break;
 		case 'T':
-			T = value;
+			if(value>=0){
+				T = value;
+			} else {
+				T = 256+value;
+			}
 			break;
 		case 'A':
 			trim(value);
