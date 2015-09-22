@@ -53,7 +53,7 @@ char malloc_memory[1024];
 int malloc_memory_size = 1024;
 
 int 	time_at_last_led_switch = 0;
-int X32_ms_last_packet= 2000; //ms of the last received packet. 1s for booting up and starting sending values
+int X32_ms_last_packet= -1; //ms of the last received packet. 1s for booting up and starting sending values
 int packet_counter =0, packet_lost_counter =0;
 int	isr_qr_time = 0, isr_qr_counter = 0;
 int 	offset[4];
@@ -88,7 +88,7 @@ void add_motor_offset(int motor0, int motor1, int motor2, int motor3)
 }
 
 void update_nexys_display(){
-	nexys_display = packet_counter<<8 + packet_lost_counter; 
+	nexys_display = packet_counter<<8 + packet_lost_counter;
 }
 
 void lost_packet()
@@ -188,7 +188,7 @@ void isr_rs232_rx(void)
 	char c;
 	isr_qr_time = X32_us_clock;
 	X32_ms_last_packet= X32_ms_clock; //update the time the last packet was received
-	packet_counter++;	
+	packet_counter++;
 	update_nexys_display();
 
 	//printf("#");
@@ -374,7 +374,7 @@ void check_alive_connection()
 {
   int current_ms, diff;
 
-	if(X32_ms_last_packet == 2000) return; //does not perform the check till a new message arrive
+	if(X32_ms_last_packet == -1) return; //does not perform the check till a new message arrive
 	current_ms = X32_ms_clock;
   diff = current_ms - X32_ms_last_packet;
 //	printf("Valori: %d %d\n", current_ms,X32_ms_last_packet);
@@ -388,20 +388,32 @@ void check_alive_connection()
 	return;
 }
 
+
+/*Puts the FPGA to sleep performing an active waiting.
+Author: Alessio*/
+void X32_sleep(int millisec)
+{
+	long sleep_ms = X32_ms_clock +  (millisec);
+	while(X32_ms_clock < sleep_ms);
+	return;
+}
+
 /*Set panic mode and provide a soft landing.
 Then resets the motors and quits.
 Author: Alessio */
 void panic()
 {
+	//JUST FOR TESTING, REMEMBER TO PUT IT TO 4-5 sec for self landing :) 
 	set_mode(PANIC);
 	set_motor_rpm(20,20,20,20);
 	X32_leds = 0xFF;
-	sleep(10);
-	X32_leds = 0x00;
-	sleep(2);
+	nexys_display = 0xC000;
+	X32_sleep(1000);
+  nexys_display = 0xC100;
+	X32_sleep(1000);
 	reset_motors();
 	nexys_display = 0xc1a0;
-	//quit();
+	//quit(); // we need to be able to receive the packets again
 	exit(-1);
 }
 
