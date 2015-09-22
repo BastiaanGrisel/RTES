@@ -8,7 +8,7 @@
 #include "x32.h"
 
 #include "types.h"
-#include "queue.h"
+#include "fifo.h"
 #include "checksum.h"
 
 /* define some peripheral short hands
@@ -58,6 +58,7 @@ int packet_counter =0, packet_lost_counter =0;
 int	isr_qr_time = 0, isr_qr_counter = 0;
 int 	offset[4];
 int 	R=0, P=0, Y=0, T=0;
+
 /* filter parameters*/
 int Ybias = 0;
 int filtered_dY = 0; //
@@ -68,7 +69,7 @@ int Y_stabilize;
 
 int	s0, s1, s2, s3, s4, s5;
 void send_logs();
-Queue	pc_msg_q;
+Fifo	pc_msg_q;
 Mode mode = SAFE;
 Loglevel log_level = SENSORS;
 
@@ -212,7 +213,7 @@ void isr_rs232_rx(void)
 
 		//printf("Char received: %c\n",c);
 		// Add the message to the message queue
-		pc_msg_q.push(&pc_msg_q, c);
+		fifo_put(&pc_msg_q, c);
 	}
 
 
@@ -291,14 +292,14 @@ int get_motor_rpm(int i) {
  * Author: Bastiaan
  */
 void packet_received(char control, char value) {
-	//printf("Packet Received: %c %c\n#", control, value);
+	//printf("Packet Received: %c %i\n#", control, value);
 
 
 	if(mode<MANUAL && control!='M'){
 		printf("Only mode change allowed!\n#");
 		return;
 	}
-	
+
 	switch(control){
 		case 'M':
 		//	control = control - '0'; //leave this here just for trying with myterm.c when kj.o is not working @Alessio
@@ -324,6 +325,7 @@ void packet_received(char control, char value) {
 			} else {
 				T = 256+value;
 			}
+			printf("T: %i\n#", T);
 			break;
 		case 'A':
 			trim(value);
@@ -347,7 +349,7 @@ void setup()
 
 	isr_qr_counter = isr_qr_time = 0;
 	offset[0] = offset[1] = offset[2] = offset[3] =0;
-	pc_msg_q = createQueue();
+	fifo_init(&pc_msg_q);
 
 	/* Prepare Interrupts */
 
@@ -474,20 +476,28 @@ int main(void)
 		// Process messages
         	DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
 
-		while(pc_msg_q.size >= 3) { // Check if there are one or more packets in the queue
-			char control  = pc_msg_q.peek(&pc_msg_q, 0);
-			char value    = pc_msg_q.peek(&pc_msg_q, 1);
-			char checksum = pc_msg_q.peek(&pc_msg_q, 2);
+		while(fifo_size(&pc_msg_q) >= 3) { // Check if there are one or more packets in the queue
+			
+			char control;
+			char value;
+			char checksum; 
+
+			fifo_peek_at(&pc_msg_q, &control, 0);
+			fifo_peek_at(&pc_msg_q, &value, 1);
+			fifo_peek_at(&pc_msg_q, &checksum, 2);
 
 			if(!check_packet(control,value,checksum)) {
 				// If the checksum is not correct, pop the first message off the queue and repeat the loop
+				char c;
+				fifo_pop(&pc_msg_q, &c);
+
 				lost_packet();
-				pc_msg_q.pop(&pc_msg_q);
 			} else {
 				// If the checksum is correct, pop the packet off the queue and notify a callback
-				pc_msg_q.pop(&pc_msg_q);
-				pc_msg_q.pop(&pc_msg_q);
-				pc_msg_q.pop(&pc_msg_q);
+				char c;
+				fifo_pop(&pc_msg_q, &c);
+				fifo_pop(&pc_msg_q, &c);
+				fifo_pop(&pc_msg_q, &c);
 
 				packet_received(control,value);
 			}
