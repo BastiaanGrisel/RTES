@@ -11,7 +11,7 @@
 #include <assert.h>
 
 #include "joystick.h"
-#include "queue.h"
+#include "fifo.h"
 #include "checksum.h"
 #include "types.h"
 
@@ -42,8 +42,7 @@ void rs232_open(void);
 void rs232_close(void);
 int rs232_putchar(char c);
 int rs232_getchar_nb(void);
-void parse_QR_input(char rec_c);
-void print_QR_input(void);
+void check_msg_q(void);
 void col_on(int col);
 void col_off(int col);
 void exitmain(void);
@@ -59,6 +58,8 @@ int	button[12];
 FILE *log_file;
 char received_chars[QR_INPUT_BUFFERSIZE];
 int charpos = 0;
+Fifo qr_msg_q;
+
 int loopcount = 0; // to calculate the FPS
 int	ae[4];
 int offset[4];
@@ -108,7 +109,8 @@ int main (int argc, char **argv)
 		/* Check QR to pc communication */
 		if(fd_RS232>0){
 			while ((rec_c = rs232_getchar_nb())!= -1){
-				parse_QR_input(rec_c);
+				fifo_put(&qr_msg_q, rec_c);
+				check_msg_q();
 			}
 		}
 
@@ -329,10 +331,10 @@ void sendKeyData(int c){
 
 		if(fd_RS232>0 & value !=0){
 			send_message(control, value);
-			mvprintw(1,0,"last key message: %c%c {%i}\n",control, value, checksum(control,value));
+			mvprintw(1,0,"last key message: %c%c{%i}   \n",control, value, checksum(control,value));
 		}
 		else{
-			mvprintw(1,0,"NOT sending: %c%c %s\n",control, value,value==0?"key = not a control!":"(RS232 = DISABLED)");
+			mvprintw(1,0,"NOT sending: %c%c %s   \n",control, value,value==0?"key = not a control!":"(RS232 = DISABLED)");
 		}
 	}
 }
@@ -374,7 +376,9 @@ void sendJSData(){
 	}
 }
 
-
+/* send a complete message
+ * Author: Henko Aantjes
+ */
 void send_message(char control, char value){
 	rs232_putchar(control);
 	rs232_putchar(value);
@@ -382,6 +386,9 @@ void send_message(char control, char value){
 	update_time();
 }
 
+/* initialize the log file
+ * Author: Henko Aantjes
+ */
 void init_log(void){
 	log_file = fopen("flight_log.txt", "w");
 	if (log_file == NULL)
@@ -404,34 +411,55 @@ void print_char_to_file(char c){
  * Call parse message if a message is complete
  * Author: Henko Aantjes
  */
-void parse_QR_input(char rec_c){
+void packet_received(char control, char value){
 	int i;
-	int padding = 10;
-	if(rec_c == '#'){
-		print_QR_input();
-		
-		for(i = 0;i<100 & charpos<QR_INPUT_BUFFERSIZE;i++){
-			received_chars[charpos++] = '\n';
-		}
-		charpos = 0;
-	} else{
-		received_chars[charpos++] = rec_c;
-	}
-	if(charpos>=QR_INPUT_BUFFERSIZE){
-		charpos = 0;
+	switch(control){
+		case 'B': // start new qr terminal message
+			charpos = 0;
+			break;
+		case 'T': // characters of the terminal message 
+			if(charpos<QR_INPUT_BUFFERSIZE)
+				received_chars[charpos++]= value;
+			break;
+		case 'F': // finish of the terminal message
+			for(i = 0;i<100 & charpos<QR_INPUT_BUFFERSIZE;i++){
+				received_chars[charpos++] = '\n';
+			}
+			// print the terminal message
+			mvprintw(10,0,"received messages:(X32 -> pc) == {%s}\n", received_chars);
+			break;
+		case 'L':
+			print_char_to_file(value);
+			break;
+		default:
+			break;
 	}
 
-	print_char_to_file(rec_c); // print all incoming info to a logfile
 }
 
-/* Print messages that the QR has send to the pc
- * Author: Henko Aantjes
- */
-void print_QR_input(void){
-	// TODO print ae and offset and maybe more
-	mvprintw(10,0,"received messages:(X32 -> pc) == {%s}\n", received_chars);
-	//mvprintw(13,0,"received messages:(X32 -> pc) \n{%i,%i,%i,%i,%i,%i,%i,%i}\n", received_chars[0],received_chars[1],received_chars[2],received_chars[3],received_chars[4],received_chars[5],received_chars[6],received_chars[7]);
-	//printw("#offset%i%i%i%i\n\n",offset[0]*10,offset[1]*10,offset[2]*10,offset[3]*10);
+void check_msg_q(){
+	char c, control, value, checksum; 
+	
+	while(fifo_size(&qr_msg_q) >= 3) { // Check if there are one or more packets in the queue
+
+
+		fifo_peek_at(&qr_msg_q, &control, 0);
+		fifo_peek_at(&qr_msg_q, &value, 1);
+		fifo_peek_at(&qr_msg_q, &checksum, 2);
+
+		if(!check_packet(control,value,checksum)) {
+			// If the checksum is not correct, pop the first message off the queue and repeat the loop
+			fifo_pop(&qr_msg_q, &c);
+
+		} else {
+			// If the checksum is correct, pop the packet off the queue and notify a callback
+			fifo_pop(&qr_msg_q, &c);
+			fifo_pop(&qr_msg_q, &c);
+			fifo_pop(&qr_msg_q, &c);
+
+			packet_received(control,value);
+		}
+	}
 }
 
 

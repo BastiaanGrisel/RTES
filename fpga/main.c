@@ -67,6 +67,7 @@ Loglevel log_level = SENSORS;
 
 int sensor_log[10000][7];
 int sensor_log_counter = 0;
+char message[100];
 
 /* Add offset to the four motors
  * No need to check for negative numbers since offset can be negative
@@ -117,6 +118,34 @@ void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {
 	X32_QR_a1 = motor1;
 	X32_QR_a2 = motor2;
 	X32_QR_a3 = motor3;
+}
+
+/* send a complete message
+ * Author: Henko Aantjes
+ */
+void send_message(char control, char value){
+	putchar(control);
+	putchar(value);
+	putchar(checksum(control,value));
+}
+
+/* send a sequence of messages, for example: write log or to terminal
+ *
+ */
+void send_long_message(char control, char message[]){
+	int i;
+	for (i = 0; message[i] != 0; i++){
+		send_message(control, message[i]);
+	}
+}
+
+/* send something to the terminal
+ *
+ */
+void send_term_message(char message[]){
+	send_message('B', 'T'); // begin terminal message
+	send_long_message('T', message);
+	send_message('F', 'T'); // end terminal message
 }
 
 /*
@@ -195,17 +224,18 @@ void trim(char c){
 		case 'l':
 			break;
 		case 'm':
-			printf("offset = [%i%i%i%i]\n",offset[0]/10,offset[1]/10,offset[2]/10,offset[3]/10);
-			printf("motor RPM= [%i%i%i%i]\n#",get_motor_rpm(0)/10,get_motor_rpm(1)/10,get_motor_rpm(2)/10,get_motor_rpm(3)/10);
+			sprintf(message, "offset = [%i%i%i%i]\nmotor RPM= [%i%i%i%i]\n",offset[0]/10,offset[1]/10,offset[2]/10,offset[3]/10,get_motor_rpm(0)/10,get_motor_rpm(1)/10,get_motor_rpm(2)/10,get_motor_rpm(3)/10);
+			send_term_message(message);
+			break;
 		case 'f':
-			printf("fix = %i,  Ybias = %i, filtered_dY = %i\n#",Y_stabilize,Ybias, filtered_dY);
+			sprintf(message, "fix = %i,  Ybias = %i, filtered_dY = %i\n#",Y_stabilize,Ybias, filtered_dY);
+			send_term_message(message);
 			break;
 		case 's':
 			sensor_log_counter = 0;
 			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
 			break;
 		default:
-			printf("What happened?");
 			break;
 	}
 }
@@ -223,7 +253,6 @@ void isr_rs232_rx(void)
 	packet_counter++;
 	update_nexys_display();
 
-	//printf("#");
 	/* handle all bytes, note that the processor will sometimes generate
 		* an interrupt while there is no byte available, make sure the handler
 		* checks the state of the com channel before fetching a character from
@@ -233,7 +262,6 @@ void isr_rs232_rx(void)
 	while (X32_rs232_char) {
 		c = X32_rs232_data;
 
-		//printf("Char received: %c\n",c);
 		// Add the message to the message queue
 		fifo_put(&pc_msg_q, c);
 	}
@@ -254,7 +282,7 @@ void isr_qr_link(void)
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
 
 	if(sensor_log_counter < 10000) {
-		sensor_log[sensor_log_counter][0] = X32_QR_timestamp;
+		sensor_log[sensor_log_counter][0] = X32_QR_timestamp/50;
 		sensor_log[sensor_log_counter][1] = s0;
 		sensor_log[sensor_log_counter][2] = s1;
 		sensor_log[sensor_log_counter][3] = s2;
@@ -312,33 +340,33 @@ void send_logs() {
 			char low  =  sensor_log[i][j]       & 0xff;
 			char high = (sensor_log[i][j] >> 8) & 0xff;
 
-			putchar(high);
-			putchar(low);
+			send_message('L',high);
+			send_message('L',low);
 		}
-		putchar('\n');
+		send_message('L',0);
 	}
-	putchar('#');
 }
 
 /* Callback that gets executed when a packet has arrived
  * Author: Bastiaan
  */
 void packet_received(char control, char value) {
-	//printf("Packet Received: %c %i\n#", control, value);
-
-	if(mode<MANUAL && control!='M'){
-		printf("Change mode to operate the QR!\n#");
+	//sprintf(message, "Packet Received: %c %i\n#", control, value);
+	//send_term_message(message);
+	if(mode<MANUAL && (control!='M' && control!= 'A' && control!= 'L')){
+		sprintf(message, "[%c %i] Change mode to operate the QR!\n",control, value);
+		send_term_message(message);
 		return;
 	}
 
 	switch(control){
 		case 'M':
-			if(set_mode(value))
-				printf("Mode succesfully changed. clock = %i, %i\n",X32_QR_timestamp,X32_ms_clock);
-			else
-				printf("Invalid or not permitted mode!\n");
-
-			printf("Control: >%c<, Current Mode: >%i<\n#",control,mode);
+			if(set_mode(value)){
+				sprintf(message, "[%c %i] Succesfully changed to mode: >%i< \n",control, value,mode);
+			} else {
+				sprintf(message, "[%c %i] Invalid or not permitted mode! Current Mode:  >%i< \n",control, value,mode);
+			}
+			send_term_message(message);
 			break;
 		case 'R':
 			R = value;
@@ -430,13 +458,15 @@ void panic() {
 	//JUST FOR TESTING, REMEMBER TO PUT IT TO 4-5 sec for self landing :) 
 	set_mode(PANIC);
 	set_motor_rpm(20,20,20,20);
-	X32_leds = 0xFF;
+	nexys_display = 0x0000;
+	X32_sleep(500);	
 	nexys_display = 0xC000;
 	X32_sleep(1000);
   	nexys_display = 0xC100;
 	X32_sleep(1000);
 	reset_motors();
 	nexys_display = 0xc1a0;
+	X32_sleep(1000);
 }
 
 /* checks if the QR is receiving packet in terms of ms defined by the TIMEOUT variable,
@@ -451,9 +481,6 @@ void check_alive_connection() {
 	current_ms = X32_ms_clock;
 	diff = current_ms - X32_ms_last_packet;
 
-	//	printf("Valori: %d %d\n", current_ms,X32_ms_last_packet);
-	//	nexys_display = diff ;
-
 	if(current_ms - X32_ms_last_packet > TIMEOUT)
 	{
 		panic();
@@ -466,8 +493,6 @@ void check_alive_connection() {
 
 int main(void)
 {
-	//printf("Program started in mode: %d \r\n#", mode);
-
 	setup();
   	nexys_display = 0x00;
 
@@ -503,8 +528,9 @@ int main(void)
 				fifo_pop(&pc_msg_q, &c);
 				fifo_pop(&pc_msg_q, &c);
 				fifo_pop(&pc_msg_q, &c);
-
-				packet_received(control,value);
+				if(control != 0){
+					packet_received(control,value);
+				}
 			}
 		}
 
