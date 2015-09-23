@@ -62,8 +62,8 @@ int 	R=0, P=0, Y=0, T=0;
 /* filter parameters*/
 int	Ybias = 0;
 int 	filtered_dY = 0; //
-int 	Y_BIAS_UPDATE = 13; // update bias each sample with a fraction of 1/2^13
-int 	Y_FILTER = 3; // simple filter that updates 1/2^Y_filter
+int 	Y_BIAS_UPDATE = 14; // update bias each sample with a fraction of 1/2^13
+int 	Y_FILTER = 4; // simple filter that updates 1/2^Y_filter
 int 	P_yaw=4; // P = 2^4     Y_TO_ENGINE_SCALE
 int 	Y_stabilize;
 
@@ -121,15 +121,14 @@ bool set_mode(int new_mode)
 		// If at least one of the motor's RPM is not zero, return false
 		int i;
 		for(i = 0; i < 4; i++)
-			if(get_motor_rpm(i) > 0) return false;
+			if(get_motor_rpm(i) > 0) 
+				return false;
+		
+		reset_motors();
 	}
 	
 	if(mode >=MANUAL && new_mode>= MANUAL){
 		return false;
-	}
-
-	if(new_mode>=MANUAL){
-		reset_motors();
 	}
 
 	mode = new_mode;
@@ -176,14 +175,21 @@ void trim(char c){
 			P_yaw--;
 			break;
 		case 'i':
+			break;
 		case 'k':
-			printf("fix = %i,  Ybias = %i, filtered_dY = %i\n#",Y_stabilize,Ybias, filtered_dY);
 			break;
 		case 'o':
+			break;
 		case 'l':
-		default:
+			break;
+		case 'm':
 			printf("offset = [%i%i%i%i]\n",offset[0]/10,offset[1]/10,offset[2]/10,offset[3]/10);
 			printf("motor RPM= [%i%i%i%i]\n#",get_motor_rpm(0)/10,get_motor_rpm(1)/10,get_motor_rpm(2)/10,get_motor_rpm(3)/10);
+		case 'f':
+			printf("fix = %i,  Ybias = %i, filtered_dY = %i\n#",Y_stabilize,Ybias, filtered_dY);
+			break;
+		default:
+			printf("What happened?")
 			break;
 	}
 }

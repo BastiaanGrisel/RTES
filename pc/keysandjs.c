@@ -318,6 +318,8 @@ void sendKeyData(int c){
 			case 'i':
 			case 'k':
 			case 'o':
+			case 'm': // get motor values
+			case 'f': // get filter values
 			case 'r':
 				value = c;
 				break;
