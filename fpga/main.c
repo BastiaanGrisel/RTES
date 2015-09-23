@@ -188,6 +188,10 @@ void trim(char c){
 		case 'f':
 			printf("fix = %i,  Ybias = %i, filtered_dY = %i\n#",Y_stabilize,Ybias, filtered_dY);
 			break;
+		case 's':
+			sensor_log_counter = 0;
+			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
+			break;
 		default:
 			printf("What happened?")
 			break;
@@ -248,13 +252,24 @@ void isr_qr_link(void)
 		sensor_log_counter++;
 	}
 
+	
+	/*YAW_CALCULATIONS*/
+	dY 		= (s5 << Y_BIAS_UPDATE) - Ybias; 		// dY is now scaled up with Y_BIAS_UPDATE
+	Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5; 		// update Ybias with 1/2^Y_BIAS_UPDATE each sample
+	filtered_dY 	+= -1 * (filtered_dY << Y_FILTER) + dY; 	// filter dY
+	//Y +=filtered_dY;						// integrate dY to get yaw (but if I remem correct then we need the rate not the yaw)
+	Y_stabilize 	= (0 - filtered_dY) << (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
 	if(mode == YAW_CONTROL) {
-
-		dY 		= (s5 << Y_BIAS_UPDATE) - Ybias; 		// dY is now scaled up with Y_BIAS_UPDATE
-		Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5; 		// update Ybias with 1/2^Y_BIAS_UPDATE each sample
-		filtered_dY 	+= -1 * (filtered_dY << Y_FILTER) + dY; 	// filter dY
-		//Y +=filtered_dY;						// integrate dY to get yaw (but if I remem correct then we need the rate not the yaw)
-		Y_stabilize 	= (0 - filtered_dY) << (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
+		
+	}
+	
+	if(mode >=MANUAL){
+	// Calculate motor RPM
+	set_motor_rpm(
+		offset[0] + T  +P+Y,
+		offset[1] + T-R  -Y,
+		offset[2] + T  -P+Y,
+		offset[3] + T+R  -Y);
 	}
 
 	isr_qr_time = X32_us_clock - isr_qr_time; // why does this happen here and also at the end of the other ISR?
@@ -465,8 +480,8 @@ int main(void)
 		// Ping the PC
 	   	check_alive_connection();
 
-		// Turn on the LED corresponding to the mode
-		X32_leds = (1 << mode) & (flicker_slow() << mode);
+		// Turn on the LED corresponding to the mode and don't change led 6 and 7
+		X32_leds = ((flicker_slow()?1:0) << mode)) | (X32_leds & 0xC0);
 
 		// Process messages
         	DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
@@ -499,16 +514,9 @@ int main(void)
 
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
 
-		// Calculate motor RPM
-		set_motor_rpm(
-			offset[0] + T  +P+Y,
-			offset[1] + T-R  -Y,
-			offset[2] + T  -P+Y,
-			offset[3] + T+R  -Y);
-
-		// Send the sensor values
+		// give a signal when sensors are ready
 		if(sensor_log_counter >= 10000) {
-			X32_leds = X32_leds | 10000000;
+			X32_leds = X32_leds | 0x90; // 1000000 = enable led 7
 		}
 	}
 

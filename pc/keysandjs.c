@@ -405,42 +405,6 @@ void print_char_to_file(char c){
 	fprintf(log_file,"%i ",c);
 }
 
-/* Parse QR message and
- * Author: Henko Aantjes
- */
-void parse_QR_message(int size){
-	int message_number = 0;
-	int mOffs = 0;
-	while(size-mOffs>0){ // if size == 0 then 0%MESSAGESIZE will give a nasty exception
-		if((size-mOffs)%MESSAGESIZE==0){
-
-			//TODO check checksum
-			switch(received_chars[0+mOffs]){
-				case '\xFE':
-					offset[0]=received_chars[1+mOffs];
-					offset[1]=received_chars[2+mOffs];
-					offset[2]=received_chars[3+mOffs];
-					offset[3]=received_chars[4+mOffs];
-
-				break;
-				case '\xFF':
-					ae[0]=received_chars[1+mOffs];
-					ae[1]=received_chars[2+mOffs];
-					ae[2]=received_chars[3+mOffs];
-					ae[3]=received_chars[4+mOffs];
-
-				break;
-				default:
-				break;
-
-			}
-			mOffs += MESSAGESIZE;
-		} else {
-			break;
-		}
-	}
-}
-
 /* Parse the QR input (one char at the time)
  * Call parse message if a message is complete
  * Author: Henko Aantjes
@@ -450,7 +414,7 @@ void parse_QR_input(char rec_c){
 	int padding = 10;
 	if(rec_c == '#'){
 		print_QR_input();
-		//parse_QR_message(charpos);
+		
 		for(i = 0;i<100 & charpos<QR_INPUT_BUFFERSIZE;i++){
 			received_chars[charpos++] = '\n';
 		}
