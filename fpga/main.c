@@ -37,13 +37,6 @@
 #define X32_rs232_char		(X32_rs232_stat & 0x02)
 #define X32_rs232_write		(X32_rs232_stat & 0x01)
 
-/* User defines
- */
-#define LEFT_CHAR 'f'
-#define RIGHT_CHAR 'h'
-#define UP_CHAR 't'
-#define DOWN_CHAR 'g'
-
 #define OFFSET_STEP 10
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
 
@@ -105,6 +98,25 @@ void reset_motors()
 {
 	offset[0] = offset[1] = offset[2] = offset[3] = 0;
 	R = P = Y = T = 0;
+}
+
+void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {
+	/* TODO: Arguments should be floats if we have them
+	 * Clip engine values to be positive and 10 bits.
+	 */
+	motor0 = (motor0 < 0 ? 0 : motor0) & 0x3ff;
+	motor1 = (motor1 < 0 ? 0 : motor1) & 0x3ff;
+	motor2 = (motor2 < 0 ? 0 : motor2) & 0x3ff;
+	motor3 = (motor3 < 0 ? 0 : motor3) & 0x3ff;
+
+	/* Send actuator values
+	 * (Need to supply a continous stream, otherwise
+	 * QR will go to safe mode, so just send every ms)
+	 */
+	X32_QR_a0 = motor0;
+	X32_QR_a1 = motor1;
+	X32_QR_a2 = motor2;
+	X32_QR_a3 = motor3;
 }
 
 /*
@@ -193,7 +205,7 @@ void trim(char c){
 			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
 			break;
 		default:
-			printf("What happened?")
+			printf("What happened?");
 			break;
 	}
 }
@@ -275,24 +287,6 @@ void isr_qr_link(void)
 	isr_qr_time = X32_us_clock - isr_qr_time; // why does this happen here and also at the end of the other ISR?
 }
 
-void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {
-	/* TODO: Arguments should be floats if we have them
-	 * Clip engine values to be positive and 10 bits.
-	 */
-	motor0 = (motor0 < 0 ? 0 : motor0) & 0x3ff;
-	motor1 = (motor1 < 0 ? 0 : motor1) & 0x3ff;
-	motor2 = (motor2 < 0 ? 0 : motor2) & 0x3ff;
-	motor3 = (motor3 < 0 ? 0 : motor3) & 0x3ff;
-
-	/* Send actuator values
-	 * (Need to supply a continous stream, otherwise
-	 * QR will go to safe mode, so just send every ms)
-	 */
-	X32_QR_a0 = motor0;
-	X32_QR_a1 = motor1;
-	X32_QR_a2 = motor2;
-	X32_QR_a3 = motor3;
-}
 
 /* Gets the RPM of a certain motor.
  * Author: Bastiaan
@@ -305,6 +299,25 @@ int get_motor_rpm(int i) {
 		case 3: return X32_QR_a3;
 		default: return 0;
 	}
+}
+
+/* Send over the logs that are stored in 'sensor_log'
+ */
+void send_logs() {
+	int i;
+	int j;
+
+	for(i = 0; i < 10000; i++) {
+		for(j = 0; j < 7; j++) {
+			char low  =  sensor_log[i][j]       & 0xff;
+			char high = (sensor_log[i][j] >> 8) & 0xff;
+
+			putchar(high);
+			putchar(low);
+		}
+		putchar('\n');
+	}
+	putchar('#');
 }
 
 /* Callback that gets executed when a packet has arrived
@@ -449,24 +462,7 @@ void check_alive_connection() {
 	return;
 }
 
-/* Send over the logs that are stored in 'sensor_log'
- */
-void send_logs() {
-	int i;
-	int j;
 
-	for(i = 0; i < 10000; i++) {
-		for(j = 0; j < 7; j++) {
-			char low  =  sensor_log[i][j]       & 0xff;
-			char high = (sensor_log[i][j] >> 8) & 0xff;
-
-			putchar(high);
-			putchar(low);
-		}
-		putchar('\n');
-	}
-	putchar('#');
-}
 
 int main(void)
 {
@@ -481,7 +477,7 @@ int main(void)
 	   	check_alive_connection();
 
 		// Turn on the LED corresponding to the mode and don't change led 6 and 7
-		X32_leds = ((flicker_slow()?1:0) << mode)) | (X32_leds & 0xC0);
+		X32_leds = ((flicker_slow()?1:0) << mode) | (X32_leds & 0xC0);
 
 		// Process messages
         	DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue

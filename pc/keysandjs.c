@@ -25,12 +25,7 @@
 #define USB_DEVICE1	"/dev/ttyUSB1"
 #define WIFI_DEVICE 	"/dev/ttyUSB0" /* may need to change this */
 
-#define LEFT_CHAR 'f'
-#define RIGHT_CHAR 'h'
-#define UP_CHAR 't'
-#define DOWN_CHAR 'g'
 #define QR_INPUT_BUFFERSIZE 1000
-#define MESSAGESIZE 5
 #define TIMEOUT 150 //ms
 
 void init_keyboard(void);
