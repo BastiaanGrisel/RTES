@@ -344,7 +344,12 @@ void send_logs() {
 			send_message('L',low);
 		}
 		send_message('L',0);
+		if(i%100==99){
+			sprintf(message, "%i",i/100+1);
+			send_term_message(message);
+		}
 	}
+	send_term_message("LOGGING COMPLETED");
 }
 
 /* Callback that gets executed when a packet has arrived
@@ -387,7 +392,8 @@ void packet_received(char control, char value) {
 			trim(value);
 			break;
 		case 'L':
-			send_logs();
+			if(mode == SAFE)
+				send_logs();
 			break;
 		default:
 			break;

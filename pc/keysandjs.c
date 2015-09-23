@@ -59,6 +59,7 @@ FILE *log_file;
 char received_chars[QR_INPUT_BUFFERSIZE];
 int charpos = 0;
 Fifo qr_msg_q;
+int packet_counter=0;
 
 int loopcount = 0; // to calculate the FPS
 int	ae[4];
@@ -111,6 +112,7 @@ int main (int argc, char **argv)
 			while ((rec_c = rs232_getchar_nb())!= -1){
 				fifo_put(&qr_msg_q, rec_c);
 				check_msg_q();
+				mvprintw(9,0,"# packets: %i",packet_counter++);
 			}
 		}
 
@@ -421,12 +423,9 @@ void packet_received(char control, char value){
 			if(charpos<QR_INPUT_BUFFERSIZE)
 				received_chars[charpos++]= value;
 			break;
-		case 'F': // finish of the terminal message
-			for(i = 0;i<100 & charpos<QR_INPUT_BUFFERSIZE;i++){
-				received_chars[charpos++] = '\n';
-			}
+		case 'F': 
 			// print the terminal message
-			mvprintw(10,0,"received messages:(X32 -> pc) == {%s}\n", received_chars);
+			mvprintw(10,0,"received messages:(X32 -> pc) == {%.*s}         \n\n\n\n", charpos, received_chars);
 			break;
 		case 'L':
 			print_char_to_file(value);
