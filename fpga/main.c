@@ -156,23 +156,30 @@ void send_term_message(char message[]){
  */
 bool set_mode(int new_mode)
 {
-	if(new_mode < SAFE || new_mode > FULL_CONTROL) return false;
+	if(new_mode < SAFE || new_mode > FULL_CONTROL) {
+		sprintf(message, "[M %i]= invalid mode, current mode =>%i< ", new_mode,mode);
+		return false;
+	}
 
 	if(new_mode >= MANUAL) {
 		// If at least one of the motor's RPM is not zero, return false
 		int i;
 		for(i = 0; i < 4; i++)
-			if(get_motor_rpm(i) > 0) 
+			if(get_motor_rpm(i) > 0) {
+				sprintf(message, "[M %i]=not allowed! Motors are turning! motor RPM= [%i%i%i%i] ", new_mode,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
 				return false;
+			}
 		
 		reset_motors();
 	}
 	
 	if(mode >=MANUAL && new_mode>= MANUAL){
+		sprintf(message, "[M %i]= invalid mode change (first go to SAFE mode), current mode =>%i< ", new_mode,mode);
 		return false;
 	}
-
 	mode = new_mode;
+	sprintf(message, "[M %i] Succesfully changed to mode:>%i< ", new_mode,mode);
+	
 	return true;
 }
 
@@ -366,11 +373,7 @@ void packet_received(char control, char value) {
 
 	switch(control){
 		case 'M':
-			if(set_mode(value)){
-				sprintf(message, "[%c %i] Succesfully changed to mode: >%i< \n",control, value,mode);
-			} else {
-				sprintf(message, "[%c %i] Invalid or not permitted mode! Current Mode:  >%i< \n",control, value,mode);
-			}
+			set_mode(value);
 			send_term_message(message);
 			break;
 		case 'R':
