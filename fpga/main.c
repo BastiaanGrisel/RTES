@@ -43,8 +43,6 @@
 
 /* Define global variables
  */
-char malloc_memory[1024];
-int malloc_memory_size = 1024;
 
 int 	time_at_last_led_switch = 0;
 int 	X32_ms_last_packet= -1; //ms of the last received packet. 1s for booting up and starting sending values
@@ -59,16 +57,24 @@ int 	filtered_dY = 0; //
 int 	Y_BIAS_UPDATE = 14; // update bias each sample with a fraction of 1/2^13
 int 	Y_FILTER = 4; // simple filter that updates 1/2^Y_filter
 int 	P_yaw=4; // P = 2^4     Y_TO_ENGINE_SCALE
+int 	P_roll=4;
+int 	P_pitch=4;
 int 	Y_stabilize;
 
+/* sensor values */
 int	s0, s1, s2, s3, s4, s5;
-Fifo	pc_msg_q;
+int sensor_log[LOG_SIZE][7];
+int sensor_log_counter = 0;
+
+Fifo	pc_msg_q; // message que received from pc
+char message[100]; // message to send to pc-terminal
+
 Mode	mode = SAFE;
 Loglevel log_level = SENSORS;
 
-int sensor_log[LOG_SIZE][7];
-int sensor_log_counter = 0;
-char message[100];
+/* function declarations TODO put this in header */
+void panic(void);
+void send_logs(void);
 
 /* Add offset to the four motors
  * No need to check for negative numbers since offset can be negative
@@ -93,16 +99,6 @@ void lost_packet()
 	update_nexys_display();
 }
 
-/* Reset the offsets.
-   Author: Alessio
-*/
-void reset_motors()
-{
-	offset[0] = offset[1] = offset[2] = offset[3] = 0;
-	R = P = Y = T = 0;
-	set_motor_rpm(0,0,0,0);
-}
-
 void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {
 	/* TODO: Arguments should be floats if we have them
 	 * Clip engine values to be positive and 10 bits.
@@ -121,6 +117,18 @@ void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {
 	X32_QR_a2 = motor2;
 	X32_QR_a3 = motor3;
 }
+
+/* Reset the offsets.
+   Author: Alessio
+*/
+void reset_motors()
+{
+	offset[0] = offset[1] = offset[2] = offset[3] = 0;
+	R = P = Y = T = 0;
+	set_motor_rpm(0,0,0,0);
+}
+
+
 
 void init_array()
 {
@@ -146,6 +154,13 @@ void send_message(char control, char value){
 	putchar(checksum(control,value));
 }
 
+/* send a message that doesn't need a value
+ * Author: Henko Aantjes
+ */
+void send_control_message(char control){
+	send_message(control, NOT_IMPORTANT);
+}
+
 /* send a sequence of messages, for example: write log or to terminal
  *
  */
@@ -160,9 +175,9 @@ void send_long_message(char control, char message[]){
  *
  */
 void send_term_message(char message[]){
-	send_message('B', 'T'); // begin terminal message
-	send_long_message('T', message);
-	send_message('F', 'T'); // end terminal message
+	send_control_message(TERMINAL_MSG_START); // begin terminal message
+	send_long_message(TERMINAL_MSG_PART, message);
+	send_control_message(TERMINAL_MSG_FINISH); // end terminal message
 }
 
 /*
@@ -225,42 +240,54 @@ void trim(char c){
 		case PITCH_UP: // pitch up
 			add_motor_offset(+OFFSET_STEP, 0, -OFFSET_STEP, 0);
 			break;
-		case 'q': // yaw left
+		case YAW_LEFT: // yaw left
 			add_motor_offset(-OFFSET_STEP, +OFFSET_STEP, -OFFSET_STEP, +OFFSET_STEP);
 			break;
-		case 'w': // yaw right
+		case YAW_RIGHT: // yaw right
 			add_motor_offset(+OFFSET_STEP, -OFFSET_STEP, +OFFSET_STEP, -OFFSET_STEP);
 			break;
-		case 'r': //reset
-			reset_motors();
-			break;
-		case 'u':
+		case P_YAW_UP:
 			P_yaw++;
 			break;
-		case 'j':
+		case P_YAW_DOWN:
 			P_yaw--;
 			break;
-		case 'i':
+		case P_ROLL_UP:
 			break;
-		case 'k':
+		case P_ROLL_DOWN:
 			break;
-		case 'o':
+		case P_PITCH_UP:
 			break;
-		case 'l':
+		case P_PITCH_DOWN:
 			break;
-		case 'm':
+		default:
+			break;
+	}
+}
+
+void special_request(char request){
+	switch(request){
+		case ESCAPE:
+			panic();
+			break;
+		case ASK_MOTOR_RPM:
 			sprintf(message, "offset = [%i%i%i%i]\nmotor RPM= [%i%i%i%i]\n",offset[0],offset[1],offset[2],offset[3],get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
 			send_term_message(message);
 			break;
-		case 'f':
+		case ASK_FILTER_PARAM:
 			sprintf(message, "Y_stabilize = %i,  Ybias = %i, filtered_dY = %i\n#",Y_stabilize,Ybias, filtered_dY);
 			send_term_message(message);
 			break;
-		case 's':
+		case RESET_SENSOR_LOG:
 			sensor_log_counter = 0;
 			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
 			break;
-		default:
+		case ASK_SENSOR_LOG:
+			if(mode==SAFE)
+				send_logs();
+			break;
+		case RESET_MOTORS: //reset
+			reset_motors();
 			break;
 	}
 }
@@ -360,7 +387,7 @@ void send_logs() {
 	int i;
 	int j;
 
-	for(i = 0; i < 10000; i++) {
+	for(i = 0; i < LOG_SIZE; i++) {
 		for(j = 0; j < 7; j++) {
 			char low  =  sensor_log[i][j]       & 0xff;
 			char high = (sensor_log[i][j] >> 8) & 0xff;
@@ -369,9 +396,9 @@ void send_logs() {
 			send_message('L',low);
 		}
 
-		send_message('L','~');
+		send_control_message(LOG_MSG_NEW_LINE);
 
-		if(i%100==99){
+		if(i%(LOG_SIZE/100)==(LOG_SIZE/100)-1){
 			sprintf(message, "%i",i/100+1);
 			send_term_message(message);
 		}
@@ -392,31 +419,30 @@ void packet_received(char control, char value) {
 	}
 
 	switch(control){
-		case 'M':
+		case MODE_CHANGE:
 			set_mode(value);
 			send_term_message(message);
 			break;
-		case 'R':
+		case JS_ROLL:
 			R = value;
 			break;
-		case 'P':
+		case JS_PITCH:
 			P = value;
 			break;
-		case 'Y':
+		case JS_YAW:
 			Y = value;
 			break;
-		case 'T':
+		case JS_LIFT:
 			if(value >= 0)
 				T = value;
 			else
 				T = 256 + value;
 			break;
-		case 'A':
+		case ADJUST:
 			trim(value);
 			break;
-		case 'L':
-			if(mode == SAFE)
-				send_logs();
+		case SPECIAL_REQUEST:
+			special_request(value);
 			break;
 		default:
 			break;

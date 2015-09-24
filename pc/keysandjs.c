@@ -283,8 +283,8 @@ void update_time()
  * Author: Henko Aantjes
  */
 void sendKeyData(int c){
-	char control, value; // the control and value to send
-	if(c >= '0' && c<='5'){
+	char control, value =0; // the control and value to send
+	if(c >= '0' && c<='5'){ //TODO mode change allowed?
 		value = (char) c-'0';
 		control = 'M';
 		if(fd_RS232>0){
@@ -312,24 +312,55 @@ void sendKeyData(int c){
 			case KEY_DOWN:
 				value = PITCH_UP;
 				break;
-			case 27: // ESCAPE
 			case 'a':
+				value = LIFT_UP;
+				break;
 			case 'z':
+				value = LIFT_DOWN;
+				break;
 			case 'q':
+				value = YAW_LEFT;
+				break;
 			case 'w':
+				value = YAW_RIGHT;
+				break;
 			case 'u':
+				value = P_YAW_UP;
+				break;
 			case 'j':
+				value = P_YAW_DOWN;
+				break;
 			case 'i':
+				value = P_ROLL_UP;
+				break;
 			case 'k':
+				value = P_ROLL_DOWN;
+				break;
 			case 'o':
-			case 'm': // get motor values
-			case 'f': // get filter values
-			case 'r':
-				value = c;
+				value = P_PITCH_UP;
 				break;
 			case 'l':
-				control = 'L';
-				value = c;
+				value = P_PITCH_DOWN;
+				break;
+			case 'm':
+				control = SPECIAL_REQUEST;
+				value = ASK_MOTOR_RPM;
+				break; 
+			case 'f': 
+				control = SPECIAL_REQUEST;
+				value = ASK_FILTER_PARAM;
+				break; 
+			case 'r':
+				control = SPECIAL_REQUEST;
+				value = RESET_MOTORS;
+				break;
+			case 's':
+				control = SPECIAL_REQUEST;
+				value = RESET_SENSOR_LOG;
+				break;
+			case ESCAPE: // ESCAPEKEY
+				control = SPECIAL_REQUEST;
+				value = ESCAPE;
 				break;
 			default:
 				value = 0;
@@ -357,16 +388,16 @@ struct timeval sendJSData(struct timeval last_packet_time){
 		if(axisflags[number]){
 			switch(number){
 				case 0:
-					control = 'R'; // roll
+					control = JS_ROLL; // roll
 					break;
 				case 1:
-					control = 'P'; // pitch
+					control = JS_PITCH; // pitch
 					break;
 				case 2:
-					control = 'Y'; // yaw
+					control = JS_YAW; // yaw
 					break;
 				case 3:
-					control = 'T'; // throttle
+					control = JS_LIFT; // throttle
 					break;
 				default:
 					control = 0;
@@ -462,20 +493,22 @@ void print_char_to_file(char c){
 void packet_received(char control, char value){
 	int i;
 	switch(control){
-		case 'B': // start new qr terminal message
+		case TERMINAL_MSG_START: // start new qr terminal message
 			charpos = 0;
 			break;
-		case 'T': // characters of the terminal message
+		case TERMINAL_MSG_PART: // characters of the terminal message
 			if(charpos<QR_INPUT_BUFFERSIZE)
 				received_chars[charpos++]= value;
 			break;
-		case 'F':
+		case TERMINAL_MSG_FINISH:
 			// print the terminal message
 			mvprintw(10,0,"received messages:(X32 -> pc) == {%.*s}         \n\n\n\n", charpos, received_chars);
 			break;
-		case 'L':
-		  print_value_to_file(value);
+		case LOG_MSG_PART:
+			print_value_to_file(value);
 			break;
+		case LOG_MSG_NEW_LINE:
+			fprintf(log_file,"\n");
 		default:
 			break;
 	}
