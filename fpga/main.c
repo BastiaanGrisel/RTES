@@ -305,7 +305,7 @@ void isr_qr_link(void)
 	Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5; 		// update Ybias with 1/2^Y_BIAS_UPDATE each sample
 	filtered_dY 	+= -1 * (filtered_dY << Y_FILTER) + dY; 	// filter dY
 	//Y +=filtered_dY;						// integrate dY to get yaw (but if I remem correct then we need the rate not the yaw)
-	Y_stabilize 	= (0 - filtered_dY) << (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
+	Y_stabilize 	= (0 - filtered_dY) >> (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
 	if(mode == YAW_CONTROL) {
 		
 	}
