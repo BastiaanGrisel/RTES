@@ -33,7 +33,7 @@ struct timeval updateFPS(struct timeval oldtime);
 int joystickInit(void);
 void sendKeyData(int c);
 void save_JS_event(int type, int number,int value);
-void sendJSData();
+struct timeval sendJSData(struct timeval packet_time);
 void printJSstate(void);
 void send_message(char control, char value);
 
@@ -75,7 +75,7 @@ int main (int argc, char **argv)
 	struct js_event js;
 	int i;
 	int c, last_c;
-	struct timeval time;
+	struct timeval time, last_packet_time;
 	char rec_c;
 
 	// init
@@ -86,6 +86,7 @@ int main (int argc, char **argv)
 	init_log();
 	gettimeofday(&time,NULL);
 	gettimeofday(&keep_alive,NULL);
+	gettimeofday(&last_packet_time,NULL);
 
 	/* Main loop to process/send user input and to show QR input */
 	while (1) {
@@ -102,7 +103,7 @@ int main (int argc, char **argv)
 				   			sizeof(struct js_event))  {
 				save_JS_event(js.type,js.number,js.value);
 			}
-			sendJSData();
+			last_packet_time = sendJSData(last_packet_time);
 		}
 
    		check_alive_connection();
@@ -296,16 +297,16 @@ void sendKeyData(int c){
 
 		switch(c){
 			case KEY_LEFT:
-				value = LEFT_CHAR;
+				value = ROLL_LEFT;
 				break;
 			case KEY_RIGHT:
-				value = RIGHT_CHAR;
+				value = ROLL_RIGHT;
 				break;
 			case KEY_UP:
-				value = UP_CHAR;
+				value = PITCH_DOWN;
 				break;
 			case KEY_DOWN:
-				value = DOWN_CHAR;
+				value = PITCH_UP;
 				break;
 			case 27: // ESCAPE
 			case 'a':
@@ -345,11 +346,11 @@ void sendKeyData(int c){
  * Construct a message and send
  * Author: Henko Aantjes
  */
-void sendJSData(){
+struct timeval sendJSData(struct timeval last_packet_time){
+	struct timeval timenew;
 	int number, control, value;
 	for(number=0;number<4;number++){
 		if(axisflags[number]){
-			axisflags[number] = false;
 			switch(number){
 				case 0:
 					control = 'R'; // roll
@@ -368,8 +369,17 @@ void sendJSData(){
 					break;
 			}
 			if(fd_RS232>0 & control !=0){
-				send_message(control, axis[number]);
-				mvprintw(1,0,"last JS message: %c  %i (%i/256)\n",control, axis[number], axis[number]*256);
+				gettimeofday(&timenew,NULL);
+				int timediff = timenew.tv_usec+1000000*timenew.tv_sec-last_packet_time.tv_usec-1000000*last_packet_time.tv_sec;
+				if(timediff<1000*10){
+					mvprintw(2,0,"timediff is to low: ", timediff);
+					return last_packet_time;
+				} else {
+					axisflags[number] = false;
+					send_message(control, axis[number]);
+					mvprintw(1,0,"last JS message: %c  %i (%i/256)\n",control, axis[number], axis[number]*256);
+					return timenew;
+				}
 			}
 			else{
 				mvprintw(1,0,"NOT sending: %c  %c   (RS232 = DISABLED)\n",control, value);

@@ -195,16 +195,16 @@ void trim(char c){
 		case 'z': // throttle down
 			add_motor_offset(-OFFSET_STEP, -OFFSET_STEP, -OFFSET_STEP, -OFFSET_STEP);
 			break;
-		case LEFT_CHAR: // roll left
+		case ROLL_LEFT: // roll left
 			add_motor_offset(0, +OFFSET_STEP, 0, -OFFSET_STEP);
 			break;
-		case RIGHT_CHAR: // roll right
+		case ROLL_RIGHT: // roll right
 			add_motor_offset(0, -OFFSET_STEP, 0, +OFFSET_STEP);
 			break;
-		case UP_CHAR: // pitch up
+		case PITCH_DOWN: // pitch down
 			add_motor_offset(-OFFSET_STEP, 0, +OFFSET_STEP, 0);
 			break;
-		case DOWN_CHAR: // pitch down
+		case PITCH_UP: // pitch up
 			add_motor_offset(+OFFSET_STEP, 0, -OFFSET_STEP, 0);
 			break;
 		case 'q': // yaw left
@@ -231,11 +231,11 @@ void trim(char c){
 		case 'l':
 			break;
 		case 'm':
-			sprintf(message, "offset = [%i%i%i%i]\nmotor RPM= [%i%i%i%i]\n",offset[0]/10,offset[1]/10,offset[2]/10,offset[3]/10,get_motor_rpm(0)/10,get_motor_rpm(1)/10,get_motor_rpm(2)/10,get_motor_rpm(3)/10);
+			sprintf(message, "offset = [%i%i%i%i]\nmotor RPM= [%i%i%i%i]\n",offset[0],offset[1],offset[2],offset[3],get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
 			send_term_message(message);
 			break;
 		case 'f':
-			sprintf(message, "fix = %i,  Ybias = %i, filtered_dY = %i\n#",Y_stabilize,Ybias, filtered_dY);
+			sprintf(message, "Y_stabilize = %i,  Ybias = %i, filtered_dY = %i\n#",Y_stabilize,Ybias, filtered_dY);
 			send_term_message(message);
 			break;
 		case 's':
@@ -303,7 +303,7 @@ void isr_qr_link(void)
 	/*YAW_CALCULATIONS*/
 	dY 		= (s5 << Y_BIAS_UPDATE) - Ybias; 		// dY is now scaled up with Y_BIAS_UPDATE
 	Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5; 		// update Ybias with 1/2^Y_BIAS_UPDATE each sample
-	filtered_dY 	+= -1 * (filtered_dY << Y_FILTER) + dY; 	// filter dY
+	filtered_dY 	+= -1 * (filtered_dY >> Y_FILTER) + dY; 	// filter dY
 	//Y +=filtered_dY;						// integrate dY to get yaw (but if I remem correct then we need the rate not the yaw)
 	Y_stabilize 	= (0 - filtered_dY) >> (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
 	if(mode == YAW_CONTROL) {
