@@ -521,8 +521,8 @@ void check_alive_connection() {
 int main(void)
 {
 	setup();
-	init_array(); //for testing the logging output
-  nexys_display = 0x00;
+	//init_array(); //for testing the logging output
+  	nexys_display = 0x00;
 
 	// Main loop
 	while (1) {
