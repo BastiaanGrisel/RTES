@@ -93,16 +93,6 @@ void lost_packet()
 	update_nexys_display();
 }
 
-/* Reset the offsets.
-   Author: Alessio
-*/
-void reset_motors()
-{
-	offset[0] = offset[1] = offset[2] = offset[3] = 0;
-	R = P = Y = T = 0;
-	set_motor_rpm(0,0,0,0);
-}
-
 void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {
 	/* TODO: Arguments should be floats if we have them
 	 * Clip engine values to be positive and 10 bits.
@@ -120,6 +110,16 @@ void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {
 	X32_QR_a1 = motor1;
 	X32_QR_a2 = motor2;
 	X32_QR_a3 = motor3;
+}
+
+/* Reset the offsets.
+   Author: Alessio
+*/
+void reset_motors()
+{
+	offset[0] = offset[1] = offset[2] = offset[3] = 0;
+	R = P = Y = T = 0;
+	set_motor_rpm(0,0,0,0);
 }
 
 void init_array()
@@ -528,7 +528,7 @@ int main(void)
 	// Main loop
 	while (1) {
 		// Ping the PC
-	   	check_alive_connection();
+	   	//check_alive_connection();
 
 		// Turn on the LED corresponding to the mode and don't change led 6 and 7
 		X32_leds = ((flicker_slow()?1:0) << mode) | (X32_leds & 0xC0);
