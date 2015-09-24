@@ -328,12 +328,12 @@ void isr_qr_link(void)
 	}
 
 	if(mode >=MANUAL){
-	// Calculate motor RPM
-	set_motor_rpm(
-		offset[0] + T  +P+Y,
-		offset[1] + T-R  -Y,
-		offset[2] + T  -P+Y,
-		offset[3] + T+R  -Y);
+		// Calculate motor RPM
+		set_motor_rpm(
+			offset[0] + T  +P+Y,
+			offset[1] + T-R  -Y,
+			offset[2] + T  -P+Y,
+			offset[3] + T+R  -Y);
 	}
 
 	isr_qr_time = X32_us_clock - isr_qr_time; // why does this happen here and also at the end of the other ISR?
@@ -345,7 +345,7 @@ void isr_qr_link(void)
  */
 int get_motor_rpm(int i) {
 	switch(i) {
-		case 0: return X32_QR_a0;
+		case 0: return X32_QR_a0;	
 		case 1: return X32_QR_a1;
 		case 2: return X32_QR_a2;
 		case 3: return X32_QR_a3;
@@ -483,9 +483,9 @@ void X32_sleep(int millisec) {
  * Author: Alessio
  */
 void panic() {
-	//JUST FOR TESTING, REMEMBER TO PUT IT TO 4-5 sec for self landing :)
+	X32_ms_last_packet = -1;
 	set_mode(PANIC);
-	set_motor_rpm(20,20,20,20);
+	set_motor_rpm(100,100,100,100);
 	nexys_display = 0x0000;
 	X32_sleep(500);
 	nexys_display = 0xC000;

@@ -2,13 +2,13 @@
 #include <stdio.h>
 #include "types.h"
 
-#define FIFO_CAPACITY 128 // Can store 127 values!
+#define FIFO_CAPACITY 256 // Can store 127 values!
 
 /* Structure to hold fifo so multiple ones can be made */
 typedef struct {
 	int in;
 	int out;
-	char elements[128];
+	char elements[256];
 } Fifo;
 
 /* Call this function beofre using the fifo */
