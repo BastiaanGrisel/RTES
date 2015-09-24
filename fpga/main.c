@@ -39,6 +39,7 @@
 
 #define OFFSET_STEP 10
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
+#define LOG_SIZE 10000
 
 /* Define global variables
  */
@@ -65,7 +66,7 @@ Fifo	pc_msg_q;
 Mode	mode = SAFE;
 Loglevel log_level = SENSORS;
 
-int sensor_log[10000][7];
+int sensor_log[LOG_SIZE][7];
 int sensor_log_counter = 0;
 char message[100];
 
@@ -120,6 +121,21 @@ void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {
 	X32_QR_a3 = motor3;
 }
 
+void init_array()
+{
+	int i;
+	for(i=0; i < LOG_SIZE; i++)
+  {
+ 		sensor_log[i][0] = 20000;//X32_QR_timestamp/50;
+ 		sensor_log[i][1] = 5;//s0;
+ 		sensor_log[i][2] = 5;//s1;
+ 		sensor_log[i][3] = 5;//s2;
+ 		sensor_log[i][4] = 5;//s3;
+ 		sensor_log[i][5] = 5;//s4;
+ 		sensor_log[i][6] = 5;//s5;
+ }
+}
+
 /* send a complete message
  * Author: Henko Aantjes
  */
@@ -165,21 +181,22 @@ bool set_mode(int new_mode)
 		// If at least one of the motor's RPM is not zero, return false
 		int i;
 		for(i = 0; i < 4; i++)
+
 			if(get_motor_rpm(i) > 0) {
 				sprintf(message, "[M %i]=not allowed! Motors are turning! motor RPM= [%i%i%i%i] ", new_mode,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
 				return false;
 			}
-		
+
 		reset_motors();
 	}
-	
+
 	if(mode >=MANUAL && new_mode>= MANUAL){
 		sprintf(message, "[M %i]= invalid mode change (first go to SAFE mode), current mode =>%i< ", new_mode,mode);
 		return false;
 	}
 	mode = new_mode;
 	sprintf(message, "[M %i] Succesfully changed to mode:>%i< ", new_mode,mode);
-	
+
 	return true;
 }
 
@@ -277,6 +294,7 @@ void isr_rs232_rx(void)
 	isr_qr_time = X32_us_clock - isr_qr_time; //data to be logged
 }
 
+
 /* ISR when new sensor readings are read from the QR
  */
 void isr_qr_link(void)
@@ -288,7 +306,7 @@ void isr_qr_link(void)
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
 
-	if(sensor_log_counter < 10000) {
+	if(sensor_log_counter < LOG_SIZE) {
 		sensor_log[sensor_log_counter][0] = X32_QR_timestamp/50;
 		sensor_log[sensor_log_counter][1] = s0;
 		sensor_log[sensor_log_counter][2] = s1;
@@ -299,7 +317,6 @@ void isr_qr_link(void)
 		sensor_log_counter++;
 	}
 
-	
 	/*YAW_CALCULATIONS*/
 	dY 		= (s5 << Y_BIAS_UPDATE) - Ybias; 		// dY is now scaled up with Y_BIAS_UPDATE
 	Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5; 		// update Ybias with 1/2^Y_BIAS_UPDATE each sample
@@ -307,9 +324,9 @@ void isr_qr_link(void)
 	//Y +=filtered_dY;						// integrate dY to get yaw (but if I remem correct then we need the rate not the yaw)
 	Y_stabilize 	= (0 - filtered_dY) >> (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
 	if(mode == YAW_CONTROL) {
-		
+
 	}
-	
+
 	if(mode >=MANUAL){
 	// Calculate motor RPM
 	set_motor_rpm(
@@ -350,7 +367,9 @@ void send_logs() {
 			send_message('L',high);
 			send_message('L',low);
 		}
-		send_message('L',0);
+
+		send_message('L','~');
+
 		if(i%100==99){
 			sprintf(message, "%i",i/100+1);
 			send_term_message(message);
@@ -460,15 +479,15 @@ void X32_sleep(int millisec) {
 }
 
 /* Set panic mode and provide a soft landing.
- * Then resets the motors and quits.
- * Author: Alessio 
+* Then resets the motors and quits.
+ * Author: Alessio
  */
 void panic() {
-	//JUST FOR TESTING, REMEMBER TO PUT IT TO 4-5 sec for self landing :) 
+	//JUST FOR TESTING, REMEMBER TO PUT IT TO 4-5 sec for self landing :)
 	set_mode(PANIC);
 	set_motor_rpm(20,20,20,20);
 	nexys_display = 0x0000;
-	X32_sleep(500);	
+	X32_sleep(500);
 	nexys_display = 0xC000;
 	X32_sleep(1000);
   	nexys_display = 0xC100;
@@ -488,7 +507,6 @@ void check_alive_connection() {
 	if(X32_ms_last_packet == -1) return; //does not perform the check untill a new message arrives
 
 	current_ms = X32_ms_clock;
-	diff = current_ms - X32_ms_last_packet;
 
 	if(current_ms - X32_ms_last_packet > TIMEOUT)
 	{
@@ -503,7 +521,8 @@ void check_alive_connection() {
 int main(void)
 {
 	setup();
-  	nexys_display = 0x00;
+	init_array(); //for testing the logging output
+  nexys_display = 0x00;
 
 	// Main loop
 	while (1) {
@@ -519,7 +538,7 @@ int main(void)
 		while(fifo_size(&pc_msg_q) >= 3) { // Check if there are one or more packets in the queue
 			char control;
 			char value;
-			char checksum; 
+			char checksum;
 
 			fifo_peek_at(&pc_msg_q, &control, 0);
 			fifo_peek_at(&pc_msg_q, &value, 1);
