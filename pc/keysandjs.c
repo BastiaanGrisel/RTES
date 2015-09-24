@@ -66,6 +66,10 @@ int	ae[4];
 int offset[4];
 int ms_last_packet_sent;
 struct timeval keep_alive;
+//************
+int value_counter = 0;
+int value_to_print = 0;
+int new_line_counter = 0;
 
 /* Main function that mainly consists of polling the different connections
  * which are: Keyboard, Joystick, RS232 (connection to QR)
@@ -402,6 +406,10 @@ void send_message(char control, char value){
  * Author: Henko Aantjes
  */
 void init_log(void){
+	int value_counter = 0;
+	int value_to_print = 0;
+	int new_line_counter = 0;
+
 	log_file = fopen("flight_log.txt", "w");
 	if (log_file == NULL)
 	{
@@ -410,6 +418,34 @@ void init_log(void){
 		getch();
 		nodelay(stdscr, true);
 	}
+}
+
+//Prints the value to the log file with #awesomesauce
+void print_value_to_file(char c)
+{
+	 if(c == '~') { //this is the value sent by send_logs() at the end of every for-cycle
+		 fprintf(log_file,"\n");
+		 return;
+	 }
+
+   //even: read most significant bytes
+	 if(value_counter % 2 == 0) {
+		 value_to_print = c;
+		 value_to_print = (value_to_print << 8) & 0xFF00;
+	 }
+
+  //odd: read least signifative bytes and print the value
+	 else {
+		 value_to_print |= c;
+	/*	 gettimeofday(&keep_alive,NULL);
+	/	 if((((keep_alive.tv_usec+1000000*keep_alive.tv_sec) / 1000) % 10) == 0) printw(" rec = %i \n\n",c);*/
+
+		 fprintf(log_file,"%i ",value_to_print);
+		// if(value_counter % 14 == 1) fprintf(log_file, ": ");
+	 }
+
+	// value_to_print = (value_counter % 2 == 0) ? ((c << 8) & 0xFF00) : (value_to_print | c);
+	 value_counter++;
 }
 
 /* Print a char to a file
@@ -429,16 +465,16 @@ void packet_received(char control, char value){
 		case 'B': // start new qr terminal message
 			charpos = 0;
 			break;
-		case 'T': // characters of the terminal message 
+		case 'T': // characters of the terminal message
 			if(charpos<QR_INPUT_BUFFERSIZE)
 				received_chars[charpos++]= value;
 			break;
-		case 'F': 
+		case 'F':
 			// print the terminal message
 			mvprintw(10,0,"received messages:(X32 -> pc) == {%.*s}         \n\n\n\n", charpos, received_chars);
 			break;
 		case 'L':
-			print_char_to_file(value);
+		  print_value_to_file(value);
 			break;
 		default:
 			break;
@@ -447,8 +483,8 @@ void packet_received(char control, char value){
 }
 
 void check_msg_q(){
-	char c, control, value, checksum; 
-	
+	char c, control, value, checksum;
+
 	while(fifo_size(&qr_msg_q) >= 3) { // Check if there are one or more packets in the queue
 
 
