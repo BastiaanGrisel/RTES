@@ -386,9 +386,13 @@ void sendJSData(){
  * Author: Henko Aantjes
  */
 void send_message(char control, char value){
+	PacketData p;
+	p.bytes[0] = value;
+	
 	rs232_putchar(control);
-	rs232_putchar(value);
-	rs232_putchar(checksum(control,ch2pd(value)));
+	rs232_putchar(p.bytes[0]);
+	rs232_putchar(p.bytes[1]);
+	rs232_putchar(checksum(control,p));
 	update_time();
 }
 

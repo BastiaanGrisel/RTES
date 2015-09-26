@@ -386,7 +386,7 @@ void send_logs() {
 void packet_received(char control, PacketData data) {
 	//sprintf(message, "Packet Received: %c %i\n#", control, value);
 	//send_term_message(message);
-	if(mode<MANUAL && (data.bytes[0] != 'M' && data.bytes[0] != 'A' && data.bytes[0] != 'L')){
+	if(mode < MANUAL && (data.bytes[0] != 'M' && data.bytes[0] != 'A' && data.bytes[0] != 'L')){
 		sprintf(message, "[%c %i] Change mode to operate the QR!\n", control, data.bytes[0]);
 		send_term_message(message);
 		return;
