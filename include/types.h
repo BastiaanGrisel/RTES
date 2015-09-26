@@ -4,6 +4,8 @@
 typedef enum { false, true } bool;
 typedef enum { SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL, FULL_CONTROL } Mode;
 typedef enum { NONE, SENSORS } Loglevel;
+typedef enum {LOG_ONLY_IN_SAFE_MODE, MODE_ILLIGAL, MODE_CHANGE_ONLY_VIA_SAFE,
+  MODE_CHANGE_ONLY_IF_ZERO_RPM, MODE_ALREADY_SET, CONTROL_DISABLED_IN_THIS_MODE } Error;  /* Error Messages */
 
 #define NOT_IMPORTANT '~'
 
@@ -17,7 +19,6 @@ typedef enum { NONE, SENSORS } Loglevel;
 #define JS_PITCH 'P'
 #define JS_YAW   'Y'
 #define JS_LIFT  'T'
-
 
 
 /* Adjust parameters*/
@@ -38,7 +39,6 @@ typedef enum { NONE, SENSORS } Loglevel;
 #define P_ROLL_DOWN 'k'
 #define P_PITCH_UP 	'o'
 #define P_PITCH_DOWN 'l'
-
 
 
 /* SPECIAL REQUESTS */
@@ -66,14 +66,5 @@ typedef enum { NONE, SENSORS } Loglevel;
 #define LOG_PERCENT_COMPLETE '%' //TODO implement
 #define LOG_MSG_NEW_LINE '\n'
 
-/* Error Messages */
-#define LOG_SEND_ONLY_IN_SAFE_MODE '0'
-#define MODE_ILLIGAL '1'
-#define MODE_CHANGE_ONLY_VIA_SAFE '2'
-#define MODE_CHANGE_ONLY_IF_STOPPED_MOTOR '3'
-#define MODE_WAS_ALREADY_THAT '4'
-#define CONTROL_DISABLED_IN_THIS_MODE '5'
-
 
 #endif /* TYPES_H */
-
