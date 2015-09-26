@@ -140,10 +140,11 @@ void init_array()
 /* send a complete message
  * Author: Henko Aantjes
  */
-void send_message(char control, char value){
+void send_message(char control, PacketData data){
 	putchar(control);
-	putchar(value);
-	putchar(checksum(control,value));
+	putchar(data.bytes[0]);
+	putchar(data.bytes[1]);
+	putchar(checksum(control, data));
 }
 
 /* send a sequence of messages, for example: write log or to terminal
@@ -152,7 +153,7 @@ void send_message(char control, char value){
 void send_long_message(char control, char message[]){
 	int i;
 	for (i = 0; message[i] != 0; i++){
-		send_message(control, message[i]);
+		send_message(control, ch2pd(message[i]));
 	}
 }
 
@@ -160,9 +161,9 @@ void send_long_message(char control, char message[]){
  *
  */
 void send_term_message(char message[]){
-	send_message('B', 'T'); // begin terminal message
+	send_message('B', ch2pd('T')); // begin terminal message
 	send_long_message('T', message);
-	send_message('F', 'T'); // end terminal message
+	send_message('F', ch2pd('T')); // end terminal message
 }
 
 /*
@@ -365,11 +366,11 @@ void send_logs() {
 			char low  =  sensor_log[i][j]       & 0xff;
 			char high = (sensor_log[i][j] >> 8) & 0xff;
 
-			send_message('L',high);
-			send_message('L',low);
+			send_message('L', ch2pd(high));
+			send_message('L', ch2pd(low));
 		}
 
-		send_message('L','~');
+		send_message('L',ch2pd('~'));
 
 		if(i%100==99){
 			sprintf(message, "%i",i/100+1);
@@ -382,37 +383,37 @@ void send_logs() {
 /* Callback that gets executed when a packet has arrived
  * Author: Bastiaan
  */
-void packet_received(char control, char value) {
+void packet_received(char control, PacketData data) {
 	//sprintf(message, "Packet Received: %c %i\n#", control, value);
 	//send_term_message(message);
-	if(mode<MANUAL && (control!='M' && control!= 'A' && control!= 'L')){
-		sprintf(message, "[%c %i] Change mode to operate the QR!\n",control, value);
+	if(mode<MANUAL && (data.bytes[0] != 'M' && data.bytes[0] != 'A' && data.bytes[0] != 'L')){
+		sprintf(message, "[%c %i] Change mode to operate the QR!\n", control, data.bytes[0]);
 		send_term_message(message);
 		return;
 	}
 
 	switch(control){
 		case 'M':
-			set_mode(value);
+			set_mode(data.bytes[0]);
 			send_term_message(message);
 			break;
 		case 'R':
-			R = value;
+			R = data.int16;
 			break;
 		case 'P':
-			P = value;
+			P = data.int16;
 			break;
 		case 'Y':
-			Y = value;
+			Y = data.int16;
 			break;
 		case 'T':
-			if(value >= 0)
-				T = value;
+			if(data.int16 >= 0)
+				T = data.int16;
 			else
-				T = 256 + value;
+				T = 256 + data.int16;
 			break;
 		case 'A':
-			trim(value);
+			trim(data.bytes[0]);
 			break;
 		case 'L':
 			if(mode == SAFE)
@@ -536,16 +537,17 @@ int main(void)
 		// Process messages
         	DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
 
-		while(fifo_size(&pc_msg_q) >= 3) { // Check if there are one or more packets in the queue
+		while(fifo_size(&pc_msg_q) >= 4) { // Check if there are one or more packets in the queue
 			char control;
-			char value;
+			PacketData data;
 			char checksum;
 
 			fifo_peek_at(&pc_msg_q, &control, 0);
-			fifo_peek_at(&pc_msg_q, &value, 1);
-			fifo_peek_at(&pc_msg_q, &checksum, 2);
+			fifo_peek_at(&pc_msg_q, &data.bytes[0], 1);
+			fifo_peek_at(&pc_msg_q, &data.bytes[1], 2);
+			fifo_peek_at(&pc_msg_q, &checksum, 3);
 
-			if(!check_packet(control,value,checksum)) {
+			if(!check_packet(control,data,checksum)) {
 				// If the checksum is not correct, pop the first message off the queue and repeat the loop
 				char c;
 				fifo_pop(&pc_msg_q, &c);
@@ -557,8 +559,10 @@ int main(void)
 				fifo_pop(&pc_msg_q, &c);
 				fifo_pop(&pc_msg_q, &c);
 				fifo_pop(&pc_msg_q, &c);
+				fifo_pop(&pc_msg_q, &c);
+
 				if(control != 0){
-					packet_received(control,value);
+					packet_received(control, data);
 				}
 			}
 		}

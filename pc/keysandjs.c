@@ -289,7 +289,7 @@ void sendKeyData(int c){
 		if(fd_RS232>0){
 			send_message(control, value);
 			//update the last packet timestamp
-			mvprintw(1,0,"last mode message: %c%i{%i}\n",control, (int) value, checksum(control,value));
+			mvprintw(1,0,"last mode message: %c%i{%i}\n",control, (int) value, checksum(control,ch2pd(value)));
 		}
 		else{
 			mvprintw(1,0,"NOT sending: %c%i   (RS232 = DISABLED)\n",control, (int) value);
@@ -337,7 +337,7 @@ void sendKeyData(int c){
 
 		if(fd_RS232>0 & value !=0){
 			send_message(control, value);
-			mvprintw(1,0,"last key message: %c%c{%i}   \n",control, value, checksum(control,value));
+			mvprintw(1,0,"last key message: %c%c{%i}   \n",control, value, checksum(control,ch2pd(value)));
 		}
 		else{
 			mvprintw(1,0,"NOT sending: %c%c %s   \n",control, value,value==0?"key = not a control!":"(RS232 = DISABLED)");
@@ -388,7 +388,7 @@ void sendJSData(){
 void send_message(char control, char value){
 	rs232_putchar(control);
 	rs232_putchar(value);
-	rs232_putchar(checksum(control,value));
+	rs232_putchar(checksum(control,ch2pd(value)));
 	update_time();
 }
 
@@ -449,22 +449,24 @@ void print_char_to_file(char c){
  * Call parse message if a message is complete
  * Author: Henko Aantjes
  */
-void packet_received(char control, char value){
+void packet_received(char control, PacketData data){
 	int i;
+	char value = data.bytes[0];
+	
 	switch(control){
 		case 'B': // start new qr terminal message
 			charpos = 0;
 			break;
 		case 'T': // characters of the terminal message
-			if(charpos<QR_INPUT_BUFFERSIZE)
+			if(charpos < QR_INPUT_BUFFERSIZE)
 				received_chars[charpos++]= value;
 			break;
 		case 'F':
 			// print the terminal message
-			mvprintw(10,0,"received messages:(X32 -> pc) == {%.*s}         \n\n\n\n", charpos, received_chars);
+			mvprintw(10, 0, "received messages: (X32 -> pc) == {%.*s}         \n\n\n\n", charpos, received_chars);
 			break;
 		case 'L':
-		  print_value_to_file(value);
+		  	print_value_to_file(value);
 			break;
 		default:
 			break;
@@ -473,26 +475,31 @@ void packet_received(char control, char value){
 }
 
 void check_msg_q(){
-	char c, control, value, checksum;
-
-	while(fifo_size(&qr_msg_q) >= 3) { // Check if there are one or more packets in the queue
-
+	while(fifo_size(&qr_msg_q) >= 4) { // Check if there are one or more packets in the queue
+		char control;
+		PacketData data;
+		char checksum;
 
 		fifo_peek_at(&qr_msg_q, &control, 0);
-		fifo_peek_at(&qr_msg_q, &value, 1);
-		fifo_peek_at(&qr_msg_q, &checksum, 2);
+		fifo_peek_at(&qr_msg_q, &data.bytes[0], 1);
+		fifo_peek_at(&qr_msg_q, &data.bytes[1], 2);
+		fifo_peek_at(&qr_msg_q, &checksum, 3);
 
-		if(!check_packet(control,value,checksum)) {
+		if(!check_packet(control,data,checksum)) {
 			// If the checksum is not correct, pop the first message off the queue and repeat the loop
+			char c;
 			fifo_pop(&qr_msg_q, &c);
-
 		} else {
 			// If the checksum is correct, pop the packet off the queue and notify a callback
+			char c;
+			fifo_pop(&qr_msg_q, &c);
 			fifo_pop(&qr_msg_q, &c);
 			fifo_pop(&qr_msg_q, &c);
 			fifo_pop(&qr_msg_q, &c);
 
-			packet_received(control,value);
+			if(control != 0){
+				packet_received(control, data);
+			}
 		}
 	}
 }
