@@ -142,8 +142,8 @@ void init_array()
  */
 void send_message(char control, PacketData data){
 	putchar(control);
-	putchar(data.bytes[0]);
-	putchar(data.bytes[1]);
+	putchar(data.as_bytes[0]);
+	putchar(data.as_bytes[1]);
 	putchar(checksum(control, data));
 }
 
@@ -384,36 +384,37 @@ void send_logs() {
  * Author: Bastiaan
  */
 void packet_received(char control, PacketData data) {
-	//sprintf(message, "Packet Received: %c %i\n#", control, value);
+	//sprintf(message, "Packet Received: %c %c\n#", control, data.as_char);
 	//send_term_message(message);
-	if(mode < MANUAL && (data.bytes[0] != 'M' && data.bytes[0] != 'A' && data.bytes[0] != 'L')){
-		sprintf(message, "[%c %i] Change mode to operate the QR!\n", control, data.bytes[0]);
+
+	if(mode < MANUAL && (control != 'M' && control != 'A' && control != 'L')){
+		sprintf(message, "[%c %i] Change mode to operate the QR!\n", control, data.as_char);
 		send_term_message(message);
 		return;
 	}
 
 	switch(control){
 		case 'M':
-			set_mode(data.bytes[0]);
+			set_mode(data.as_char);
 			send_term_message(message);
 			break;
 		case 'R':
-			R = data.int16;
+			R = data.as_int8_t;
 			break;
 		case 'P':
-			P = data.int16;
+			P = data.as_int8_t;
 			break;
 		case 'Y':
-			Y = data.int16;
+			Y = data.as_int8_t;
 			break;
 		case 'T':
-			if(data.int16 >= 0)
-				T = data.int16;
+			if(data.as_int8_t >= 0)
+				T = data.as_int8_t;
 			else
-				T = 256 + data.int16;
+				T = 256 + data.as_int8_t;
 			break;
 		case 'A':
-			trim(data.bytes[0]);
+			trim(data.as_char);
 			break;
 		case 'L':
 			if(mode == SAFE)
@@ -543,8 +544,8 @@ int main(void)
 			char checksum;
 
 			fifo_peek_at(&pc_msg_q, &control, 0);
-			fifo_peek_at(&pc_msg_q, &data.bytes[0], 1);
-			fifo_peek_at(&pc_msg_q, &data.bytes[1], 2);
+			fifo_peek_at(&pc_msg_q, &data.as_bytes[0], 1);
+			fifo_peek_at(&pc_msg_q, &data.as_bytes[1], 2);
 			fifo_peek_at(&pc_msg_q, &checksum, 3);
 
 			if(!check_packet(control,data,checksum)) {

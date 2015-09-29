@@ -13,15 +13,17 @@ typedef unsigned short    uint16_t;
 typedef unsigned int      uint32_t;
 
 typedef union {
-	int16_t int16;
-	char bytes[2];		
+	int16_t as_int16_t;
+	int8_t as_int8_t;
+	char as_char;
+	char as_bytes[2];		
 } PacketData;
 
 /* Convert a character to packetdata to be sent over the serial connection
  */
 PacketData ch2pd(char in) {
 	PacketData p;
-	p.bytes[0] = in;
+	p.as_bytes[0] = in;
 	return p;
 }
 

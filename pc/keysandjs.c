@@ -455,7 +455,7 @@ void print_char_to_file(char c){
  */
 void packet_received(char control, PacketData data){
 	int i;
-	char value = data.bytes[0];
+	char value = data.as_bytes[0];
 	
 	switch(control){
 		case 'B': // start new qr terminal message
@@ -485,8 +485,8 @@ void check_msg_q(){
 		char checksum;
 
 		fifo_peek_at(&qr_msg_q, &control, 0);
-		fifo_peek_at(&qr_msg_q, &data.bytes[0], 1);
-		fifo_peek_at(&qr_msg_q, &data.bytes[1], 2);
+		fifo_peek_at(&qr_msg_q, &data.as_bytes[0], 1);
+		fifo_peek_at(&qr_msg_q, &data.as_bytes[1], 2);
 		fifo_peek_at(&qr_msg_q, &checksum, 3);
 
 		if(!check_packet(control,data,checksum)) {

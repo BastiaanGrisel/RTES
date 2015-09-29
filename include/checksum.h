@@ -16,8 +16,8 @@ unsigned char checksum(char control, PacketData packet_data)
   	int i;
 
 	data[0] = control;
-  	data[1] = packet_data.bytes[0];
-	data[2] = packet_data.bytes[1];
+  	data[1] = packet_data.as_bytes[0];
+	data[2] = packet_data.as_bytes[1];
 
 	sum1 = sum2 = 0;
 
