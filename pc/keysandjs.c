@@ -9,6 +9,7 @@
 #include <string.h>
 #include <termios.h>
 #include <assert.h>
+#include <arpa/inet.h>
 
 #include "joystick.h"
 #include "fifo.h"
@@ -454,7 +455,7 @@ void init_log(void){
 /* Prints the value to the log file with #awesomesauce
    Author: Alessio
 */
-void print_value_to_file(unsigned char c)
+/*void print_value_to_file(unsigned char c)
 {
 	int a,b;
 	unsigned char uns = (unsigned char) c;
@@ -481,14 +482,29 @@ void print_value_to_file(unsigned char c)
 	 }
 
 	 value_counter++;
+} */
+
+
+/*Swap the endianess.
+Author: Alessio*/
+uint16_t swap_endianess_16(uint16_t val)
+{
+	return (val >> 8) | (val << 8 );
 }
 
-/* Print a char to a file
- * Author: Henko Aantjes
- */
-void print_char_to_file(char c){
-	fprintf(log_file,"%i ",c);
+/*Print log values to file, taking in account the endianess
+Author: Alessio */
+void print_log_to_file(PacketData data)
+{
+	uint16_t val = data.as_uint16_t;
+	val = swap_endianess_16(val);
+
+  //provisional workaround
+	val = (val == 32000) ? 255 : val;
+
+	fprintf(log_file, "%hu ", val);
 }
+
 
 /* Parse the QR input (one char at the time)
  * Call parse message if a message is complete
@@ -497,7 +513,6 @@ void print_char_to_file(char c){
 void packet_received(char control, PacketData data){
 	int i;
 	char value = data.as_bytes[0];
-  mvprintw(20,0,"(int) %d (char) %c\n\n",data.as_int8_t,value);
 
 	switch(control){
 		case TERMINAL_MSG_START: // start new qr terminal message
@@ -509,16 +524,19 @@ void packet_received(char control, PacketData data){
 			break;
 		case TERMINAL_MSG_FINISH:
 			// print the terminal message
+			col_on(3);
 			mvprintw(10, 0, "received messages: (X32 -> pc) == {%.*s}         \n\n\n\n", charpos, received_chars);
+			col_off(3);
 			break;
 		case LOG_MSG_PART:
-			print_value_to_file((unsigned char) value);
+	//		print_value_to_file((unsigned char) value);
+	    print_log_to_file(data);
 			break;
 		case LOG_MSG_NEW_LINE:
 			fprintf(log_file,"\n");
 			break;
 		case ERROR_MSG:
-		  parse_error_message(data.as_int8_t);
+		  parse_error_message(swap_endianess_16(data.as_uint16_t));
 			break;
 		default:
 			break;
@@ -527,10 +545,10 @@ void packet_received(char control, PacketData data){
 
 /*Displays the error message.
 Author: Alessio */
-
 parse_error_message(Error err)
 {
 	char msg[50];
+	col_on(1);
 	switch(err) {
 		case LOG_ONLY_IN_SAFE_MODE:
 			sprintf(msg,"[QR]: Switch to SAFE before asking for the logging.]");
@@ -552,10 +570,11 @@ parse_error_message(Error err)
 			sprintf(msg, "[QR]: Manual control disabled in this mode. ");
 			break;
 		default:
-		 sprintf(msg, "[QR] Ok.");
+		 sprintf(msg, "[QR] Wrong not recognized. Wrong error code.");
 	}
 
 	mvprintw (18,0,"%.*s \n\n",50,msg);
+	col_off(1);
 }
 
 

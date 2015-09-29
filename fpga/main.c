@@ -63,7 +63,7 @@ int 	Y_stabilize;
 
 /* sensor values */
 int	s0, s1, s2, s3, s4, s5;
-int sensor_log[LOG_SIZE][7];
+unsigned int sensor_log[LOG_SIZE][7];
 int sensor_log_counter = 0;
 
 Fifo	pc_msg_q; // message que received from pc
@@ -133,9 +133,9 @@ void init_array() //PROVISIONAL JUST FOR TESTING
 	int i;
 	for(i=0; i < LOG_SIZE; i++)
   {
- 		sensor_log[i][0] = 255;//X32_QR_timestamp/50;
+ 		sensor_log[i][0] = 1;//X32_QR_timestamp/50;
  		sensor_log[i][1] = 500;//s0;
- 		sensor_log[i][2] = 500;//s1;
+ 		sensor_log[i][2] = 255;//s1;
  		sensor_log[i][3] = 500;//s2;
  		sensor_log[i][4] = 100;//s3;
  		sensor_log[i][5] = 200;//s4;
@@ -184,7 +184,7 @@ Author: Alessio */
 void send_err_message(Error err)
 {
 	PacketData p;
-	p.as_int8_t = err;
+	p.as_uint16_t = err;
 	send_message(ERROR_MSG,p); //Sending error code
 }
 
@@ -410,15 +410,21 @@ int get_motor_rpm(int i) {
 void send_logs() {
 	int i;
 	int j;
+	PacketData p;
 
 	for(i = 0; i < LOG_SIZE; i++) {
 		for(j = 0; j < 7; j++) {
 			unsigned char low  =  sensor_log[i][j]       & 0xff;
 			unsigned char high = (sensor_log[i][j] >> 8) & 0xff;
+			
+			//PROVISIONAL workaround
+			p.as_uint16_t = (sensor_log[i][j] == 255) ? 32000 : sensor_log[i][j];
 
-			//MAYBE HERE WE CAN USE THE
-			send_message(LOG_MSG_PART, ch2pd(high));
-			send_message(LOG_MSG_PART, ch2pd(low));
+			send_message(LOG_MSG_PART,p);
+
+      //OLD WAY
+			/*send_message(LOG_MSG_PART, ch2pd(high));
+			send_message(LOG_MSG_PART, ch2pd(low));*/
 		}
 
 		send_control_message(LOG_MSG_NEW_LINE);

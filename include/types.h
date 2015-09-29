@@ -1,5 +1,7 @@
 #ifndef TYPES_H
 #define TYPES_H
+//#include <stdint.h>
+
 
 typedef enum { false, true } bool;
 typedef enum { SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL, FULL_CONTROL } Mode;
@@ -11,10 +13,11 @@ typedef signed char       int8_t;
 typedef signed short      int16_t;
 typedef signed int        int32_t;
 typedef unsigned char     uint8_t;
-typedef unsigned short    uint16_t;
-typedef unsigned int      uint32_t;
+typedef unsigned short int    uint16_t;
+//typedef unsigned int      uint32_t;
 
 typedef union {
+  uint16_t as_uint16_t;
 	int16_t as_int16_t;
 	int8_t as_int8_t;
 	char as_char;
