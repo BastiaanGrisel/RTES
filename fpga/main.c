@@ -8,7 +8,8 @@
 
 #include "x32.h"
 #include "checksum.h"
-#include "logging.h"
+//#include "logging.h"
+#include "communication.h"
 
 /* define some peripheral short hands
  */
@@ -38,7 +39,7 @@
 
 #define OFFSET_STEP 10
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
-//#define LOG_SIZE 10
+#define LOG_SIZE 10
 
 /* Define global variables
  */
@@ -127,6 +128,23 @@ void reset_motors()
 	set_motor_rpm(0,0,0,0);
 }
 
+/*Error function that send all the error messages defined in types.h
+Author: Alessio */
+void send_error(Error err)
+{
+	PacketData p;
+	p.as_uint16_t = err;
+	send_packet(putchar, ERROR_MSG, p); //Sending error code
+}
+
+/* Send something to the terminal
+ * Author: Henko
+ */
+void send_term_message(char message[]) {
+	send_control(putchar, TERMINAL_MSG_START); // begin terminal message
+	send_string(putchar, TERMINAL_MSG_PART, message);
+	send_control(putchar, TERMINAL_MSG_FINISH); // end terminal message
+}
 
 /*
  * Changes the mode to either: SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL or FULL_CONTROL.
@@ -138,18 +156,18 @@ bool set_mode(int32_t new_mode)
 {
 	/* Make sure that the mode is in bounds */
 	if(new_mode < SAFE || new_mode > FULL_CONTROL) {
-		send_err_message(MODE_ILLIGAL);
+		send_error(MODE_ILLIGAL);
 		return false;
 	}
 
 	/* Make sure that a change to an operational mode can only be done from SAFE */
 	if(mode >= MANUAL && new_mode >= MANUAL){
-		send_err_message(MODE_CHANGE_ONLY_VIA_SAFE);
+		send_error(MODE_CHANGE_ONLY_VIA_SAFE);
 		return false;
 	}
 
 	if(mode == new_mode) {
-		send_err_message(MODE_ALREADY_SET);
+		send_error(MODE_ALREADY_SET);
 		return false;
 	}
 
@@ -158,7 +176,7 @@ bool set_mode(int32_t new_mode)
 		int32_t i;
 		for(i = 0; i < 4; i++)
 			if(get_motor_rpm(i) > 0) {
-				send_err_message(MODE_CHANGE_ONLY_IF_ZERO_RPM);
+				send_error(MODE_CHANGE_ONLY_IF_ZERO_RPM);
 				//sprintf(message, "\n RPM= [%i%i%i%i] ",get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
 				return false;
 			}
@@ -166,7 +184,7 @@ bool set_mode(int32_t new_mode)
 		// Also make sure that the throttle is in the zero position
 		if(js_T != 0) {
 			sprintf(message, "js_T: %i \n", js_T);
-			send_err_message(MODE_CHANGE_ONLY_IF_ZERO_RPM);
+			send_error(MODE_CHANGE_ONLY_IF_ZERO_RPM);
 			return false;
 		}
 	}
@@ -247,8 +265,8 @@ void special_request(char request){
 			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
 			break;
 		case ASK_SENSOR_LOG:
-			if(mode==SAFE) send_logs(sensor_log);
-		   else send_err_message(LOG_ONLY_IN_SAFE_MODE);
+			//if(mode==SAFE) send_logs(sensor_log);
+		   	//else send_error(LOG_ONLY_IN_SAFE_MODE);
 
 			break;
 		case RESET_MOTORS: //reset
@@ -422,7 +440,7 @@ void setup()
 	offset[0] = offset[1] = offset[2] = offset[3] =0;
 	fifo_init(&pc_msg_q);
 
-  init_array(sensor_log);
+  	//init_array(sensor_log);
 
 	/* Prepare Interrupts */
 
@@ -518,40 +536,12 @@ int32_t main(void)
 	   	check_alive_connection();
 
 		// Turn on the LED corresponding to the mode and don't change led 6 and 7
-		X32_leds = ((flicker_slow()?1:0) << mode) | (X32_leds & 0xC0);
+		X32_leds = (flicker_slow() << mode) | (X32_leds & 0xC0);
 
 		// Process messages
         	DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
 
-		while(fifo_size(&pc_msg_q) >= 4) { // Check if there are one or more packets in the queue
-			char control;
-			PacketData data;
-			char checksum;
-
-			fifo_peek_at(&pc_msg_q, &control, 0);
-			fifo_peek_at(&pc_msg_q, &data.as_bytes[0], 1);
-			fifo_peek_at(&pc_msg_q, &data.as_bytes[1], 2);
-			fifo_peek_at(&pc_msg_q, &checksum, 3);
-
-			if(!check_packet(control,data,checksum)) {
-				// If the checksum is not correct, pop the first message off the queue and repeat the loop
-				char c;
-				fifo_pop(&pc_msg_q, &c);
-
-				lost_packet();
-			} else {
-				// If the checksum is correct, pop the packet off the queue and notify a callback
-				char c;
-				fifo_pop(&pc_msg_q, &c);
-				fifo_pop(&pc_msg_q, &c);
-				fifo_pop(&pc_msg_q, &c);
-				fifo_pop(&pc_msg_q, &c);
-
-				if(control != 0){
-					packet_received(control, data);
-				}
-			}
-		}
+		check_for_new_packets(&pc_msg_q, &packet_received);
 
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
 

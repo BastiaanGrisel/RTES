@@ -2,7 +2,7 @@
 #ifndef LOG_H
 #define LOG_H
 
-#include "QRmessage.h"
+#include "communication.h"
 
 
 #define LOG_SIZE 20

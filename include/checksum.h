@@ -1,3 +1,6 @@
+#ifndef CHECKSUM_H
+#define CHECKSUM_H
+
 #include "types.h"
 #include <stdio.h>
 #define PACKET_LENGTH 3
@@ -40,3 +43,5 @@ bool check_packet(char control, PacketData data, unsigned char in_checksum)
 {
 	return checksum(control, data) == in_checksum;
 }
+
+#endif
