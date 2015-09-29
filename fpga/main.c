@@ -382,8 +382,11 @@ int16_t scale_throttle(uint8_t throttle) {
  * Author: Bastiaan
  */
 void packet_received(char control, PacketData data) {
-	//sprintf(message, "Packet Received: %c %c\n#", control, data.as_char);
+	if(control == 0) return; // Keep-alive packets
+
+	//sprintf(message, "Packet Received: %c %i\n#", control, data.as_char);
 	//send_term_message(message);
+	//return;
 
 	/* Make sure that the throttle is zero before changing the mode */
 	if(control == JS_LIFT)
@@ -524,8 +527,6 @@ void check_alive_connection() {
 	return;
 }
 
-
-
 int32_t main(void)
 {
 	setup();
@@ -540,9 +541,7 @@ int32_t main(void)
 
 		// Process messages
         	DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
-
 		check_for_new_packets(&pc_msg_q, &packet_received);
-
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
 
 		// give a signal when sensors are ready
