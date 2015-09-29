@@ -43,27 +43,27 @@
 /* Define global variables
  */
 
-int   X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to avoid going panic before receiving the first msg
-int 	time_at_last_led_switch = 0;
-int 	packet_counter = 0, packet_lost_counter = 0;
-int	  isr_qr_time = 0, isr_qr_counter = 0;
-int 	offset[4];
-int 	R=0, P=0, Y=0, T=0, js_T=0;
+int32_t  X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to avoid going panic before receiving the first msg
+int32_t  time_at_last_led_switch = 0;
+int32_t  packet_counter = 0, packet_lost_counter = 0;
+int32_t	 isr_qr_time = 0, isr_qr_counter = 0;
+int32_t  offset[4];
+int32_t  R=0, P=0, Y=0, T=0, js_T=0;
 
 /* filter parameters*/
-int	  Ybias = 0;
-int 	filtered_dY = 0; //
-int 	Y_BIAS_UPDATE = 14; // update bias each sample with a fraction of 1/2^13
-int 	Y_FILTER = 4; // simple filter that updates 1/2^Y_filter
-int 	P_yaw=4; // P = 2^4     Y_TO_ENGINE_SCALE
-int 	P_roll=4;
-int 	P_pitch=4;
-int 	Y_stabilize;
+int32_t  Ybias = 0;
+int32_t  filtered_dY = 0; //
+int32_t  Y_BIAS_UPDATE = 14; // update bias each sample with a fraction of 1/2^13
+int32_t  Y_FILTER = 4; // simple filter that updates 1/2^Y_filter
+int32_t  P_yaw=4; // P = 2^4     Y_TO_ENGINE_SCALE
+int32_t  P_roll=4;
+int32_t  P_pitch=4;
+int32_t  Y_stabilize;
 
 /* sensor values */
-int	s0, s1, s2, s3, s4, s5;
-int sensor_log_counter = 0;
-unsigned int sensor_log[LOG_SIZE][7];
+int32_t	s0, s1, s2, s3, s4, s5;
+int32_t sensor_log_counter = 0;
+uint32_t sensor_log[LOG_SIZE][7];
 
 Fifo	pc_msg_q; // message que received from pc
 char message[100]; // message to send to pc-terminal
@@ -79,7 +79,7 @@ void panic(void);
  * No need to check for negative numbers since offset can be negative
  * Author: Bastiaan
  */
-void add_motor_offset(int motor0, int motor1, int motor2, int motor3)
+void add_motor_offset(int32_t motor0, int32_t motor1, int32_t motor2, int32_t motor3)
 {
 	offset[0] += motor0;
 	offset[1] += motor1;
@@ -98,7 +98,7 @@ void lost_packet()
 	update_nexys_display();
 }
 
-void set_motor_rpm(int motor0, int motor1, int motor2, int motor3) {
+void set_motor_rpm(int32_t motor0, int32_t motor1, int32_t motor2, int32_t motor3) {
 	/* TODO: Arguments should be floats if we have them
 	 * Clip engine values to be positive and 10 bits.
 	 */
@@ -134,7 +134,7 @@ void reset_motors()
  * Returns a boolean indicating whether the mode change was succesful or not.
  * Author: Alessio
  */
-bool set_mode(int new_mode)
+bool set_mode(int32_t new_mode)
 {
 	/* Make sure that the mode is in bounds */
 	if(new_mode < SAFE || new_mode > FULL_CONTROL) {
@@ -155,7 +155,7 @@ bool set_mode(int new_mode)
 
 	if(new_mode >= MANUAL) {
 		// If at least one of the motor's RPM is not zero, return false
-		int i;
+		int32_t i;
 		for(i = 0; i < 4; i++)
 			if(get_motor_rpm(i) > 0) {
 				send_err_message(MODE_CHANGE_ONLY_IF_ZERO_RPM);
@@ -292,7 +292,7 @@ void isr_rs232_rx(void)
  */
 void isr_qr_link(void)
 {
-	int dY;
+	int32_t dY;
 	isr_qr_time = X32_us_clock;
 
 	/* get sensor and timestamp values */
@@ -314,7 +314,7 @@ void isr_qr_link(void)
 	dY 		= (s5 << Y_BIAS_UPDATE) - Ybias; 		// dY is now scaled up with Y_BIAS_UPDATE
 	Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5; 		// update Ybias with 1/2^Y_BIAS_UPDATE each sample
 	filtered_dY 	+= -1 * (filtered_dY >> Y_FILTER) + dY; 	// filter dY
-	//Y +=filtered_dY;						// integrate dY to get yaw (but if I remem correct then we need the rate not the yaw)
+	//Y +=filtered_dY;						// int32_tegrate dY to get yaw (but if I remem correct then we need the rate not the yaw)
 	Y_stabilize 	= (0 - filtered_dY) >> (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
 	if(mode == YAW_CONTROL) {
 
@@ -336,7 +336,7 @@ void isr_qr_link(void)
 /* Gets the RPM of a certain motor.
  * Author: Bastiaan
  */
-int get_motor_rpm(int i) {
+int32_t get_motor_rpm(int32_t i) {
 	switch(i) {
 		case 0: return X32_QR_a0;
 		case 1: return X32_QR_a1;
@@ -414,7 +414,7 @@ void packet_received(char control, PacketData data) {
  */
 void setup()
 {
-	int c;
+	int32_t c;
 
 	/* Initialize Variables */
 	nexys_display = 0x00;
@@ -461,7 +461,7 @@ bool flicker_fast() { return (X32_ms_clock % 100 < 20); }
 
 /*Puts the FPGA to sleep performing an active waiting.
 Author: Alessio*/
-void X32_sleep(int millisec) {
+void X32_sleep(int32_t millisec) {
 	long sleep_ms = X32_ms_clock +  (millisec);
 	while(X32_ms_clock < sleep_ms);
 	return;
@@ -492,7 +492,7 @@ void panic() {
  * Author: Alessio
  */
 void check_alive_connection() {
-	int current_ms, diff;
+	int32_t current_ms, diff;
 
 	if(X32_ms_last_packet == -1) return; //does not perform the check untill a new message arrives
 
@@ -508,7 +508,7 @@ void check_alive_connection() {
 
 
 
-int main(void)
+int32_t main(void)
 {
 	setup();
 
