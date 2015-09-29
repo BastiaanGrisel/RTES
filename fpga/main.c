@@ -530,7 +530,7 @@ int main(void)
 	// Main loop
 	while (1) {
 		// Ping the PC
-	   	//check_alive_connection();
+	   	check_alive_connection();
 
 		// Turn on the LED corresponding to the mode and don't change led 6 and 7
 		X32_leds = ((flicker_slow()?1:0) << mode) | (X32_leds & 0xC0);
