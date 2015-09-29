@@ -39,7 +39,7 @@
 
 #define OFFSET_STEP 10
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
-#define LOG_SIZE 10000
+#define LOG_SIZE 20
 
 /* Define global variables
  */
@@ -89,7 +89,7 @@ void add_motor_offset(int motor0, int motor1, int motor2, int motor3)
 }
 
 void update_nexys_display(){
-	nexys_display = packet_counter<<8 + packet_lost_counter;
+	nexys_display = packet_counter << 8 + packet_lost_counter;
 	///nexys_display = [debugValue];
 }
 
@@ -128,20 +128,18 @@ void reset_motors()
 	set_motor_rpm(0,0,0,0);
 }
 
-
-
-void init_array()
+void init_array() //PROVISIONAL JUST FOR TESTING
 {
 	int i;
 	for(i=0; i < LOG_SIZE; i++)
   {
- 		sensor_log[i][0] = 20000;//X32_QR_timestamp/50;
- 		sensor_log[i][1] = 5;//s0;
- 		sensor_log[i][2] = 5;//s1;
- 		sensor_log[i][3] = 5;//s2;
- 		sensor_log[i][4] = 5;//s3;
- 		sensor_log[i][5] = 5;//s4;
- 		sensor_log[i][6] = 5;//s5;
+ 		sensor_log[i][0] = 255;//X32_QR_timestamp/50;
+ 		sensor_log[i][1] = 500;//s0;
+ 		sensor_log[i][2] = 500;//s1;
+ 		sensor_log[i][3] = 500;//s2;
+ 		sensor_log[i][4] = 100;//s3;
+ 		sensor_log[i][5] = 200;//s4;
+ 		sensor_log[i][6] = 0;//s5;
  }
 }
 
@@ -166,7 +164,7 @@ void send_control_message(char control){
  */
 void send_long_message(char control, char message[]){
 	int i;
-	for (i = 0; message[i] != 0; i++){
+	for (i = 0; message[i] != 0; i++){ //so 0 is the delimiter?
 		send_message(control, message[i]);
 	}
 }
@@ -180,6 +178,14 @@ void send_term_message(char message[]){
 	send_control_message(TERMINAL_MSG_FINISH); // end terminal message
 }
 
+/*Error function that send all the error messages defined in types.h
+Author: Alessio */
+void send_err_message(Error err)
+{
+	char e = (char) err - '0';
+	send_message(ERROR_MSG,err); //Sending error code
+}
+
 /*
  * Changes the mode to either: SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL or FULL_CONTROL.
  * Motor RPM needs to be zero to change mode except when changing to SAFE and PANIC
@@ -188,8 +194,10 @@ void send_term_message(char message[]){
  */
 bool set_mode(int new_mode)
 {
+
 	if(new_mode < SAFE || new_mode > FULL_CONTROL) {
-		sprintf(message, "[M %i]= invalid mode, current mode =>%i< ", new_mode,mode);
+		send_err_message(MODE_ILLIGAL);
+		sprintf(message, "\n current mode =>%i< ", new_mode,mode);
 		return false;
 	}
 
@@ -199,17 +207,28 @@ bool set_mode(int new_mode)
 		for(i = 0; i < 4; i++)
 
 			if(get_motor_rpm(i) > 0) {
-				sprintf(message, "[M %i]=not allowed! Motors are turning! motor RPM= [%i%i%i%i] ", new_mode,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
+				send_err_message(MODE_CHANGE_ONLY_IF_ZERO_RPM);
+				sprintf(message, "\n RPM= [%i%i%i%i] ", new_mode,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
 				return false;
 			}
-
-		reset_motors();
 	}
 
 	if(mode >=MANUAL && new_mode>= MANUAL){
-		sprintf(message, "[M %i]= invalid mode change (first go to SAFE mode), current mode =>%i< ", new_mode,mode);
+		send_err_message(MODE_CHANGE_ONLY_VIA_SAFE);
+		sprintf(message, "\n current mode =>%i< ", new_mode,mode);
 		return false;
 	}
+
+	if(mode == new_mode) {
+		send_err_message(MODE_ALREADY_SET);
+		return false;
+	}
+
+  //Zero the throttle before switching to manual mode
+	if(mode == MANUAL) {
+		T = ( T != 0 ) ? 0: T;
+	}
+
 	mode = new_mode;
 	sprintf(message, "[M %i] Succesfully changed to mode:>%i< ", new_mode,mode);
 
@@ -266,7 +285,9 @@ void trim(char c){
 }
 
 void special_request(char request){
+
 	switch(request){
+
 		case ESCAPE:
 			panic();
 			break;
@@ -283,8 +304,9 @@ void special_request(char request){
 			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
 			break;
 		case ASK_SENSOR_LOG:
-			if(mode==SAFE)
-				send_logs();
+			if(mode==SAFE) send_logs();
+		   else send_err_message(LOG_ONLY_IN_SAFE_MODE);
+
 			break;
 		case RESET_MOTORS: //reset
 			reset_motors();
@@ -334,7 +356,7 @@ void isr_qr_link(void)
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
 
-	if(sensor_log_counter < LOG_SIZE) {
+/*	if(sensor_log_counter < LOG_SIZE) {
 		sensor_log[sensor_log_counter][0] = X32_QR_timestamp/50;
 		sensor_log[sensor_log_counter][1] = s0;
 		sensor_log[sensor_log_counter][2] = s1;
@@ -343,7 +365,7 @@ void isr_qr_link(void)
 		sensor_log[sensor_log_counter][5] = s4;
 		sensor_log[sensor_log_counter][6] = s5;
 		sensor_log_counter++;
-	}
+	}*/
 
 	/*YAW_CALCULATIONS*/
 	dY 		= (s5 << Y_BIAS_UPDATE) - Ybias; 		// dY is now scaled up with Y_BIAS_UPDATE
@@ -373,7 +395,7 @@ void isr_qr_link(void)
  */
 int get_motor_rpm(int i) {
 	switch(i) {
-		case 0: return X32_QR_a0;	
+		case 0: return X32_QR_a0;
 		case 1: return X32_QR_a1;
 		case 2: return X32_QR_a2;
 		case 3: return X32_QR_a3;
@@ -389,22 +411,23 @@ void send_logs() {
 
 	for(i = 0; i < LOG_SIZE; i++) {
 		for(j = 0; j < 7; j++) {
-			char low  =  sensor_log[i][j]       & 0xff;
-			char high = (sensor_log[i][j] >> 8) & 0xff;
+			unsigned char low  =  sensor_log[i][j]       & 0xff;
+			unsigned char high = (sensor_log[i][j] >> 8) & 0xff;
 
-			send_message('L',high);
-			send_message('L',low);
+			send_message(LOG_MSG_PART,high);
+			send_message(LOG_MSG_PART,low);
 		}
 
 		send_control_message(LOG_MSG_NEW_LINE);
 
 		if(i%(LOG_SIZE/100)==(LOG_SIZE/100)-1){
-			sprintf(message, "%i",i/100+1);
+			sprintf(message, "%i%%",i/100+1);
 			send_term_message(message);
 		}
 	}
 	send_term_message("LOGGING COMPLETED");
 }
+
 
 /* Callback that gets executed when a packet has arrived
  * Author: Bastiaan
@@ -412,7 +435,7 @@ void send_logs() {
 void packet_received(char control, char value) {
 	//sprintf(message, "Packet Received: %c %i\n#", control, value);
 	//send_term_message(message);
-	if(mode<MANUAL && (control!='M' && control!= 'A' && control!= 'L')){
+	if(mode<MANUAL && (control!='M' && control!= 'A' && control!= SPECIAL_REQUEST)){
 		sprintf(message, "[%c %i] Change mode to operate the QR!\n",control, value);
 		send_term_message(message);
 		return;
@@ -510,6 +533,7 @@ void X32_sleep(int millisec) {
  * Author: Alessio
  */
 void panic() {
+
 	X32_ms_last_packet = -1;
 	set_mode(PANIC);
 	set_motor_rpm(100,100,100,100);
@@ -548,8 +572,8 @@ void check_alive_connection() {
 int main(void)
 {
 	setup();
-	//init_array(); //for testing the logging output
-  	nexys_display = 0x00;
+	init_array(); //for testing the logging output
+  nexys_display = 0x00;
 
 	// Main loop
 	while (1) {

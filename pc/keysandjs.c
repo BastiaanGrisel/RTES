@@ -67,9 +67,8 @@ int offset[4];
 int ms_last_packet_sent;
 struct timeval keep_alive;
 //************
-int value_counter = 0;
-int value_to_print = 0;
-int new_line_counter = 0;
+int value_counter;
+unsigned short int value_to_print;
 
 /* Main function that mainly consists of polling the different connections
  * which are: Keyboard, Joystick, RS232 (connection to QR)
@@ -82,8 +81,10 @@ int main (int argc, char **argv)
 	struct timeval time, last_packet_time;
 	char rec_c;
 
-	// init
+	value_counter = 0;
+	value_to_print = 0;
 
+	// init
 	init_keyboard();
 	init_joystick();
 	rs232_open();
@@ -95,7 +96,6 @@ int main (int argc, char **argv)
 	/* Main loop to process/send user input and to show QR input */
 	while (1) {
 		time = updateFPS(time);
-
 		/* Check keypress */
 		if ((c= getch()) != -1){
 			sendKeyData(c); // send a message if user gave input
@@ -256,8 +256,6 @@ a packet to keep alive the connection.
 Author: Alessio */
 void check_alive_connection()
 {
- /*	struct timeval current_time;
-	gettimeofday(&current_time,NULL);*/
 	gettimeofday(&keep_alive,NULL);
 	int current_ms = ((keep_alive.tv_usec+1000000*keep_alive.tv_sec) / 1000);
 	if(current_ms - ms_last_packet_sent > TIMEOUT)
@@ -271,8 +269,6 @@ void check_alive_connection()
 Author: Alessio*/
 void update_time()
 {
-	/* struct timeval current_time;
-	gettimeofday(&current_time,NULL);*/
 	gettimeofday(&keep_alive,NULL);
 	ms_last_packet_sent = ((keep_alive.tv_usec+1000000*keep_alive.tv_sec) / 1000);
 }
@@ -345,11 +341,11 @@ void sendKeyData(int c){
 			case 'm':
 				control = SPECIAL_REQUEST;
 				value = ASK_MOTOR_RPM;
-				break; 
-			case 'f': 
+				break;
+			case 'f':
 				control = SPECIAL_REQUEST;
 				value = ASK_FILTER_PARAM;
-				break; 
+				break;
 			case 'r':
 				control = SPECIAL_REQUEST;
 				value = RESET_MOTORS;
@@ -357,6 +353,10 @@ void sendKeyData(int c){
 			case 's':
 				control = SPECIAL_REQUEST;
 				value = RESET_SENSOR_LOG;
+				break;
+			case 'x':
+			  control = SPECIAL_REQUEST;
+				value = ASK_SENSOR_LOG;
 				break;
 			case ESCAPE: // ESCAPEKEY
 				control = SPECIAL_REQUEST;
@@ -437,9 +437,7 @@ void send_message(char control, char value){
  * Author: Henko Aantjes
  */
 void init_log(void){
-	int value_counter = 0;
-	int value_to_print = 0;
-	int new_line_counter = 0;
+
 
 	log_file = fopen("flight_log.txt", "w");
 	if (log_file == NULL)
@@ -451,31 +449,35 @@ void init_log(void){
 	}
 }
 
-//Prints the value to the log file with #awesomesauce
-void print_value_to_file(char c)
+/* Prints the value to the log file with #awesomesauce
+   Author: Alessio
+*/
+void print_value_to_file(unsigned char c)
 {
-	 if(c == '~') { //this is the value sent by send_logs() at the end of every for-cycle
-		 fprintf(log_file,"\n");
-		 return;
-	 }
+	int a,b;
+	unsigned char uns = (unsigned char) c;
 
    //even: read most significant bytes
 	 if(value_counter % 2 == 0) {
-		 value_to_print = c;
+		 value_to_print = uns;
 		 value_to_print = (value_to_print << 8) & 0xFF00;
+
+		 //a = (int) c;
+		 //fprintf(log_file,"%i ",a);
 	 }
 
   //odd: read least signifative bytes and print the value
 	 else {
-		 value_to_print |= c;
-	/*	 gettimeofday(&keep_alive,NULL);
-	/	 if((((keep_alive.tv_usec+1000000*keep_alive.tv_sec) / 1000) % 10) == 0) printw(" rec = %i \n\n",c);*/
+		 value_to_print |= uns;
 
-		 fprintf(log_file,"%i ",value_to_print);
+		fprintf(log_file,"%hu ",value_to_print);
+		value_to_print = 0;
+
+		//b = (int) c;
+    //	fprintf(log_file,"%i ",b);
 		// if(value_counter % 14 == 1) fprintf(log_file, ": ");
 	 }
 
-	// value_to_print = (value_counter % 2 == 0) ? ((c << 8) & 0xFF00) : (value_to_print | c);
 	 value_counter++;
 }
 
@@ -505,15 +507,50 @@ void packet_received(char control, char value){
 			mvprintw(10,0,"received messages:(X32 -> pc) == {%.*s}         \n\n\n\n", charpos, received_chars);
 			break;
 		case LOG_MSG_PART:
-			print_value_to_file(value);
+			print_value_to_file((unsigned char) value);
 			break;
 		case LOG_MSG_NEW_LINE:
 			fprintf(log_file,"\n");
+			break;
+		case ERROR_MSG:
+		  parse_error_message(value);
+			break;
 		default:
 			break;
 	}
-
 }
+
+/*Displays the error message.
+Author: Alessio */
+
+parse_error_message(Error err)
+{
+	char msg[50];
+	switch(err) {
+		case LOG_ONLY_IN_SAFE_MODE:
+			sprintf(msg,"[QR]: Switch to SAFE before asking for the logging.]");
+			break;
+		case MODE_ILLIGAL:
+		  sprintf(msg,"[QR]: Invalid or illigal mode.]");
+			break;
+	  case MODE_CHANGE_ONLY_VIA_SAFE:
+		  sprintf(msg, "[QR]: Mode can be changed only from SAFE mode.");
+			break;
+		case MODE_CHANGE_ONLY_IF_ZERO_RPM:
+			sprintf(msg, "[QR]: Cannot change mode. RPM are not zero.");
+			send_message(SPECIAL_REQUEST,ASK_MOTOR_RPM); //when RPM will be visualized in real-time, this won't be needed
+			break;
+		case MODE_ALREADY_SET:
+			sprintf(msg, "[QR]: Mode already changed.");
+			break;
+		case CONTROL_DISABLED_IN_THIS_MODE:
+			sprintf(msg, "[QR]: Manual control disabled in this mode. ");
+			break;
+	}
+
+	mvprintw (18,0,"%.*s \n\n\n\n",50,msg);
+}
+
 
 void check_msg_q(){
 	char c, control, value, checksum;

@@ -61,6 +61,7 @@ typedef enum {LOG_ONLY_IN_SAFE_MODE, MODE_ILLIGAL, MODE_CHANGE_ONLY_VIA_SAFE,
 #define TERMINAL_MSG_PART 'T'
 #define TERMINAL_MSG_FINISH 'F'
 
+#define ERROR_MSG 'E'
 #define SENSOR_LOG_FULL 'O' //TODO implement
 #define LOG_MSG_PART 'L'
 #define LOG_PERCENT_COMPLETE '%' //TODO implement
