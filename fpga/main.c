@@ -49,7 +49,7 @@ int 	X32_ms_last_packet= -1; //ms of the last received packet. 1s for booting up
 int 	packet_counter = 0, packet_lost_counter = 0;
 int	isr_qr_time = 0, isr_qr_counter = 0;
 int 	offset[4];
-int 	R=0, P=0, Y=0, T=0;
+int 	R=0, P=0, Y=0, T=0, js_T=0;
 
 /* filter parameters*/
 int	Ybias = 0;
@@ -196,28 +196,15 @@ void send_err_message(Error err)
  */
 bool set_mode(int new_mode)
 {
-
+	/* Make sure that the mode is in bounds */
 	if(new_mode < SAFE || new_mode > FULL_CONTROL) {
 		send_err_message(MODE_ILLIGAL);
-		sprintf(message, "\n current mode =>%i< ", mode);
 		return false;
 	}
 
-	if(new_mode >= MANUAL) {
-		// If at least one of the motor's RPM is not zero, return false
-		int i;
-		for(i = 0; i < 4; i++)
-
-			if(get_motor_rpm(i) > 0) {
-				send_err_message(MODE_CHANGE_ONLY_IF_ZERO_RPM);
-				sprintf(message, "\n RPM= [%i%i%i%i] ",get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
-				return false;
-			}
-	}
-
-	if(mode >=MANUAL && new_mode>= MANUAL){
+	/* Make sure that a change to an operational mode can only be done from SAFE */
+	if(mode >= MANUAL && new_mode >= MANUAL){
 		send_err_message(MODE_CHANGE_ONLY_VIA_SAFE);
-		sprintf(message, "\n current mode =>%i< ",mode);
 		return false;
 	}
 
@@ -226,13 +213,27 @@ bool set_mode(int new_mode)
 		return false;
 	}
 
-  //Zero the throttle before switching to manual mode
-	if(mode == MANUAL) {
-		T = ( T != 0 ) ? 0: T;
+	if(new_mode >= MANUAL) {
+		// If at least one of the motor's RPM is not zero, return false
+		int i;
+		for(i = 0; i < 4; i++)
+			if(get_motor_rpm(i) > 0) {
+				send_err_message(MODE_CHANGE_ONLY_IF_ZERO_RPM);
+				//sprintf(message, "\n RPM= [%i%i%i%i] ",get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
+				return false;
+			}
+
+		// Also make sure that the throttle is in the zero position
+		if(js_T != 0) {
+			sprintf(message, "js_T: %i \n", js_T);
+			send_err_message(MODE_CHANGE_ONLY_IF_ZERO_RPM);
+			return false;
+		}
 	}
 
+	/* If everything is OK, change the mode */
 	mode = new_mode;
-	sprintf(message, "Succesfully changed to mode:>%i< ", new_mode);
+	sprintf(message, "Succesfully changed to mode: >%i< ", new_mode);
 
 	return true;
 }
@@ -450,7 +451,11 @@ void packet_received(char control, PacketData data) {
 	//sprintf(message, "Packet Received: %c %c\n#", control, data.as_char);
 	//send_term_message(message);
 
-	if(mode < MANUAL && (control != 'M' && control != 'A' && control != SPECIAL_REQUEST)){
+	/* Make sure that the throttle is zero before changing the mode */
+	if(control == JS_LIFT) 
+		js_T = data.as_int8_t;
+
+	if(mode < MANUAL && !(control == MODE_CHANGE || control == ADJUST || control == SPECIAL_REQUEST)){
 		sprintf(message, "[%c %i] Change mode to operate the QR!\n", control, data.as_char);
 		send_term_message(message);
 		return;
@@ -475,10 +480,7 @@ void packet_received(char control, PacketData data) {
 				T = data.as_int8_t;
 			else
 				T = 256 + data.as_int8_t;
-
-			sprintf(message, "Throttle: %i \n", scale_throttle(T));
-			send_term_message(message);
-
+		
 			break;
 		case ADJUST:
 			trim(data.as_int8_t);
