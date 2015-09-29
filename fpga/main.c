@@ -431,6 +431,17 @@ void send_logs() {
 	send_term_message("LOGGING COMPLETED");
 }
 
+/* Make the throttle scale non-linear
+ * 0-63   = 0-600
+ * 64-255 = 600-800
+ */
+int16_t scale_throttle(uint8_t throttle) {
+	if(throttle < 63) {
+		return throttle * 10;
+	} else {
+		return throttle - 64 + 630;
+	}
+}
 
 /* Callback that gets executed when a packet has arrived
  * Author: Bastiaan
@@ -464,6 +475,10 @@ void packet_received(char control, PacketData data) {
 				T = data.as_int8_t;
 			else
 				T = 256 + data.as_int8_t;
+
+			sprintf(message, "Throttle: %i \n", scale_throttle(T));
+			send_term_message(message);
+
 			break;
 		case ADJUST:
 			trim(data.as_int8_t);
