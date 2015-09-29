@@ -184,7 +184,7 @@ Author: Alessio */
 void send_err_message(Error err)
 {
 	PacketData p;
-	p.as_int16_t = err;
+	p.as_int8_t = err;
 	send_message(ERROR_MSG,p); //Sending error code
 }
 
@@ -199,7 +199,7 @@ bool set_mode(int new_mode)
 
 	if(new_mode < SAFE || new_mode > FULL_CONTROL) {
 		send_err_message(MODE_ILLIGAL);
-		sprintf(message, "\n current mode =>%i< ", new_mode,mode);
+		sprintf(message, "\n current mode =>%i< ", mode);
 		return false;
 	}
 
@@ -210,14 +210,14 @@ bool set_mode(int new_mode)
 
 			if(get_motor_rpm(i) > 0) {
 				send_err_message(MODE_CHANGE_ONLY_IF_ZERO_RPM);
-				sprintf(message, "\n RPM= [%i%i%i%i] ", new_mode,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
+				sprintf(message, "\n RPM= [%i%i%i%i] ",get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
 				return false;
 			}
 	}
 
 	if(mode >=MANUAL && new_mode>= MANUAL){
 		send_err_message(MODE_CHANGE_ONLY_VIA_SAFE);
-		sprintf(message, "\n current mode =>%i< ", new_mode,mode);
+		sprintf(message, "\n current mode =>%i< ",mode);
 		return false;
 	}
 
@@ -232,7 +232,7 @@ bool set_mode(int new_mode)
 	}
 
 	mode = new_mode;
-	sprintf(message, "[M %i] Succesfully changed to mode:>%i< ", new_mode,mode);
+	sprintf(message, "Succesfully changed to mode:>%i< ", new_mode);
 
 	return true;
 }

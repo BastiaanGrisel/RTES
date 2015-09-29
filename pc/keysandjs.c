@@ -497,7 +497,7 @@ void print_char_to_file(char c){
 void packet_received(char control, PacketData data){
 	int i;
 	char value = data.as_bytes[0];
-  mvprintw(20,0,"(int) %d (char) %c\n\n",data.as_int16_t,value);
+  mvprintw(20,0,"(int) %d (char) %c\n\n",data.as_int8_t,value);
 
 	switch(control){
 		case TERMINAL_MSG_START: // start new qr terminal message
@@ -518,7 +518,7 @@ void packet_received(char control, PacketData data){
 			fprintf(log_file,"\n");
 			break;
 		case ERROR_MSG:
-		  parse_error_message(value);
+		  parse_error_message(data.as_int8_t);
 			break;
 		default:
 			break;
