@@ -31,6 +31,74 @@ PacketData ch2pd(char in) {
 #define RIGHT_CHAR 'h'
 #define UP_CHAR 't'
 #define DOWN_CHAR 'g'
+#define NOT_IMPORTANT '~'
+
+/************
+ *  PC->QR  *
+ ************/
+
+/* control messages*/
+#define MODE_CHANGE 'M'
+#define JS_ROLL  'R'
+#define JS_PITCH 'P'
+#define JS_YAW   'Y'
+#define JS_LIFT  'T'
+
+
+
+/* Adjust parameters*/
+#define ADJUST   'A'
+// flight parameters
+#define ROLL_LEFT 	'v'
+#define ROLL_RIGHT 	'h'
+#define PITCH_DOWN 	't'
+#define PITCH_UP 	'g'
+#define YAW_LEFT 	'q'
+#define YAW_RIGHT 	'w'
+#define LIFT_UP 	'a'
+#define LIFT_DOWN 	'z'
+// control parameters
+#define P_YAW_UP 	'u'
+#define P_YAW_DOWN 	'j'
+#define P_ROLL_UP 	'i'
+#define P_ROLL_DOWN 'k'
+#define P_PITCH_UP 	'o'
+#define P_PITCH_DOWN 'l'
+
+
+
+/* SPECIAL REQUESTS */
+#define SPECIAL_REQUEST 'S'  //= control value
+/* Possible paramaters*/
+#define ESCAPE 27 // TODO send this if pc-panic-button is pressed (if pc quits)
+#define RESET_MOTORS 'r'
+#define ASK_MOTOR_RPM 'm'
+#define ASK_FILTER_PARAM 'f'
+#define RESET_SENSOR_LOG 's'
+#define ASK_SENSOR_LOG 'L'
+
+
+/************
+ *  QR->PC  *
+ ************/
+
+
+#define TERMINAL_MSG_START 'S'
+#define TERMINAL_MSG_PART 'T'
+#define TERMINAL_MSG_FINISH 'F'
+
+#define SENSOR_LOG_FULL 'O' //TODO implement
+#define LOG_MSG_PART 'L'
+#define LOG_PERCENT_COMPLETE '%' //TODO implement
+#define LOG_MSG_NEW_LINE '\n'
+
+/* Error Messages */
+#define LOG_SEND_ONLY_IN_SAFE_MODE '0'
+#define MODE_ILLIGAL '1'
+#define MODE_CHANGE_ONLY_VIA_SAFE '2'
+#define MODE_CHANGE_ONLY_IF_STOPPED_MOTOR '3'
+#define MODE_WAS_ALREADY_THAT '4'
+#define CONTROL_DISABLED_IN_THIS_MODE '5'
 
 #endif /* TYPES_H */
 

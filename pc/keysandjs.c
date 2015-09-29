@@ -33,7 +33,7 @@ struct timeval updateFPS(struct timeval oldtime);
 int joystickInit(void);
 void sendKeyData(int c);
 void save_JS_event(int type, int number,int value);
-void sendJSData();
+struct timeval sendJSData(struct timeval packet_time);
 void printJSstate(void);
 void send_message(char control, char value);
 
@@ -79,7 +79,7 @@ int main (int argc, char **argv)
 	struct js_event js;
 	int i;
 	int c, last_c;
-	struct timeval time;
+	struct timeval time, last_packet_time;
 	char rec_c;
 
 	// init
@@ -90,6 +90,7 @@ int main (int argc, char **argv)
 	init_log();
 	gettimeofday(&time,NULL);
 	gettimeofday(&keep_alive,NULL);
+	gettimeofday(&last_packet_time,NULL);
 
 	/* Main loop to process/send user input and to show QR input */
 	while (1) {
@@ -106,7 +107,7 @@ int main (int argc, char **argv)
 				   			sizeof(struct js_event))  {
 				save_JS_event(js.type,js.number,js.value);
 			}
-			sendJSData();
+			last_packet_time = sendJSData(last_packet_time);
 		}
 
    		check_alive_connection();
@@ -282,8 +283,8 @@ void update_time()
  * Author: Henko Aantjes
  */
 void sendKeyData(int c){
-	char control, value; // the control and value to send
-	if(c >= '0' && c<='5'){
+	char control, value =0; // the control and value to send
+	if(c >= '0' && c<='5'){ //TODO mode change allowed?
 		value = (char) c-'0';
 		control = 'M';
 		if(fd_RS232>0){
@@ -300,35 +301,66 @@ void sendKeyData(int c){
 
 		switch(c){
 			case KEY_LEFT:
-				value = LEFT_CHAR;
+				value = ROLL_LEFT;
 				break;
 			case KEY_RIGHT:
-				value = RIGHT_CHAR;
+				value = ROLL_RIGHT;
 				break;
 			case KEY_UP:
-				value = UP_CHAR;
+				value = PITCH_DOWN;
 				break;
 			case KEY_DOWN:
-				value = DOWN_CHAR;
+				value = PITCH_UP;
 				break;
-			case 27: // ESCAPE
 			case 'a':
+				value = LIFT_UP;
+				break;
 			case 'z':
+				value = LIFT_DOWN;
+				break;
 			case 'q':
+				value = YAW_LEFT;
+				break;
 			case 'w':
+				value = YAW_RIGHT;
+				break;
 			case 'u':
+				value = P_YAW_UP;
+				break;
 			case 'j':
+				value = P_YAW_DOWN;
+				break;
 			case 'i':
+				value = P_ROLL_UP;
+				break;
 			case 'k':
+				value = P_ROLL_DOWN;
+				break;
 			case 'o':
-			case 'm': // get motor values
-			case 'f': // get filter values
-			case 'r':
-				value = c;
+				value = P_PITCH_UP;
 				break;
 			case 'l':
-				control = 'L';
-				value = c;
+				value = P_PITCH_DOWN;
+				break;
+			case 'm':
+				control = SPECIAL_REQUEST;
+				value = ASK_MOTOR_RPM;
+				break; 
+			case 'f': 
+				control = SPECIAL_REQUEST;
+				value = ASK_FILTER_PARAM;
+				break; 
+			case 'r':
+				control = SPECIAL_REQUEST;
+				value = RESET_MOTORS;
+				break;
+			case 's':
+				control = SPECIAL_REQUEST;
+				value = RESET_SENSOR_LOG;
+				break;
+			case ESCAPE: // ESCAPEKEY
+				control = SPECIAL_REQUEST;
+				value = ESCAPE;
 				break;
 			default:
 				value = 0;
@@ -349,31 +381,40 @@ void sendKeyData(int c){
  * Construct a message and send
  * Author: Henko Aantjes
  */
-void sendJSData(){
+struct timeval sendJSData(struct timeval last_packet_time){
+	struct timeval timenew;
 	int number, control, value;
 	for(number=0;number<4;number++){
 		if(axisflags[number]){
-			axisflags[number] = false;
 			switch(number){
 				case 0:
-					control = 'R'; // roll
+					control = JS_ROLL; // roll
 					break;
 				case 1:
-					control = 'P'; // pitch
+					control = JS_PITCH; // pitch
 					break;
 				case 2:
-					control = 'Y'; // yaw
+					control = JS_YAW; // yaw
 					break;
 				case 3:
-					control = 'T'; // throttle
+					control = JS_LIFT; // throttle
 					break;
 				default:
 					control = 0;
 					break;
 			}
 			if(fd_RS232>0 & control !=0){
-				send_message(control, axis[number]);
-				mvprintw(1,0,"last JS message: %c  %i (%i/256)\n",control, axis[number], axis[number]*256);
+				gettimeofday(&timenew,NULL);
+				int timediff = timenew.tv_usec+1000000*timenew.tv_sec-last_packet_time.tv_usec-1000000*last_packet_time.tv_sec;
+				if(timediff<1000*10){
+					mvprintw(2,0,"timediff is to low: ", timediff);
+					return last_packet_time;
+				} else {
+					axisflags[number] = false;
+					send_message(control, axis[number]);
+					mvprintw(1,0,"last JS message: %c  %i (%i/256)\n",control, axis[number], axis[number]*256);
+					return timenew;
+				}
 			}
 			else{
 				mvprintw(1,0,"NOT sending: %c  %c   (RS232 = DISABLED)\n",control, value);
@@ -387,11 +428,11 @@ void sendJSData(){
  */
 void send_message(char control, char value){
 	PacketData p;
-	p.bytes[0] = value;
+	p.as_bytes[0] = value;
 	
 	rs232_putchar(control);
-	rs232_putchar(p.bytes[0]);
-	rs232_putchar(p.bytes[1]);
+	rs232_putchar(p.as_bytes[0]);
+	rs232_putchar(p.as_bytes[1]);
 	rs232_putchar(checksum(control,p));
 	update_time();
 }
@@ -458,20 +499,22 @@ void packet_received(char control, PacketData data){
 	char value = data.as_bytes[0];
 	
 	switch(control){
-		case 'B': // start new qr terminal message
+		case TERMINAL_MSG_START: // start new qr terminal message
 			charpos = 0;
 			break;
-		case 'T': // characters of the terminal message
-			if(charpos < QR_INPUT_BUFFERSIZE)
+		case TERMINAL_MSG_PART: // characters of the terminal message
+			if(charpos<QR_INPUT_BUFFERSIZE)
 				received_chars[charpos++]= value;
 			break;
-		case 'F':
+		case TERMINAL_MSG_FINISH:
 			// print the terminal message
 			mvprintw(10, 0, "received messages: (X32 -> pc) == {%.*s}         \n\n\n\n", charpos, received_chars);
 			break;
-		case 'L':
-		  	print_value_to_file(value);
+		case LOG_MSG_PART:
+			print_value_to_file(value);
 			break;
+		case LOG_MSG_NEW_LINE:
+			fprintf(log_file,"\n");
 		default:
 			break;
 	}

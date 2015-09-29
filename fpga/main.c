@@ -43,8 +43,6 @@
 
 /* Define global variables
  */
-char malloc_memory[1024];
-int malloc_memory_size = 1024;
 
 int 	time_at_last_led_switch = 0;
 int 	X32_ms_last_packet= -1; //ms of the last received packet. 1s for booting up and starting sending values
@@ -59,16 +57,24 @@ int 	filtered_dY = 0; //
 int 	Y_BIAS_UPDATE = 14; // update bias each sample with a fraction of 1/2^13
 int 	Y_FILTER = 4; // simple filter that updates 1/2^Y_filter
 int 	P_yaw=4; // P = 2^4     Y_TO_ENGINE_SCALE
+int 	P_roll=4;
+int 	P_pitch=4;
 int 	Y_stabilize;
 
+/* sensor values */
 int	s0, s1, s2, s3, s4, s5;
-Fifo	pc_msg_q;
+int sensor_log[LOG_SIZE][7];
+int sensor_log_counter = 0;
+
+Fifo	pc_msg_q; // message que received from pc
+char message[100]; // message to send to pc-terminal
+
 Mode	mode = SAFE;
 Loglevel log_level = SENSORS;
 
-int sensor_log[LOG_SIZE][7];
-int sensor_log_counter = 0;
-char message[100];
+/* function declarations TODO put this in header */
+void panic(void);
+void send_logs(void);
 
 /* Add offset to the four motors
  * No need to check for negative numbers since offset can be negative
@@ -122,6 +128,7 @@ void reset_motors()
 	set_motor_rpm(0,0,0,0);
 }
 
+
 void init_array()
 {
 	int i;
@@ -147,6 +154,13 @@ void send_message(char control, PacketData data){
 	putchar(checksum(control, data));
 }
 
+/* send a message that doesn't need a value
+ * Author: Henko Aantjes
+ */
+void send_control_message(char control){
+	send_message(control, ch2pd(NOT_IMPORTANT));
+}
+
 /* send a sequence of messages, for example: write log or to terminal
  *
  */
@@ -161,9 +175,9 @@ void send_long_message(char control, char message[]){
  *
  */
 void send_term_message(char message[]){
-	send_message('B', ch2pd('T')); // begin terminal message
-	send_long_message('T', message);
-	send_message('F', ch2pd('T')); // end terminal message
+	send_control_message(TERMINAL_MSG_START); // begin terminal message
+	send_long_message(TERMINAL_MSG_PART, message);
+	send_control_message(TERMINAL_MSG_FINISH); // end terminal message
 }
 
 /*
@@ -214,54 +228,66 @@ void trim(char c){
 		case 'z': // throttle down
 			add_motor_offset(-OFFSET_STEP, -OFFSET_STEP, -OFFSET_STEP, -OFFSET_STEP);
 			break;
-		case LEFT_CHAR: // roll left
+		case ROLL_LEFT: // roll left
 			add_motor_offset(0, +OFFSET_STEP, 0, -OFFSET_STEP);
 			break;
-		case RIGHT_CHAR: // roll right
+		case ROLL_RIGHT: // roll right
 			add_motor_offset(0, -OFFSET_STEP, 0, +OFFSET_STEP);
 			break;
-		case UP_CHAR: // pitch up
+		case PITCH_DOWN: // pitch down
 			add_motor_offset(-OFFSET_STEP, 0, +OFFSET_STEP, 0);
 			break;
-		case DOWN_CHAR: // pitch down
+		case PITCH_UP: // pitch up
 			add_motor_offset(+OFFSET_STEP, 0, -OFFSET_STEP, 0);
 			break;
-		case 'q': // yaw left
+		case YAW_LEFT: // yaw left
 			add_motor_offset(-OFFSET_STEP, +OFFSET_STEP, -OFFSET_STEP, +OFFSET_STEP);
 			break;
-		case 'w': // yaw right
+		case YAW_RIGHT: // yaw right
 			add_motor_offset(+OFFSET_STEP, -OFFSET_STEP, +OFFSET_STEP, -OFFSET_STEP);
 			break;
-		case 'r': //reset
-			reset_motors();
-			break;
-		case 'u':
+		case P_YAW_UP:
 			P_yaw++;
 			break;
-		case 'j':
+		case P_YAW_DOWN:
 			P_yaw--;
 			break;
-		case 'i':
+		case P_ROLL_UP:
 			break;
-		case 'k':
+		case P_ROLL_DOWN:
 			break;
-		case 'o':
+		case P_PITCH_UP:
 			break;
-		case 'l':
+		case P_PITCH_DOWN:
 			break;
-		case 'm':
-			sprintf(message, "offset = [%i%i%i%i]\nmotor RPM= [%i%i%i%i]\n",offset[0]/10,offset[1]/10,offset[2]/10,offset[3]/10,get_motor_rpm(0)/10,get_motor_rpm(1)/10,get_motor_rpm(2)/10,get_motor_rpm(3)/10);
+		default:
+			break;
+	}
+}
+
+void special_request(char request){
+	switch(request){
+		case ESCAPE:
+			panic();
+			break;
+		case ASK_MOTOR_RPM:
+			sprintf(message, "offset = [%i%i%i%i]\nmotor RPM= [%i%i%i%i]\n",offset[0],offset[1],offset[2],offset[3],get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
 			send_term_message(message);
 			break;
-		case 'f':
-			sprintf(message, "fix = %i,  Ybias = %i, filtered_dY = %i\n#",Y_stabilize,Ybias, filtered_dY);
+		case ASK_FILTER_PARAM:
+			sprintf(message, "Y_stabilize = %i,  Ybias = %i, filtered_dY = %i\n#",Y_stabilize,Ybias, filtered_dY);
 			send_term_message(message);
 			break;
-		case 's':
+		case RESET_SENSOR_LOG:
 			sensor_log_counter = 0;
 			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
 			break;
-		default:
+		case ASK_SENSOR_LOG:
+			if(mode==SAFE)
+				send_logs();
+			break;
+		case RESET_MOTORS: //reset
+			reset_motors();
 			break;
 	}
 }
@@ -322,7 +348,7 @@ void isr_qr_link(void)
 	/*YAW_CALCULATIONS*/
 	dY 		= (s5 << Y_BIAS_UPDATE) - Ybias; 		// dY is now scaled up with Y_BIAS_UPDATE
 	Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5; 		// update Ybias with 1/2^Y_BIAS_UPDATE each sample
-	filtered_dY 	+= -1 * (filtered_dY << Y_FILTER) + dY; 	// filter dY
+	filtered_dY 	+= -1 * (filtered_dY >> Y_FILTER) + dY; 	// filter dY
 	//Y +=filtered_dY;						// integrate dY to get yaw (but if I remem correct then we need the rate not the yaw)
 	Y_stabilize 	= (0 - filtered_dY) >> (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
 	if(mode == YAW_CONTROL) {
@@ -361,7 +387,7 @@ void send_logs() {
 	int i;
 	int j;
 
-	for(i = 0; i < 10000; i++) {
+	for(i = 0; i < LOG_SIZE; i++) {
 		for(j = 0; j < 7; j++) {
 			char low  =  sensor_log[i][j]       & 0xff;
 			char high = (sensor_log[i][j] >> 8) & 0xff;
@@ -370,9 +396,9 @@ void send_logs() {
 			send_message('L', ch2pd(low));
 		}
 
-		send_message('L',ch2pd('~'));
+		send_control_message(LOG_MSG_NEW_LINE);
 
-		if(i%100==99){
+		if(i%(LOG_SIZE/100)==(LOG_SIZE/100)-1){
 			sprintf(message, "%i",i/100+1);
 			send_term_message(message);
 		}
@@ -394,31 +420,30 @@ void packet_received(char control, PacketData data) {
 	}
 
 	switch(control){
-		case 'M':
+		case MODE_CHANGE:
 			set_mode(data.as_char);
 			send_term_message(message);
 			break;
-		case 'R':
+		case JS_ROLL:
 			R = data.as_int8_t;
 			break;
-		case 'P':
+		case JS_PITCH:
 			P = data.as_int8_t;
 			break;
-		case 'Y':
+		case JS_YAW:
 			Y = data.as_int8_t;
 			break;
-		case 'T':
+		case JS_LIFT:
 			if(data.as_int8_t >= 0)
 				T = data.as_int8_t;
 			else
 				T = 256 + data.as_int8_t;
 			break;
-		case 'A':
-			trim(data.as_char);
+		case ADJUST:
+			trim(data.as_int8_t);
 			break;
-		case 'L':
-			if(mode == SAFE)
-				send_logs();
+		case SPECIAL_REQUEST:
+			special_request(data.as_char);
 			break;
 		default:
 			break;
