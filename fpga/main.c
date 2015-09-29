@@ -5,11 +5,10 @@
  */
 
 #include <stdio.h>
-#include "x32.h"
 
-#include "types.h"
-#include "fifo.h"
+#include "x32.h"
 #include "checksum.h"
+#include "logging.h"
 
 /* define some peripheral short hands
  */
@@ -39,20 +38,20 @@
 
 #define OFFSET_STEP 10
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
-#define LOG_SIZE 20
+//#define LOG_SIZE 10
 
 /* Define global variables
  */
 
+int   X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to avoid going panic before receiving the first msg
 int 	time_at_last_led_switch = 0;
-int 	X32_ms_last_packet= -1; //ms of the last received packet. 1s for booting up and starting sending values
 int 	packet_counter = 0, packet_lost_counter = 0;
-int	isr_qr_time = 0, isr_qr_counter = 0;
+int	  isr_qr_time = 0, isr_qr_counter = 0;
 int 	offset[4];
 int 	R=0, P=0, Y=0, T=0, js_T=0;
 
 /* filter parameters*/
-int	Ybias = 0;
+int	  Ybias = 0;
 int 	filtered_dY = 0; //
 int 	Y_BIAS_UPDATE = 14; // update bias each sample with a fraction of 1/2^13
 int 	Y_FILTER = 4; // simple filter that updates 1/2^Y_filter
@@ -63,8 +62,8 @@ int 	Y_stabilize;
 
 /* sensor values */
 int	s0, s1, s2, s3, s4, s5;
-unsigned int sensor_log[LOG_SIZE][7];
 int sensor_log_counter = 0;
+unsigned int sensor_log[LOG_SIZE][7];
 
 Fifo	pc_msg_q; // message que received from pc
 char message[100]; // message to send to pc-terminal
@@ -74,7 +73,7 @@ Loglevel log_level = SENSORS;
 
 /* function declarations TODO put this in header */
 void panic(void);
-void send_logs(void);
+
 
 /* Add offset to the four motors
  * No need to check for negative numbers since offset can be negative
@@ -128,65 +127,6 @@ void reset_motors()
 	set_motor_rpm(0,0,0,0);
 }
 
-void init_array() //PROVISIONAL JUST FOR TESTING
-{
-	int i;
-	for(i=0; i < LOG_SIZE; i++)
-  {
- 		sensor_log[i][0] = 1;//X32_QR_timestamp/50;
- 		sensor_log[i][1] = 500;//s0;
- 		sensor_log[i][2] = 255;//s1;
- 		sensor_log[i][3] = 500;//s2;
- 		sensor_log[i][4] = 100;//s3;
- 		sensor_log[i][5] = 200;//s4;
- 		sensor_log[i][6] = 0;//s5;
- }
-}
-
-/* send a complete message
- * Author: Henko Aantjes
- */
-void send_message(char control, PacketData data){
-	putchar(control);
-	putchar(data.as_bytes[0]);
-	putchar(data.as_bytes[1]);
-	putchar(checksum(control, data));
-}
-
-/* send a message that doesn't need a value
- * Author: Henko Aantjes
- */
-void send_control_message(char control){
-	send_message(control, ch2pd(NOT_IMPORTANT));
-}
-
-/* send a sequence of messages, for example: write log or to terminal
- *
- */
-void send_long_message(char control, char message[]){
-	int i;
-	for (i = 0; message[i] != 0; i++){
-		send_message(control, ch2pd(message[i]));
-	}
-}
-
-/* send something to the terminal
- *
- */
-void send_term_message(char message[]){
-	send_control_message(TERMINAL_MSG_START); // begin terminal message
-	send_long_message(TERMINAL_MSG_PART, message);
-	send_control_message(TERMINAL_MSG_FINISH); // end terminal message
-}
-
-/*Error function that send all the error messages defined in types.h
-Author: Alessio */
-void send_err_message(Error err)
-{
-	PacketData p;
-	p.as_uint16_t = err;
-	send_message(ERROR_MSG,p); //Sending error code
-}
 
 /*
  * Changes the mode to either: SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL or FULL_CONTROL.
@@ -307,7 +247,7 @@ void special_request(char request){
 			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
 			break;
 		case ASK_SENSOR_LOG:
-			if(mode==SAFE) send_logs();
+			if(mode==SAFE) send_logs(sensor_log);
 		   else send_err_message(LOG_ONLY_IN_SAFE_MODE);
 
 			break;
@@ -406,37 +346,7 @@ int get_motor_rpm(int i) {
 	}
 }
 
-/* Send over the logs that are stored in 'sensor_log'
- */
-void send_logs() {
-	int i;
-	int j;
-	PacketData p;
 
-	for(i = 0; i < LOG_SIZE; i++) {
-		for(j = 0; j < 7; j++) {
-			unsigned char low  =  sensor_log[i][j]       & 0xff;
-			unsigned char high = (sensor_log[i][j] >> 8) & 0xff;
-			
-			//PROVISIONAL workaround
-			p.as_uint16_t = (sensor_log[i][j] == 255) ? 32000 : sensor_log[i][j];
-
-			send_message(LOG_MSG_PART,p);
-
-      //OLD WAY
-			/*send_message(LOG_MSG_PART, ch2pd(high));
-			send_message(LOG_MSG_PART, ch2pd(low));*/
-		}
-
-		send_control_message(LOG_MSG_NEW_LINE);
-
-		if(i%(LOG_SIZE/100)==(LOG_SIZE/100)-1){
-			sprintf(message, "%i%%",i/100+1);
-			send_term_message(message);
-		}
-	}
-	send_term_message("LOGGING COMPLETED");
-}
 
 /* Make the throttle scale non-linear
  * 0-63   = 0-600
@@ -458,7 +368,7 @@ void packet_received(char control, PacketData data) {
 	//send_term_message(message);
 
 	/* Make sure that the throttle is zero before changing the mode */
-	if(control == JS_LIFT) 
+	if(control == JS_LIFT)
 		js_T = data.as_int8_t;
 
 	if(mode < MANUAL && !(control == MODE_CHANGE || control == ADJUST || control == SPECIAL_REQUEST)){
@@ -486,7 +396,7 @@ void packet_received(char control, PacketData data) {
 				T = data.as_int8_t;
 			else
 				T = 256 + data.as_int8_t;
-		
+
 			break;
 		case ADJUST:
 			trim(data.as_int8_t);
@@ -507,10 +417,12 @@ void setup()
 	int c;
 
 	/* Initialize Variables */
-
+	nexys_display = 0x00;
 	isr_qr_counter = isr_qr_time = 0;
 	offset[0] = offset[1] = offset[2] = offset[3] =0;
 	fifo_init(&pc_msg_q);
+
+  init_array(sensor_log);
 
 	/* Prepare Interrupts */
 
@@ -599,8 +511,6 @@ void check_alive_connection() {
 int main(void)
 {
 	setup();
-	init_array(); //for testing the logging output
-  nexys_display = 0x00;
 
 	// Main loop
 	while (1) {
