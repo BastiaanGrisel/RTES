@@ -7,6 +7,32 @@ typedef enum { NONE, SENSORS } Loglevel;
 typedef enum {LOG_ONLY_IN_SAFE_MODE, MODE_ILLIGAL, MODE_CHANGE_ONLY_VIA_SAFE,
   MODE_CHANGE_ONLY_IF_ZERO_RPM, MODE_ALREADY_SET, CONTROL_DISABLED_IN_THIS_MODE } Error;  /* Error Messages */
 
+typedef signed char       int8_t;
+typedef signed short      int16_t;
+typedef signed int        int32_t;
+typedef unsigned char     uint8_t;
+typedef unsigned short    uint16_t;
+typedef unsigned int      uint32_t;
+
+typedef union {
+	int16_t as_int16_t;
+	int8_t as_int8_t;
+	char as_char;
+	char as_bytes[2];
+} PacketData;
+
+/* Convert a character to packetdata to be sent over the serial connection
+ */
+PacketData ch2pd(char in) {
+	PacketData p;
+	p.as_bytes[0] = in;
+	return p;
+}
+
+#define LEFT_CHAR 'v'
+#define RIGHT_CHAR 'h'
+#define UP_CHAR 't'
+#define DOWN_CHAR 'g'
 #define NOT_IMPORTANT '~'
 
 /************
@@ -66,6 +92,5 @@ typedef enum {LOG_ONLY_IN_SAFE_MODE, MODE_ILLIGAL, MODE_CHANGE_ONLY_VIA_SAFE,
 #define LOG_MSG_PART 'L'
 #define LOG_PERCENT_COMPLETE '%' //TODO implement
 #define LOG_MSG_NEW_LINE '\n'
-
 
 #endif /* TYPES_H */

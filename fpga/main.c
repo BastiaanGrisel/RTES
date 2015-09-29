@@ -146,17 +146,18 @@ void init_array() //PROVISIONAL JUST FOR TESTING
 /* send a complete message
  * Author: Henko Aantjes
  */
-void send_message(char control, char value){
+void send_message(char control, PacketData data){
 	putchar(control);
-	putchar(value);
-	putchar(checksum(control,value));
+	putchar(data.as_bytes[0]);
+	putchar(data.as_bytes[1]);
+	putchar(checksum(control, data));
 }
 
 /* send a message that doesn't need a value
  * Author: Henko Aantjes
  */
 void send_control_message(char control){
-	send_message(control, NOT_IMPORTANT);
+	send_message(control, ch2pd(NOT_IMPORTANT));
 }
 
 /* send a sequence of messages, for example: write log or to terminal
@@ -164,8 +165,8 @@ void send_control_message(char control){
  */
 void send_long_message(char control, char message[]){
 	int i;
-	for (i = 0; message[i] != 0; i++){ //so 0 is the delimiter?
-		send_message(control, message[i]);
+	for (i = 0; message[i] != 0; i++){
+		send_message(control, ch2pd(message[i]));
 	}
 }
 
@@ -182,8 +183,9 @@ void send_term_message(char message[]){
 Author: Alessio */
 void send_err_message(Error err)
 {
-	char e = (char) err - '0';
-	send_message(ERROR_MSG,err); //Sending error code
+	PacketData p;
+	p.as_int16_t = err;
+	send_message(ERROR_MSG,p); //Sending error code
 }
 
 /*
@@ -414,8 +416,9 @@ void send_logs() {
 			unsigned char low  =  sensor_log[i][j]       & 0xff;
 			unsigned char high = (sensor_log[i][j] >> 8) & 0xff;
 
-			send_message(LOG_MSG_PART,high);
-			send_message(LOG_MSG_PART,low);
+			//MAYBE HERE WE CAN USE THE
+			send_message(LOG_MSG_PART, ch2pd(high));
+			send_message(LOG_MSG_PART, ch2pd(low));
 		}
 
 		send_control_message(LOG_MSG_NEW_LINE);
@@ -432,40 +435,41 @@ void send_logs() {
 /* Callback that gets executed when a packet has arrived
  * Author: Bastiaan
  */
-void packet_received(char control, char value) {
-	//sprintf(message, "Packet Received: %c %i\n#", control, value);
+void packet_received(char control, PacketData data) {
+	//sprintf(message, "Packet Received: %c %c\n#", control, data.as_char);
 	//send_term_message(message);
-	if(mode<MANUAL && (control!='M' && control!= 'A' && control!= SPECIAL_REQUEST)){
-		sprintf(message, "[%c %i] Change mode to operate the QR!\n",control, value);
+
+	if(mode < MANUAL && (control != 'M' && control != 'A' && control != SPECIAL_REQUEST)){
+		sprintf(message, "[%c %i] Change mode to operate the QR!\n", control, data.as_char);
 		send_term_message(message);
 		return;
 	}
 
 	switch(control){
 		case MODE_CHANGE:
-			set_mode(value);
+			set_mode(data.as_char);
 			send_term_message(message);
 			break;
 		case JS_ROLL:
-			R = value;
+			R = data.as_int8_t;
 			break;
 		case JS_PITCH:
-			P = value;
+			P = data.as_int8_t;
 			break;
 		case JS_YAW:
-			Y = value;
+			Y = data.as_int8_t;
 			break;
 		case JS_LIFT:
-			if(value >= 0)
-				T = value;
+			if(data.as_int8_t >= 0)
+				T = data.as_int8_t;
 			else
-				T = 256 + value;
+				T = 256 + data.as_int8_t;
 			break;
 		case ADJUST:
-			trim(value);
+			trim(data.as_int8_t);
 			break;
 		case SPECIAL_REQUEST:
-			special_request(value);
+			special_request(data.as_char);
 			break;
 		default:
 			break;
@@ -586,16 +590,17 @@ int main(void)
 		// Process messages
         	DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
 
-		while(fifo_size(&pc_msg_q) >= 3) { // Check if there are one or more packets in the queue
+		while(fifo_size(&pc_msg_q) >= 4) { // Check if there are one or more packets in the queue
 			char control;
-			char value;
+			PacketData data;
 			char checksum;
 
 			fifo_peek_at(&pc_msg_q, &control, 0);
-			fifo_peek_at(&pc_msg_q, &value, 1);
-			fifo_peek_at(&pc_msg_q, &checksum, 2);
+			fifo_peek_at(&pc_msg_q, &data.as_bytes[0], 1);
+			fifo_peek_at(&pc_msg_q, &data.as_bytes[1], 2);
+			fifo_peek_at(&pc_msg_q, &checksum, 3);
 
-			if(!check_packet(control,value,checksum)) {
+			if(!check_packet(control,data,checksum)) {
 				// If the checksum is not correct, pop the first message off the queue and repeat the loop
 				char c;
 				fifo_pop(&pc_msg_q, &c);
@@ -607,8 +612,10 @@ int main(void)
 				fifo_pop(&pc_msg_q, &c);
 				fifo_pop(&pc_msg_q, &c);
 				fifo_pop(&pc_msg_q, &c);
+				fifo_pop(&pc_msg_q, &c);
+
 				if(control != 0){
-					packet_received(control,value);
+					packet_received(control, data);
 				}
 			}
 		}

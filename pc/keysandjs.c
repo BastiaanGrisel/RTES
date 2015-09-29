@@ -81,9 +81,6 @@ int main (int argc, char **argv)
 	struct timeval time, last_packet_time;
 	char rec_c;
 
-	value_counter = 0;
-	value_to_print = 0;
-
 	// init
 	init_keyboard();
 	init_joystick();
@@ -286,7 +283,7 @@ void sendKeyData(int c){
 		if(fd_RS232>0){
 			send_message(control, value);
 			//update the last packet timestamp
-			mvprintw(1,0,"last mode message: %c%i{%i}\n",control, (int) value, checksum(control,value));
+			mvprintw(1,0,"last mode message: %c%i{%i}\n",control, (int) value, checksum(control,ch2pd(value)));
 		}
 		else{
 			mvprintw(1,0,"NOT sending: %c%i   (RS232 = DISABLED)\n",control, (int) value);
@@ -369,7 +366,7 @@ void sendKeyData(int c){
 
 		if(fd_RS232>0 & value !=0){
 			send_message(control, value);
-			mvprintw(1,0,"last key message: %c%c{%i}   \n",control, value, checksum(control,value));
+			mvprintw(1,0,"last key message: %c%c{%i}   \n",control, value, checksum(control,ch2pd(value)));
 		}
 		else{
 			mvprintw(1,0,"NOT sending: %c%c %s   \n",control, value,value==0?"key = not a control!":"(RS232 = DISABLED)");
@@ -427,9 +424,13 @@ struct timeval sendJSData(struct timeval last_packet_time){
  * Author: Henko Aantjes
  */
 void send_message(char control, char value){
+	PacketData p;
+	p.as_bytes[0] = value;
+
 	rs232_putchar(control);
-	rs232_putchar(value);
-	rs232_putchar(checksum(control,value));
+	rs232_putchar(p.as_bytes[0]);
+	rs232_putchar(p.as_bytes[1]);
+	rs232_putchar(checksum(control,p));
 	update_time();
 }
 
@@ -437,7 +438,8 @@ void send_message(char control, char value){
  * Author: Henko Aantjes
  */
 void init_log(void){
-
+	value_counter = 0;
+	value_to_print = 0;
 
 	log_file = fopen("flight_log.txt", "w");
 	if (log_file == NULL)
@@ -492,8 +494,11 @@ void print_char_to_file(char c){
  * Call parse message if a message is complete
  * Author: Henko Aantjes
  */
-void packet_received(char control, char value){
+void packet_received(char control, PacketData data){
 	int i;
+	char value = data.as_bytes[0];
+  mvprintw(20,0,"(int) %d (char) %c\n\n",data.as_int16_t,value);
+
 	switch(control){
 		case TERMINAL_MSG_START: // start new qr terminal message
 			charpos = 0;
@@ -504,7 +509,7 @@ void packet_received(char control, char value){
 			break;
 		case TERMINAL_MSG_FINISH:
 			// print the terminal message
-			mvprintw(10,0,"received messages:(X32 -> pc) == {%.*s}         \n\n\n\n", charpos, received_chars);
+			mvprintw(10, 0, "received messages: (X32 -> pc) == {%.*s}         \n\n\n\n", charpos, received_chars);
 			break;
 		case LOG_MSG_PART:
 			print_value_to_file((unsigned char) value);
@@ -546,33 +551,40 @@ parse_error_message(Error err)
 		case CONTROL_DISABLED_IN_THIS_MODE:
 			sprintf(msg, "[QR]: Manual control disabled in this mode. ");
 			break;
+		default:
+		 sprintf(msg, "[QR] Ok.");
 	}
 
-	mvprintw (18,0,"%.*s \n\n\n\n",50,msg);
+	mvprintw (18,0,"%.*s \n\n",50,msg);
 }
 
 
 void check_msg_q(){
-	char c, control, value, checksum;
-
-	while(fifo_size(&qr_msg_q) >= 3) { // Check if there are one or more packets in the queue
-
+	while(fifo_size(&qr_msg_q) >= 4) { // Check if there are one or more packets in the queue
+		char control;
+		PacketData data;
+		char checksum;
 
 		fifo_peek_at(&qr_msg_q, &control, 0);
-		fifo_peek_at(&qr_msg_q, &value, 1);
-		fifo_peek_at(&qr_msg_q, &checksum, 2);
+		fifo_peek_at(&qr_msg_q, &data.as_bytes[0], 1);
+		fifo_peek_at(&qr_msg_q, &data.as_bytes[1], 2);
+		fifo_peek_at(&qr_msg_q, &checksum, 3);
 
-		if(!check_packet(control,value,checksum)) {
+		if(!check_packet(control,data,checksum)) {
 			// If the checksum is not correct, pop the first message off the queue and repeat the loop
+			char c;
 			fifo_pop(&qr_msg_q, &c);
-
 		} else {
 			// If the checksum is correct, pop the packet off the queue and notify a callback
+			char c;
+			fifo_pop(&qr_msg_q, &c);
 			fifo_pop(&qr_msg_q, &c);
 			fifo_pop(&qr_msg_q, &c);
 			fifo_pop(&qr_msg_q, &c);
 
-			packet_received(control,value);
+			if(control != 0){
+				packet_received(control, data);
+			}
 		}
 	}
 }
