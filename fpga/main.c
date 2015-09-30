@@ -48,7 +48,7 @@ int32_t  time_at_last_led_switch = 0;
 int32_t  packet_counter = 0, packet_lost_counter = 0;
 int32_t	 isr_qr_time = 0, isr_qr_counter = 0;
 int32_t  offset[4];
-int32_t  R=0, P=0, Y=0, T=0, js_T=0;
+int32_t  R=0, P=0, Y=0, T=0, js_T=-1;
 
 /* filter parameters*/
 int32_t  Ybias = 0;
@@ -142,11 +142,7 @@ bool set_mode(int32_t new_mode)
 		return false;
 	}
 
-	/* Make sure that a change to an operational mode can only be done from SAFE */
-	if(mode >= MANUAL && new_mode >= MANUAL){
-		send_err_message(MODE_CHANGE_ONLY_VIA_SAFE);
-		return false;
-	}
+
 
 	if(mode == new_mode) {
 		send_err_message(MODE_ALREADY_SET);
@@ -154,6 +150,12 @@ bool set_mode(int32_t new_mode)
 	}
 
 	if(new_mode >= MANUAL) {
+		/* Make sure that a change to an operational mode can only be done from SAFE */
+		if(mode >= MANUAL){
+			send_err_message(MODE_CHANGE_ONLY_VIA_SAFE);
+			return false;
+		}
+
 		// If at least one of the motor's RPM is not zero, return false
 		int32_t i;
 		for(i = 0; i < 4; i++)
@@ -367,10 +369,6 @@ void packet_received(char control, PacketData data) {
 	//sprintf(message, "Packet Received: %c %c\n#", control, data.as_char);
 	//send_term_message(message);
 
-	/* Make sure that the throttle is zero before changing the mode */
-	if(control == JS_LIFT)
-		js_T = data.as_int8_t;
-
 	if(mode < MANUAL && !(control == MODE_CHANGE || control == ADJUST || control == SPECIAL_REQUEST)){
 		sprintf(message, "[%c %i] Change mode to operate the QR!\n", control, data.as_char);
 		send_term_message(message);
@@ -393,9 +391,9 @@ void packet_received(char control, PacketData data) {
 			break;
 		case JS_LIFT:
 			if(data.as_int8_t >= 0)
-				T = data.as_int8_t;
+				T = scale_throttle(data.as_int8_t);
 			else
-				T = 256 + data.as_int8_t;
+				T = scale_throttle(256 + data.as_int8_t);
 
 			break;
 		case ADJUST:

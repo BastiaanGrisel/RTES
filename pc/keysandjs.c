@@ -55,6 +55,7 @@ int	button[12];
 FILE *log_file;
 char received_chars[QR_INPUT_BUFFERSIZE];
 int charpos = 0;
+int TermMessageReceiveTimer = 0;
 Fifo qr_msg_q;
 int packet_counter=0;
 
@@ -235,7 +236,10 @@ int init_joystick(void){
 	}
 
 	for (i = 0; i < 6; i++) {
-		axis[i] = 0;
+		axis[i] = -1;
+	}
+	for (i = 0; i < 6; i++) {
+		axisflags[i] = false;
 	}
 
 	for (i = 0; i < 12; i++) {
@@ -271,9 +275,13 @@ void sendKeyData(int c){
 		value = (char) c-'0';
 		control = 'M';
 		if(fd_RS232>0){
-			pc_send_message(control, value);
-			//update the last packet timestamp
-			mvprintw(1,0,"last mode message: %c%i{%i}\n",control, (int) value, checksum(control,ch2pd(value)));
+			if(axis[3]==0 || fd_js<0) {
+				pc_send_message(control, value);
+				//update the last packet timestamp
+				mvprintw(1,0,"last mode message: %c%i{%i}\n",control, (int) value, checksum(control,ch2pd(value)));
+			} else {
+				print_error_message(JS_LIFT_NOT_ZERO);
+			}
 		}
 		else{
 			mvprintw(1,0,"NOT sending: %c%i   (RS232 = DISABLED)\n",control, (int) value);
@@ -515,7 +523,7 @@ void packet_received(char control, PacketData data){
 			break;
 		case ERROR_MSG:
 		  val = data.as_uint16_t;
-		  parse_error_message(swap_endianess_16(val));
+		  print_error_message(swap_endianess_16(val));
 			break;
 		default:
 			break;
@@ -524,7 +532,7 @@ void packet_received(char control, PacketData data){
 
 /*Displays the error message.
 Author: Alessio */
-parse_error_message(Error err)
+print_error_message(Error err)
 {
 	char msg[50];
 	col_on(1);
@@ -548,11 +556,14 @@ parse_error_message(Error err)
 		case CONTROL_DISABLED_IN_THIS_MODE:
 			sprintf(msg, "[QR]: Manual control disabled in this mode. ");
 			break;
+		case JS_LIFT_NOT_ZERO:
+			sprintf(msg, "[pc]: Make sure JS- lift is zero. ");
+			break;
 		default:
 		 sprintf(msg, "[QR] Wrong not recognized. Wrong error code.");
 	}
 
-	mvprintw (18,0,"%.*s \n\n",50,msg);
+	mvprintw (18,0,"%s \n\n",msg);
 	col_off(1);
 }
 
