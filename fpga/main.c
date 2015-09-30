@@ -408,7 +408,7 @@ void packet_received(char control, PacketData data) {
 			if(data.as_int8_t >= 0)
 				T = scale_throttle(data.as_int8_t);
 			else
-				T = scale_throttle(256 + data.as_int8_t)
+				T = scale_throttle(256 + data.as_int8_t);
 			break;
 		case ADJUST:
 			trim(data.as_int8_t);
