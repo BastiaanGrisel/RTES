@@ -20,6 +20,7 @@ typedef union {
   uint16_t as_uint16_t;
 	int16_t as_int16_t;
 	int8_t as_int8_t;
+	uint8_t as_uint8_t;
 	char as_char;
 	char as_bytes[2];
 } PacketData;

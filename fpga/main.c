@@ -417,11 +417,7 @@ void packet_received(char control, PacketData data) {
 			Y = data.as_int8_t;
 			break;
 		case JS_LIFT:
-			if(data.as_int8_t >= 0)
-				T = data.as_int8_t;
-			else
-				T = 256 + data.as_int8_t;
-
+			T = data.as_uint8_t; // unsigned
 			break;
 		case ADJUST:
 			trim(data.as_int8_t);

@@ -13,8 +13,8 @@
 #include "joystick.h"
 #include "checksum.h"
 #include "types.h"
-#include "PCmessage.h"
 #include "communication.h"
+#include "qrio.h"
 
 //#include "logging.h"
 
@@ -372,41 +372,48 @@ void sendKeyData(int c){
  */
 struct timeval sendJSData(struct timeval last_packet_time){
 	struct timeval timenew;
-	int number, control, value;
-	for(number=0;number<4;number++){
-		if(axisflags[number]){
-			switch(number){
+	int number, control;
+	PacketData data;
+
+	for(number = 0; number < 4; number++){
+		if(axisflags[number]) {
+			switch(number) {
 				case 0:
 					control = JS_ROLL; // roll
+					data.as_char = axis[number];
 					break;
 				case 1:
 					control = JS_PITCH; // pitch
+					data.as_char = axis[number];
 					break;
 				case 2:
 					control = JS_YAW; // yaw
+					data.as_char = axis[number];
 					break;
 				case 3:
 					control = JS_LIFT; // throttle
+					data.as_uint8_t = axis[number]; // Unsigned
 					break;
 				default:
 					control = 0;
 					break;
 			}
+
 			if(fd_RS232>0 & control !=0){
 				gettimeofday(&timenew,NULL);
 				int timediff = timenew.tv_usec+1000000*timenew.tv_sec-last_packet_time.tv_usec-1000000*last_packet_time.tv_sec;
-				if(timediff<1000*10){
+
+				if(timediff < 1000*10){
 					mvprintw(2,0,"timediff is to low: ", timediff);
 					return last_packet_time;
 				} else {
 					axisflags[number] = false;
-					send_char(rs232_putchar, control, axis[number]);
+					send_packet(rs232_putchar, control, data);
 					mvprintw(1,0,"last JS message: %c  %i (%i/256)\n",control, axis[number], axis[number]*256);
 					return timenew;
 				}
-			}
-			else{
-				mvprintw(1,0,"NOT sending: %c  %c   (RS232 = DISABLED)\n",control, value);
+			} else {
+				mvprintw(1,0,"NOT sending: %c  %c   (RS232 = DISABLED)\n",control, axis[number]);
 			}
 		}
 	}
