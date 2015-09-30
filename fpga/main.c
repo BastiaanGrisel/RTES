@@ -39,6 +39,7 @@
 #define OFFSET_STEP 10
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
 //#define LOG_SIZE 10
+#define PANIC_RPM 100
 
 /* Define global variables
  */
@@ -69,6 +70,7 @@ Fifo	pc_msg_q; // message que received from pc
 char message[100]; // message to send to pc-terminal
 
 Mode	mode = SAFE;
+int panicTimer = -1;
 Loglevel log_level = SENSORS;
 
 /* function declarations TODO put this in header */
@@ -318,16 +320,31 @@ void isr_qr_link(void)
 	//Y +=filtered_dY;						// int32_tegrate dY to get yaw (but if I remem correct then we need the rate not the yaw)
 	Y_stabilize 	= (0 - filtered_dY) >> (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
 	if(mode == YAW_CONTROL) {
-
-	}
-
-	if(mode >=MANUAL){
+		/***************      enable this if Y_stabilize  is always below 500 		 	**************
+		 ***************      otherwise decrease P_yaw (keys: 'u'(up) and 'j'(down))	**************/
+		/*set_motor_rpm(
+			offset[0] + T  +P+Y +Y_stabilize,
+			offset[1] + T-R  -Y -Y_stabilize,
+			offset[2] + T  -P+Y +Y_stabilize,
+			offset[3] + T+R  -Y -Y_stabilize);*/
+	} 
+	else 
+		if(mode >=MANUAL){
 		// Calculate motor RPM
 		set_motor_rpm(
 			offset[0] + T  +P+Y,
 			offset[1] + T-R  -Y,
 			offset[2] + T  -P+Y,
 			offset[3] + T+R  -Y);
+		}
+
+	if(mode == PANIC){
+		if(panicTimer++<3000){
+			set_motor_rpm(PANIC_RPM,PANIC_RPM,PANIC_RPM,PANIC_RPM);
+		} else {
+			reset_motors();
+			set_mode(SAFE);
+		}
 	}
 
 	isr_qr_time = X32_us_clock - isr_qr_time; // why does this happen here and also at the end of the other ISR?
@@ -377,7 +394,6 @@ void packet_received(char control, PacketData data) {
 	switch(control){
 		case MODE_CHANGE:
 			set_mode(data.as_char);
-
 			break;
 		case JS_ROLL:
 			R = data.as_int8_t;
@@ -392,8 +408,7 @@ void packet_received(char control, PacketData data) {
 			if(data.as_int8_t >= 0)
 				T = scale_throttle(data.as_int8_t);
 			else
-				T = scale_throttle(256 + data.as_int8_t);
-
+				T = scale_throttle(256 + data.as_int8_t)
 			break;
 		case ADJUST:
 			trim(data.as_int8_t);
@@ -472,8 +487,10 @@ void panic() {
 
 	X32_ms_last_packet = -1;
 	set_mode(PANIC);
-	set_motor_rpm(100,100,100,100);
-	nexys_display = 0x0000;
+	set_motor_rpm(PANIC_RPM,PANIC_RPM,PANIC_RPM,PANIC_RPM);
+	nexys_display = 0xc1a0;
+
+	/*nexys_display = 0x0000;
 	X32_sleep(500);
 	nexys_display = 0xC000;
 	X32_sleep(1000);
@@ -481,7 +498,7 @@ void panic() {
 	X32_sleep(1000);
 	reset_motors();
 	nexys_display = 0xc1a0;
-	X32_sleep(1000);
+	X32_sleep(1000);*/
 }
 
 /* checks if the QR is receiving packet in terms of ms defined by the TIMEOUT variable,
@@ -497,7 +514,9 @@ void check_alive_connection() {
 
 	if(current_ms - X32_ms_last_packet > TIMEOUT)
 	{
-		panic();
+		if(mode >= MANUAL){
+			panic();
+		}
 	}
 
 	return;
