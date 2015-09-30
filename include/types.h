@@ -7,7 +7,8 @@ typedef enum { false, true } bool;
 typedef enum { SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL, FULL_CONTROL } Mode;
 typedef enum { NONE, SENSORS } Loglevel;
 typedef enum {LOG_ONLY_IN_SAFE_MODE, MODE_ILLIGAL, MODE_CHANGE_ONLY_VIA_SAFE,
-  MODE_CHANGE_ONLY_IF_ZERO_RPM, MODE_ALREADY_SET, CONTROL_DISABLED_IN_THIS_MODE ,JS_LIFT_NOT_ZERO} Error;  /* Error Messages */
+  	MODE_CHANGE_ONLY_IF_ZERO_RPM, MODE_ALREADY_SET, CONTROL_DISABLED_IN_THIS_MODE ,
+	JS_LIFT_NOT_ZERO, SENSOR_LOG_FULL} Error;  /* Error Messages */
 
 typedef signed char       int8_t;
 typedef signed short      int16_t;
@@ -93,7 +94,6 @@ PacketData ch2pd(char in) {
 #define ERROR_MSG 'E'
 #define SENSOR_LOG_FULL 'O' //TODO implement
 #define LOG_MSG_PART 'L'
-#define LOG_PERCENT_COMPLETE '%' //TODO implement
 #define LOG_MSG_NEW_LINE '\n'
 
 #endif /* TYPES_H */

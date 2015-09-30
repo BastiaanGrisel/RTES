@@ -48,7 +48,7 @@ int32_t  time_at_last_led_switch = 0;
 int32_t  packet_counter = 0, packet_lost_counter = 0;
 int32_t	 isr_qr_time = 0, isr_qr_counter = 0;
 int32_t  offset[4];
-int32_t  R=0, P=0, Y=0, T=0, js_T=-1;
+int32_t  R=0, P=0, Y=0, T=0;
 
 /* filter parameters*/
 int32_t  Ybias = 0;
@@ -100,21 +100,22 @@ void lost_packet()
 
 void set_motor_rpm(int32_t motor0, int32_t motor1, int32_t motor2, int32_t motor3) {
 	/* TODO: Arguments should be floats if we have them
-	 * Clip engine values to be positive and 10 bits.
 	 */
-	motor0 = (motor0 < 0 ? 0 : motor0) & 0x3ff;
-	motor1 = (motor1 < 0 ? 0 : motor1) & 0x3ff;
-	motor2 = (motor2 < 0 ? 0 : motor2) & 0x3ff;
-	motor3 = (motor3 < 0 ? 0 : motor3) & 0x3ff;
+	if(T>0){
+		motor0 = ((motor0 < T/4 ? T/4 : motor0) > 0x3ff)? 0x3ff : motor0;
+		motor1 = ((motor1 < T/4 ? T/4 : motor1) > 0x3ff)? 0x3ff : motor1;
+		motor2 = ((motor2 < T/4 ? T/4 : motor2) > 0x3ff)? 0x3ff : motor2;
+		motor3 = ((motor3 < T/4 ? T/4 : motor3) > 0x3ff)? 0x3ff : motor3;
 
-	/* Send actuator values
-	 * (Need to supply a continous stream, otherwise
-	 * QR will go to safe mode, so just send every ms)
-	 */
-	X32_QR_a0 = motor0;
-	X32_QR_a1 = motor1;
-	X32_QR_a2 = motor2;
-	X32_QR_a3 = motor3;
+		/* Send actuator values
+		 * (Need to supply a continous stream, otherwise
+		 * QR will go to safe mode, so just send every ms)
+		 */
+		X32_QR_a0 = motor0;
+		X32_QR_a1 = motor1;
+		X32_QR_a2 = motor2;
+		X32_QR_a3 = motor3;
+	}
 }
 
 /* Reset the offsets.
@@ -136,6 +137,7 @@ void reset_motors()
  */
 bool set_mode(int32_t new_mode)
 {
+	int32_t i;
 	/* Make sure that the mode is in bounds */
 	if(new_mode < SAFE || new_mode > FULL_CONTROL) {
 		send_err_message(MODE_ILLIGAL);
@@ -157,26 +159,20 @@ bool set_mode(int32_t new_mode)
 		}
 
 		// If at least one of the motor's RPM is not zero, return false
-		int32_t i;
+		
 		for(i = 0; i < 4; i++)
 			if(get_motor_rpm(i) > 0) {
 				send_err_message(MODE_CHANGE_ONLY_IF_ZERO_RPM);
 				//sprintf(message, "\n RPM= [%i%i%i%i] ",get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
 				return false;
 			}
-
-		// Also make sure that the throttle is in the zero position
-		if(js_T != 0) {
-			sprintf(message, "js_T: %i \n", js_T);
-			send_err_message(MODE_CHANGE_ONLY_IF_ZERO_RPM);
-			return false;
-		}
 	}
 
 	/* If everything is OK, change the mode */
 	mode = new_mode;
+	reset_motors();
 	sprintf(message, "Succesfully changed to mode: >%i< ", new_mode);
-
+	send_term_message(message);
 	return true;
 }
 
@@ -310,6 +306,9 @@ void isr_qr_link(void)
 		sensor_log[sensor_log_counter][5] = s4;
 		sensor_log[sensor_log_counter][6] = s5;
 		sensor_log_counter++;
+		if(sensor_log_counter == LOG_SIZE){
+			send_err_message(SENSOR_LOG_FULL);
+		}
 	}*/
 
 	/*YAW_CALCULATIONS*/
@@ -378,7 +377,7 @@ void packet_received(char control, PacketData data) {
 	switch(control){
 		case MODE_CHANGE:
 			set_mode(data.as_char);
-			send_term_message(message);
+
 			break;
 		case JS_ROLL:
 			R = data.as_int8_t;
@@ -504,24 +503,8 @@ void check_alive_connection() {
 	return;
 }
 
-
-
-int32_t main(void)
-{
-	setup();
-
-	// Main loop
-	while (1) {
-		// Ping the PC
-	   	check_alive_connection();
-
-		// Turn on the LED corresponding to the mode and don't change led 6 and 7
-		X32_leds = ((flicker_slow()?1:0) << mode) | (X32_leds & 0xC0);
-
-		// Process messages
-        	DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
-
-		while(fifo_size(&pc_msg_q) >= 4) { // Check if there are one or more packets in the queue
+void check_msg_q(void){
+	while(fifo_size(&pc_msg_q) >= 4) { // Check if there are one or more packets in the queue
 			char control;
 			PacketData data;
 			char checksum;
@@ -550,13 +533,26 @@ int32_t main(void)
 				}
 			}
 		}
+}
 
+
+
+int32_t main(void)
+{
+	setup();
+
+	// Main loop
+	while (1) {
+		// Pings from the PC
+	   	check_alive_connection();
+
+		// Turn on the LED corresponding to the mode and don't change led 6 and 7
+		X32_leds = ((flicker_slow()?1:0) << mode) | (X32_leds & 0xC0);
+
+		// Process messages
+        DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
+		check_msg_q();
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
-
-		// give a signal when sensors are ready
-		if(sensor_log_counter >= 10000) {
-			X32_leds = X32_leds | 0x90; // 1000000 = enable led 7
-		}
 	}
 
 	quit();
