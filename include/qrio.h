@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <ncurses.h> /*for user key input*/
 
+#include "times.h"
 
 #define SERIAL_DEVICE	"/dev/ttyS0"
 #define USB_DEVICE0	"/dev/ttyUSB0" /* may need to change this */
@@ -118,6 +119,8 @@ void	rs232_putchar(char c)
 
 	assert(result == 1);
 	//return result;
+
+	update_time();
 }
 
 #endif

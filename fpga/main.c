@@ -388,7 +388,7 @@ int16_t scale_throttle(uint8_t throttle) {
 void packet_received(char control, PacketData data) {
 	if(control == 0) return; // Keep-alive packets
 
-	//sprintf(message, "Packet Received: %c %i\n#", control, data.as_char);
+	//sprintf(message, "Packet Received: %c %c %c", control, data.as_bytes[0], data.as_bytes[1]);
 	//send_term_message(message);
 	//return;
 

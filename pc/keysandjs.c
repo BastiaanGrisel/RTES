@@ -45,6 +45,7 @@ void col_on(int col);
 void col_off(int col);
 void exitmain(void);
 void check_alive_connection();
+void packet_received(char control, PacketData data);
 
 int fd_RS232, fd_js;
 
@@ -112,7 +113,7 @@ int main (int argc, char **argv)
 		if(fd_RS232>0){
 			while ((rec_c = rs232_getchar_nb(fd_RS232))!= -1){
 				fifo_put(&qr_msg_q, rec_c);
-				check_msg_q();
+				check_for_new_packets(&qr_msg_q, packet_received);
 				mvprintw(9,0,"# packets: %i",packet_counter++);
 			}
 		}
@@ -250,13 +251,13 @@ int init_joystick(void){
 /* Checks if the PC has sent data in the last 200ms otherwise sends
 a packet to keep alive the connection.
 Author: Alessio */
-void check_alive_connection()
-{
+void check_alive_connection() {
+
 	gettimeofday(&keep_alive,NULL);
 	int current_ms = ((keep_alive.tv_usec+1000000*keep_alive.tv_sec) / 1000);
 	if(current_ms - ms_last_packet_sent > TIMEOUT)
 	{
-		pc_send_message(0,0);
+		send_control(rs232_putchar, 0);
 	}
 	return;
 }
@@ -493,6 +494,8 @@ void packet_received(char control, PacketData data){
 	char value = data.as_bytes[0];
 	uint16_t val;
 
+	if(control == 0) return;
+	
 	switch(control){
 		case TERMINAL_MSG_START: // start new qr terminal message
 			charpos = 0;
@@ -556,39 +559,6 @@ parse_error_message(Error err)
 	mvprintw (18,0,"%.*s \n\n",50,msg);
 	col_off(1);
 }
-
-
-void check_msg_q(){
-	while(fifo_size(&qr_msg_q) >= 4) { // Check if there are one or more packets in the queue
-		char control;
-		PacketData data;
-		char checksum;
-
-		fifo_peek_at(&qr_msg_q, &control, 0);
-		fifo_peek_at(&qr_msg_q, &data.as_bytes[0], 1);
-		fifo_peek_at(&qr_msg_q, &data.as_bytes[1], 2);
-		fifo_peek_at(&qr_msg_q, &checksum, 3);
-
-		if(!check_packet(control,data,checksum)) {
-			// If the checksum is not correct, pop the first message off the queue and repeat the loop
-			char c;
-			fifo_pop(&qr_msg_q, &c);
-		} else {
-			// If the checksum is correct, pop the packet off the queue and notify a callback
-			char c;
-			fifo_pop(&qr_msg_q, &c);
-			fifo_pop(&qr_msg_q, &c);
-			fifo_pop(&qr_msg_q, &c);
-			fifo_pop(&qr_msg_q, &c);
-
-			if(control != 0){
-				packet_received(control, data);
-			}
-		}
-	}
-}
-
-
 
 /* Exit routine
  * Author: Henko Aantjes
