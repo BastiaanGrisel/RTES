@@ -29,6 +29,12 @@
 
 #define QR_INPUT_BUFFERSIZE 1000
 #define TIMEOUT 150 //ms
+#define MAX_MSG_TIME 200000 //frames
+#define MAX_ERROR_MSG_TIME 200000 //frames
+#define LINE_NR_FPS 0
+#define LINE_NR_JS_STATE 4
+#define LINE_NR_RECEIVED_MSG 10
+#define LINE_NR_ERROR_MSG 18 
 
 void init_keyboard(void);
 struct timeval updateFPS(struct timeval oldtime);
@@ -37,6 +43,7 @@ void sendKeyData(int c);
 void save_JS_event(int type, int number,int value);
 struct timeval sendJSData(struct timeval packet_time);
 void printJSstate(void);
+void checkTimeMessages(void);
 
 void init_log(void);
 void check_msg_q(void);
@@ -55,7 +62,8 @@ int	button[12];
 FILE *log_file;
 char received_chars[QR_INPUT_BUFFERSIZE];
 int charpos = 0;
-int TermMessageReceiveTimer = 0;
+int TermMessageReceiveTimer = -1;
+int errorMessageTimer = -1;
 Fifo qr_msg_q;
 int packet_counter=0;
 
@@ -113,12 +121,14 @@ int main (int argc, char **argv)
 			while ((rec_c = rs232_getchar_nb(fd_RS232))!= -1){
 				fifo_put(&qr_msg_q, rec_c);
 				check_msg_q();
-				mvprintw(9,0,"# packets: %i",packet_counter++);
+				mvprintw(LINE_NR_RECEIVED_MSG-1,0,"# packets: %i",packet_counter++);
 			}
 		}
 
 		/* Print the Joystick state */
 		printJSstate();
+
+		checkTimeMessages();
 
 		/* Terminate program if user presses panic button or ESC */
 		if (button[0] || c ==27){
@@ -139,12 +149,44 @@ struct timeval updateFPS(struct timeval timeold){
 		loopcount=0;
 		gettimeofday(&timenew,NULL);
 		int frametime = (timenew.tv_usec+1000000*timenew.tv_sec-timeold.tv_usec-1000000*timeold.tv_sec)/100;
-		mvprintw(0,0,"pc looptime: %i \tusec (%i \tHz) ",frametime,1000000/frametime);
+		mvprintw(LINE_NR_FPS,0,"pc looptime: %i \tusec (%i \tHz) ",frametime,1000000/frametime);
 		return timenew;
 	} else {
 		return timeold;
 	}
 }
+
+void checkTimeMessages(void){
+	int i,j;
+	if(TermMessageReceiveTimer != -1){
+		if(TermMessageReceiveTimer++> MAX_MSG_TIME){
+			j = (TermMessageReceiveTimer-MAX_MSG_TIME)/1000;
+			move(LINE_NR_RECEIVED_MSG,0);
+			for(i = 0;i<j;i++){ 
+				printw(" ");
+			}
+			if(j>50){
+				printw("\n\n\n");
+				TermMessageReceiveTimer = -1;
+			}
+		}
+	}
+	if(errorMessageTimer != -1){
+		if(errorMessageTimer++>MAX_ERROR_MSG_TIME){
+			j = (errorMessageTimer-MAX_ERROR_MSG_TIME)/1000;
+			move(LINE_NR_ERROR_MSG,0);
+			for(i = 0;i<j;i++){ 
+				printw(" ");
+			}
+			if(j>50){
+				printw("\n");
+				errorMessageTimer = -1;
+			}
+		}
+	}
+	
+}
+
 /* Process a joystick event
  * Author: Henko Aantjes
  */
@@ -169,7 +211,7 @@ void save_JS_event(int type, int number,int value){
  */
 void printJSstate(void){
 	int i;
-	move(4,0);
+	move(LINE_NR_JS_STATE,0);
 	printw("Joystick axis: ");
 	col_on(2);
 	for (i = 0; i < 6; i++) {
@@ -511,7 +553,8 @@ void packet_received(char control, PacketData data){
 		case TERMINAL_MSG_FINISH:
 			// print the terminal message
 			col_on(3);
-			mvprintw(10, 0, "received messages: (X32 -> pc) == {%.*s}         \n\n\n\n", charpos, received_chars);
+			mvprintw(LINE_NR_RECEIVED_MSG, 0, "received messages: (X32 -> pc) == {%.*s}         \n\n\n\n", charpos, received_chars);
+			TermMessageReceiveTimer = 0;
 			col_off(3);
 			break;
 		case LOG_MSG_PART:
@@ -563,7 +606,8 @@ print_error_message(Error err)
 		 sprintf(msg, "[QR] Wrong not recognized. Wrong error code.");
 	}
 
-	mvprintw (18,0,"%s \n\n",msg);
+	mvprintw (LINE_NR_ERROR_MSG,0,"%s \n\n",msg);
+	errorMessageTimer =0;
 	col_off(1);
 }
 
@@ -604,6 +648,7 @@ void check_msg_q(){
  * Author: Henko Aantjes
  */
 void exitmain(void){
+	sendKeyData(ESCAPE);
 	if(fd_RS232>0){
   		close(fd_RS232);
 	}
