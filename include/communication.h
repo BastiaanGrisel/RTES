@@ -39,7 +39,7 @@ void check_for_new_packets(Fifo *q, void (*callback)(char, PacketData)) {
 /* Send a complete packet
  * Author: Henko Aantjes
  */
-void send_packet(int (*putchar)(int), char control, PacketData data) {
+void send_packet(void (*putchar)(char), char control, PacketData data) {
 	putchar(control);
 	putchar(data.as_bytes[0]);
 	putchar(data.as_bytes[1]);
@@ -49,7 +49,7 @@ void send_packet(int (*putchar)(int), char control, PacketData data) {
 /* Send a sincle character
  * Author: Henko Aantjes
  */
-void send_char(int (*putchar)(int), char control, char value) {
+void send_char(void (*putchar)(char), char control, char value) {
 	PacketData p;
 	p.as_char = value;
 	send_packet(putchar, control, p);
@@ -58,14 +58,14 @@ void send_char(int (*putchar)(int), char control, char value) {
 /* Send a message that doesn't need a value
  * Author: Henko Aantjes
  */
-void send_control(int (*putchar)(int), char control) {
+void send_control(void (*putchar)(char), char control) {
 	send_char(putchar, control, NOT_IMPORTANT);
 }
 
 /* Send an entire string at once
  * Author: Henko Aantjes
  */
-void send_string(int (*putchar)(int), char control, char message[]) {
+void send_string(void (*putchar)(char), char control, char message[]) {
 	int32_t i;
 	for (i = 0; message[i] != 0; i++){
 		send_char(putchar, control, message[i]);

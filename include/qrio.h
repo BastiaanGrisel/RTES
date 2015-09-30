@@ -108,7 +108,7 @@ int	rs232_getchar_nb()
 /* Send a char over the RS232 to the pc (Blocking)
  * copy pasted by: Henko Aantjes
  */
-int	rs232_putchar(char c)
+void	rs232_putchar(char c)
 {
 	int result;
 
@@ -117,7 +117,7 @@ int	rs232_putchar(char c)
 	} while (result == 0);
 
 	assert(result == 1);
-	return result;
+	//return result;
 }
 
 #endif

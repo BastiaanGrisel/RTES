@@ -14,6 +14,7 @@
 #include "checksum.h"
 #include "types.h"
 #include "PCmessage.h"
+#include "communication.h"
 
 //#include "logging.h"
 
@@ -271,7 +272,7 @@ void sendKeyData(int c){
 		value = (char) c-'0';
 		control = 'M';
 		if(fd_RS232>0){
-			pc_send_message(control, value);
+			send_char(rs232_putchar, control, value);
 			//update the last packet timestamp
 			mvprintw(1,0,"last mode message: %c%i{%i}\n",control, (int) value, checksum(control,ch2pd(value)));
 		}
@@ -355,7 +356,7 @@ void sendKeyData(int c){
 		}
 
 		if(fd_RS232>0 & value !=0){
-			pc_send_message(control, value);
+			send_char(rs232_putchar, control, value);
 			mvprintw(1,0,"last key message: %c%c{%i}   \n",control, value, checksum(control,ch2pd(value)));
 		}
 		else{
@@ -398,7 +399,7 @@ struct timeval sendJSData(struct timeval last_packet_time){
 					return last_packet_time;
 				} else {
 					axisflags[number] = false;
-					pc_send_message(control, axis[number]);
+					send_char(rs232_putchar, control, axis[number]);
 					mvprintw(1,0,"last JS message: %c  %i (%i/256)\n",control, axis[number], axis[number]*256);
 					return timenew;
 				}
@@ -540,7 +541,7 @@ parse_error_message(Error err)
 			break;
 		case MODE_CHANGE_ONLY_IF_ZERO_RPM:
 			sprintf(msg, "[QR]: Cannot change mode. RPM are not zero.");
-			pc_send_message(SPECIAL_REQUEST,ASK_MOTOR_RPM); //when RPM will be visualized in real-time, this won't be needed
+			send_char(rs232_putchar, SPECIAL_REQUEST,ASK_MOTOR_RPM); //when RPM will be visualized in real-time, this won't be needed
 			break;
 		case MODE_ALREADY_SET:
 			sprintf(msg, "[QR]: Mode already changed.");
