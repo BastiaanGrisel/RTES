@@ -8,8 +8,8 @@
 
 #include "x32.h"
 #include "checksum.h"
-//#include "logging.h"
-#include "communication.h"
+#include "logging.h"
+#include "communication_qr2pc.h"
 
 /* define some peripheral short hands
  */
@@ -39,7 +39,6 @@
 
 #define OFFSET_STEP 10
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
-#define LOG_SIZE 10
 
 /* Define global variables
  */
@@ -126,28 +125,6 @@ void reset_motors()
 	offset[0] = offset[1] = offset[2] = offset[3] = 0;
 	R = P = Y = T = 0;
 	set_motor_rpm(0,0,0,0);
-}
-
-void rs232_putchar(char c) {
-	putchar(c);
-}
-
-/*Error function that send all the error messages defined in types.h
-Author: Alessio */
-void send_error(Error err)
-{
-	PacketData p;
-	p.as_uint16_t = err;
-	send_packet(rs232_putchar, ERROR_MSG, p); //Sending error code
-}
-
-/* Send something to the terminal
- * Author: Henko
- */
-void send_term_message(char message[]) {
-	send_control(rs232_putchar, TERMINAL_MSG_START); // begin terminal message
-	send_string(rs232_putchar, TERMINAL_MSG_PART, message);
-	send_control(rs232_putchar, TERMINAL_MSG_FINISH); // end terminal message
 }
 
 /*
@@ -270,8 +247,7 @@ void special_request(char request){
 			break;
 		case ASK_SENSOR_LOG:
 			//if(mode==SAFE) send_logs(sensor_log);
-		   	//else send_error(LOG_ONLY_IN_SAFE_MODE);
-
+		   	send_error(LOG_ONLY_IN_SAFE_MODE);
 			break;
 		case RESET_MOTORS: //reset
 			reset_motors();
@@ -417,7 +393,8 @@ void packet_received(char control, PacketData data) {
 			Y = data.as_int8_t;
 			break;
 		case JS_LIFT:
-			T = data.as_uint8_t; // unsigned
+			js_T = data.as_uint8_t; // unsigned
+			T = scale_throttle(js_T);
 			break;
 		case ADJUST:
 			trim(data.as_int8_t);

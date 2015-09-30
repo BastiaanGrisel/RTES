@@ -79,7 +79,7 @@ PacketData ch2pd(char in) {
 #define ASK_MOTOR_RPM 'm'
 #define ASK_FILTER_PARAM 'f'
 #define RESET_SENSOR_LOG 's'
-#define ASK_SENSOR_LOG 'L'
+#define ASK_SENSOR_LOG 'l'
 
 
 /************

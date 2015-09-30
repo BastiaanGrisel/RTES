@@ -344,7 +344,7 @@ void sendKeyData(int c){
 				value = RESET_SENSOR_LOG;
 				break;
 			case 'x':
-			  control = SPECIAL_REQUEST;
+			  	control = SPECIAL_REQUEST;
 				value = ASK_SENSOR_LOG;
 				break;
 			case ESCAPE: // ESCAPEKEY

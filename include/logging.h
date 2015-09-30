@@ -2,15 +2,14 @@
 #ifndef LOG_H
 #define LOG_H
 
-#include "communication.h"
-
+#include "communication_qr2pc.h"
 
 #define LOG_SIZE 20
 
 extern char message[100];
 
 /*Just for testing*/
-void init_array(unsigned int sensor_log[][7])
+void add_dummy_data(unsigned int sensor_log[][7])
 {
   	int i;
   	for(i=0; i < LOG_SIZE; i++)
@@ -38,7 +37,7 @@ void send_logs(unsigned int sensor_log[][7]) {
 			//PROVISIONAL workaround
 			p.as_uint16_t = (sensor_log[i][j] == 255) ? 32000 : sensor_log[i][j];
 
-			send_message(LOG_MSG_PART,p);
+			send_packet(rs232_putchar, LOG_MSG_PART, p);
 
       //OLD WAY
 			/*  unsigned char low  =  sensor_log[i][j]       & 0xff;
@@ -47,7 +46,7 @@ void send_logs(unsigned int sensor_log[][7]) {
 			send_message(LOG_MSG_PART, ch2pd(low));*/
 		}
 
-		send_control_message(LOG_MSG_NEW_LINE);
+		send_control(rs232_putchar, LOG_MSG_NEW_LINE);
 
 		if(i%(LOG_SIZE/100)==(LOG_SIZE/100)-1){
 			sprintf(message, "%i%%",i/100+1);
