@@ -56,9 +56,9 @@ int 	R=0, P=0, Y=0, T=0;
 /* filter parameters*/
 int	Ybias = 400;
 int 	filtered_dY = 0; //
-int 	Y_BIAS_UPDATE = 14; // update bias each sample with a fraction of 1/2^13
-int 	Y_FILTER = 4; // simple filter that updates 1/2^Y_filter
-int 	P_yaw=8; // P = 2^4     Y_TO_ENGINE_SCALE
+int 	Y_BIAS_UPDATE = 10; // update bias each sample with a fraction of 1/2^13
+int 	Y_FILTER = 3; // simple filter that updates 1/2^Y_filter
+int 	P_yaw=12; // P = 2^4     Y_TO_ENGINE_SCALE
 int 	Y_stabilize;
 int dY;
 
@@ -323,7 +323,12 @@ void isr_qr_link(void)
 	Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5; 		// update Ybias with 1/2^Y_BIAS_UPDATE each sample
 	filtered_dY 	+= -1 * (filtered_dY >> Y_FILTER) + (dY >> Y_BIAS_UPDATE); 	// filter dY
 	//Y +=filtered_dY;						// integrate dY to get yaw (but if I remem correct then we need the rate not the yaw)
-	Y_stabilize 	= (0 - filtered_dY) >> (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
+	if((Y_BIAS_UPDATE - P_yaw) >= 0) {
+		Y_stabilize 	= (0 - filtered_dY) >> (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
+	} else {
+		Y_stabilize 	= (0 - filtered_dY) << (-Y_BIAS_UPDATE + P_yaw); // calculate error of yaw rate
+	}
+
 	
 	if(mode == YAW_CONTROL) {
 		// Calculate motor RPM
@@ -332,9 +337,7 @@ void isr_qr_link(void)
 			offset[1] + T-R  -Y_stabilize,
 			offset[2] + T  -P+Y_stabilize,
 			offset[3] + T+R  -Y_stabilize);
-	}
-
-	if(mode >=MANUAL){
+	} else if(mode == MANUAL){
 		// Calculate motor RPM
 		set_motor_rpm(
 			offset[0] + T  +P+Y,
