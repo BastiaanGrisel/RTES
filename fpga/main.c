@@ -54,12 +54,13 @@ int 	offset[4];
 int 	R=0, P=0, Y=0, T=0;
 
 /* filter parameters*/
-int	Ybias = 0;
+int	Ybias = 400;
 int 	filtered_dY = 0; //
 int 	Y_BIAS_UPDATE = 14; // update bias each sample with a fraction of 1/2^13
 int 	Y_FILTER = 4; // simple filter that updates 1/2^Y_filter
-int 	P_yaw=4; // P = 2^4     Y_TO_ENGINE_SCALE
+int 	P_yaw=8; // P = 2^4     Y_TO_ENGINE_SCALE
 int 	Y_stabilize;
+int dY;
 
 int	s0, s1, s2, s3, s4, s5;
 Fifo	pc_msg_q;
@@ -253,7 +254,7 @@ void trim(char c){
 			send_term_message(message);
 			break;
 		case 'f':
-			sprintf(message, "fix = %i,  Ybias = %i, filtered_dY = %i\n#",Y_stabilize,Ybias, filtered_dY);
+			sprintf(message, "dY = %i, fix = %i,  Ybias = %i, filtered_dY = %i\n#", dY >> Y_BIAS_UPDATE, Y_stabilize, (Ybias >> Y_BIAS_UPDATE), (filtered_dY >> Y_BIAS_UPDATE));
 			send_term_message(message);
 			break;
 		case 's':
@@ -300,7 +301,6 @@ void isr_rs232_rx(void)
  */
 void isr_qr_link(void)
 {
-	int dY;
 	isr_qr_time = X32_us_clock;
 
 	/* get sensor and timestamp values */
@@ -321,11 +321,17 @@ void isr_qr_link(void)
 	/*YAW_CALCULATIONS*/
 	dY 		= (s5 << Y_BIAS_UPDATE) - Ybias; 		// dY is now scaled up with Y_BIAS_UPDATE
 	Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5; 		// update Ybias with 1/2^Y_BIAS_UPDATE each sample
-	filtered_dY 	+= -1 * (filtered_dY << Y_FILTER) + dY; 	// filter dY
+	filtered_dY 	+= -1 * (filtered_dY >> Y_FILTER) + (dY >> Y_BIAS_UPDATE); 	// filter dY
 	//Y +=filtered_dY;						// integrate dY to get yaw (but if I remem correct then we need the rate not the yaw)
 	Y_stabilize 	= (0 - filtered_dY) >> (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
+	
 	if(mode == YAW_CONTROL) {
-
+		// Calculate motor RPM
+		set_motor_rpm(
+			offset[0] + T  +P+Y_stabilize,
+			offset[1] + T-R  -Y_stabilize,
+			offset[2] + T  -P+Y_stabilize,
+			offset[3] + T+R  -Y_stabilize);
 	}
 
 	if(mode >=MANUAL){
