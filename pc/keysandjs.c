@@ -113,11 +113,11 @@ int main (int argc, char **argv)
 		if(fd_RS232>0){
 			while ((rec_c = rs232_getchar_nb(fd_RS232))!= -1){
 				fifo_put(&qr_msg_q, rec_c);
-				check_for_new_packets(&qr_msg_q, packet_received);
-				mvprintw(9,0,"# packets: %i",packet_counter++);
 			}
 		}
 
+		check_for_new_packets(&qr_msg_q, packet_received);
+		
 		/* Print the Joystick state */
 		printJSstate();
 
@@ -480,26 +480,36 @@ uint16_t swap_endianess_16(uint16_t val)
 
 /*Print log values to file, taking in account the endianess
 Author: Alessio */
-void print_log_to_file(PacketData data)
+void print_log_to_file(uint16_t val)
 {
-	uint16_t val = data.as_uint16_t;
-	val = swap_endianess_16(val);
-
-  //provisional workaround
+  	//provisional workaround
 	val = (val == 32000) ? 255 : val;
 
 	fprintf(log_file, "%hu ", val);
 }
 
+void change_byte_order(PacketData* data) {
+	char b1 = data->as_bytes[0];
+	char b2 = data->as_bytes[1];
+
+	data->as_bytes[0] = b2;
+	data->as_bytes[1] = b1;
+}
 
 /* Parse the QR input (one char at the time)
  * Call parse message if a message is complete
  * Author: Henko Aantjes
  */
 void packet_received(char control, PacketData data){
+	change_byte_order(&data);
+
+	//mvprintw(20, 0, "Received packet (%i): %c %i %i", packet_counter, control, data.as_bytes[0], data.as_bytes[1]);
+
 	int i;
-	char value = data.as_bytes[0];
+	char value = data.as_bytes[1];
 	uint16_t val;
+
+	mvprintw(9,0,"# packets: %i",packet_counter++);
 
 	if(control == 0) return;
 	
@@ -514,19 +524,17 @@ void packet_received(char control, PacketData data){
 		case TERMINAL_MSG_FINISH:
 			// print the terminal message
 			col_on(3);
-			mvprintw(10, 0, "received messages: (X32 -> pc) == {%.*s}         \n\n\n\n", charpos, received_chars);
+			mvprintw(10, 0, "received messages: (X32 -> pc) == {%.*s}", charpos, received_chars);
 			col_off(3);
 			break;
 		case LOG_MSG_PART:
-	//		print_value_to_file((unsigned char) value);
-	    print_log_to_file(data);
+	   		print_log_to_file(data.as_uint16_t);
 			break;
 		case LOG_MSG_NEW_LINE:
 			fprintf(log_file,"\n");
 			break;
 		case ERROR_MSG:
-		  val = data.as_uint16_t;
-		  parse_error_message(swap_endianess_16(val));
+			parse_error_message(data.as_int16_t);
 			break;
 		default:
 			break;
@@ -537,7 +545,7 @@ void packet_received(char control, PacketData data){
 Author: Alessio */
 parse_error_message(Error err)
 {
-	char msg[50];
+	char msg[100];
 	col_on(1);
 	switch(err) {
 		case LOG_ONLY_IN_SAFE_MODE:
@@ -546,8 +554,8 @@ parse_error_message(Error err)
 		case MODE_ILLIGAL:
 		  sprintf(msg,"[QR]: Invalid or illigal mode.]");
 			break;
-	  case MODE_CHANGE_ONLY_VIA_SAFE:
-		  sprintf(msg, "[QR]: Mode can be changed only from SAFE mode.");
+	 	case MODE_CHANGE_ONLY_VIA_SAFE:
+			sprintf(msg, "[QR]: Mode can be changed only from SAFE mode.");
 			break;
 		case MODE_CHANGE_ONLY_IF_ZERO_RPM:
 			sprintf(msg, "[QR]: Cannot change mode. RPM are not zero.");
@@ -562,7 +570,7 @@ parse_error_message(Error err)
 		default:
 		 sprintf(msg, "[QR] Wrong not recognized. Wrong error code.");
 	}
-
+	
 	mvprintw (18,0,"%.*s \n\n",50,msg);
 	col_off(1);
 }

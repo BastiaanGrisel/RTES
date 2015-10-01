@@ -2,6 +2,7 @@
 #define COMMUNICATION_QR2PC_H
 
 #include "communication.h"
+#include "types.h"
 
 void rs232_putchar(char c) {
 	putchar(c);
@@ -12,7 +13,7 @@ Author: Alessio */
 void send_error(Error err)
 {
 	PacketData p;
-	p.as_uint16_t = err;
+	p.as_int16_t = err;
 	send_packet(rs232_putchar, ERROR_MSG, p); //Sending error code
 }
 

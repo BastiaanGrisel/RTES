@@ -63,7 +63,7 @@ int32_t  Y_stabilize;
 /* sensor values */
 int32_t	s0, s1, s2, s3, s4, s5;
 int32_t sensor_log_counter = 0;
-uint32_t sensor_log[LOG_SIZE][7];
+uint16_t sensor_log[LOG_SIZE][7];
 
 Fifo	pc_msg_q; // message que received from pc
 char message[100]; // message to send to pc-terminal
@@ -246,8 +246,8 @@ void special_request(char request){
 			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
 			break;
 		case ASK_SENSOR_LOG:
-			//if(mode==SAFE) send_logs(sensor_log);
-		   	send_error(LOG_ONLY_IN_SAFE_MODE);
+			if(mode==SAFE) send_logs(sensor_log);
+		   	else send_error(LOG_ONLY_IN_SAFE_MODE);
 			break;
 		case RESET_MOTORS: //reset
 			reset_motors();
@@ -373,7 +373,7 @@ void packet_received(char control, PacketData data) {
 		js_T = data.as_int8_t;
 
 	if(mode < MANUAL && !(control == MODE_CHANGE || control == ADJUST || control == SPECIAL_REQUEST)){
-		sprintf(message, "[%c %i] Change mode to operate the QR!\n", control, data.as_char);
+		sprintf(message, "[%c %i %i] Change mode to operate the QR!\n", control, data.as_bytes[0], data.as_bytes[1]);
 		send_term_message(message);
 		return;
 	}
@@ -440,6 +440,8 @@ void setup()
 
 	/* Enable all interupts after init code */
 	ENABLE_INTERRUPT(INTERRUPT_GLOBAL);
+
+		add_dummy_data(sensor_log);
 }
 
 /* Function that is called when the program terminates
@@ -521,10 +523,6 @@ int32_t main(void)
 		check_for_new_packets(&pc_msg_q, &packet_received);
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
 
-		// give a signal when sensors are ready
-		if(sensor_log_counter >= 10000) {
-			X32_leds = X32_leds | 0x90; // 1000000 = enable led 7
-		}
 	}
 
 	quit();
