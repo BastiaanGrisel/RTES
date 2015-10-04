@@ -329,6 +329,8 @@ int16_t scale_throttle(uint8_t throttle) {
  * Author: Bastiaan
  */
 void packet_received(char control, PacketData data) {
+	if(control == 0) return;
+
 	//sprintf(message, "Packet Received: %c %c\n#", control, data.as_char);
 	//send_term_message(message);
 
@@ -469,34 +471,32 @@ void check_alive_connection() {
 	return;
 }
 
-void check_msg_q(void){
-	while(fifo_size(&pc_msg_q) >= 4) { // Check if there are one or more packets in the queue
+void check_msg_q(Fifo *q, void (*callback)(char, PacketData)){
+	while(fifo_size(q) >= 4) { // Check if there are one or more packets in the queue
 			char control;
 			PacketData data;
 			char checksum;
 
-			fifo_peek_at(&pc_msg_q, &control, 0);
-			fifo_peek_at(&pc_msg_q, &data.as_bytes[0], 1);
-			fifo_peek_at(&pc_msg_q, &data.as_bytes[1], 2);
-			fifo_peek_at(&pc_msg_q, &checksum, 3);
+			fifo_peek_at(q, &control, 0);
+			fifo_peek_at(q, &data.as_bytes[0], 1);
+			fifo_peek_at(q, &data.as_bytes[1], 2);
+			fifo_peek_at(q, &checksum, 3);
 
 			if(!check_packet(control,data,checksum)) {
 				// If the checksum is not correct, pop the first message off the queue and repeat the loop
 				char c;
-				fifo_pop(&pc_msg_q, &c);
+				fifo_pop(q, &c);
 
 				lost_packet();
 			} else {
 				// If the checksum is correct, pop the packet off the queue and notify a callback
 				char c;
-				fifo_pop(&pc_msg_q, &c);
-				fifo_pop(&pc_msg_q, &c);
-				fifo_pop(&pc_msg_q, &c);
-				fifo_pop(&pc_msg_q, &c);
+				fifo_pop(q, &c);
+				fifo_pop(q, &c);
+				fifo_pop(q, &c);
+				fifo_pop(q, &c);
 
-				if(control != 0){
-					packet_received(control, data);
-				}
+				callback(control, data);
 			}
 		}
 }
@@ -517,7 +517,7 @@ int32_t main(void)
 
 		// Process messages
         DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
-		check_msg_q();
+		check_msg_q(&pc_msg_q, &packet_received);
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
 	}
 
