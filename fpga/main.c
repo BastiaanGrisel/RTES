@@ -285,17 +285,17 @@ void isr_qr_link(void)
 	if(mode == YAW_CONTROL) {
 		// Calculate motor RPM
 		set_motor_rpm(
-			offset[0] + T  +P+Y_stabilize,
-			offset[1] + T-R  -Y_stabilize,
-			offset[2] + T  -P+Y_stabilize,
-			offset[3] + T+R  -Y_stabilize);
+			get_motor_offset(0) + T  +P+Y_stabilize,
+			get_motor_offset(1) + T-R  -Y_stabilize,
+			get_motor_offset(2) + T  -P+Y_stabilize,
+			get_motor_offset(3) + T+R  -Y_stabilize);
 	} else if(mode == MANUAL){
 		// Calculate motor RPM
 		set_motor_rpm(
-			offset[0] + T  +P+Y,
-			offset[1] + T-R  -Y,
-			offset[2] + T  -P+Y,
-			offset[3] + T+R  -Y);
+			get_motor_offset(0) + T  +P+Y,
+			get_motor_offset(1) + T-R  -Y,
+			get_motor_offset(2) + T  -P+Y,
+			get_motor_offset(3) + T+R  -Y);
 		}
 
 	if(mode == PANIC){
@@ -378,7 +378,7 @@ void setup()
 	/* Initialize Variables */
 	nexys_display = 0x00;
 	isr_qr_counter = isr_qr_time = 0;
-	offset[0] = offset[1] = offset[2] = offset[3] =0;
+
 	fifo_init(&pc_msg_q);
 
   init_array(sensor_log);
