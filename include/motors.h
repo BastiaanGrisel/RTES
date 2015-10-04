@@ -8,8 +8,8 @@
 #define X32_QR_a2 		peripherals[PERIPHERAL_XUFO_A2]
 #define X32_QR_a3 		peripherals[PERIPHERAL_XUFO_A3]
 
-int32_t offset[4] = 0;
-int32_t rpm[4] = 0;
+int32_t offset[4] = {0};
+int32_t rpm[4] = {0};
 
 /* Add offset to the four motors
  * No need to check for negative numbers since offset can be negative
