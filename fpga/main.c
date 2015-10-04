@@ -471,7 +471,7 @@ void check_alive_connection() {
 	return;
 }
 
-void check_msg_q(Fifo *q, void (*callback)(char, PacketData)){
+void check_msg_q(Fifo *q, void (*callback)(char, PacketData), void (*error)()){
 	while(fifo_size(q) >= 4) { // Check if there are one or more packets in the queue
 			char control;
 			PacketData data;
@@ -487,7 +487,7 @@ void check_msg_q(Fifo *q, void (*callback)(char, PacketData)){
 				char c;
 				fifo_pop(q, &c);
 
-				lost_packet();
+				error();
 			} else {
 				// If the checksum is correct, pop the packet off the queue and notify a callback
 				char c;
@@ -517,7 +517,7 @@ int32_t main(void)
 
 		// Process messages
         DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
-		check_msg_q(&pc_msg_q, &packet_received);
+		check_msg_q(&pc_msg_q, &packet_received, &lost_packet);
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
 	}
 
