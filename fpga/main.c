@@ -9,6 +9,7 @@
 #include "x32.h"
 #include "checksum.h"
 #include "logging.h"
+#include "motors.h"
 
 /* define some peripheral short hands
  */
@@ -17,10 +18,6 @@
 #define X32_ms_clock		peripherals[PERIPHERAL_MS_CLOCK]
 #define X32_us_clock 	(X32_ms_clock *1000)
 
-#define X32_QR_a0 		peripherals[PERIPHERAL_XUFO_A0]
-#define X32_QR_a1 		peripherals[PERIPHERAL_XUFO_A1]
-#define X32_QR_a2 		peripherals[PERIPHERAL_XUFO_A2]
-#define X32_QR_a3 		peripherals[PERIPHERAL_XUFO_A3]
 #define X32_QR_s0 		peripherals[PERIPHERAL_XUFO_S0]
 #define X32_QR_s1 		peripherals[PERIPHERAL_XUFO_S1]
 #define X32_QR_s2 		peripherals[PERIPHERAL_XUFO_S2]
@@ -48,7 +45,6 @@ int32_t  X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to
 int32_t  time_at_last_led_switch = 0;
 int32_t  packet_counter = 0, packet_lost_counter = 0;
 int32_t	 isr_qr_time = 0, isr_qr_counter = 0;
-int32_t  offset[4];
 int32_t  R=0, P=0, Y=0, T=0;
 
 /* filter parameters*/
@@ -76,17 +72,7 @@ char message[100];
 void panic(void);
 
 
-/* Add offset to the four motors
- * No need to check for negative numbers since offset can be negative
- * Author: Bastiaan
- */
-void add_motor_offset(int32_t motor0, int32_t motor1, int32_t motor2, int32_t motor3)
-{
-	offset[0] += motor0;
-	offset[1] += motor1;
-	offset[2] += motor2;
-	offset[3] += motor3;
-}
+
 
 void update_nexys_display(){
 	nexys_display = packet_counter << 8 + packet_lost_counter;
@@ -99,35 +85,8 @@ void lost_packet()
 	update_nexys_display();
 }
 
-void set_motor_rpm(int32_t motor0, int32_t motor1, int32_t motor2, int32_t motor3) {
-	/* TODO: Arguments should be floats if we have them
-	 */
-	if(T>0){
-		motor0 = ((motor0 < T/4 ? T/4 : motor0) > 0x3ff)? 0x3ff : motor0;
-		motor1 = ((motor1 < T/4 ? T/4 : motor1) > 0x3ff)? 0x3ff : motor1;
-		motor2 = ((motor2 < T/4 ? T/4 : motor2) > 0x3ff)? 0x3ff : motor2;
-		motor3 = ((motor3 < T/4 ? T/4 : motor3) > 0x3ff)? 0x3ff : motor3;
 
-		/* Send actuator values
-		 * (Need to supply a continous stream, otherwise
-		 * QR will go to safe mode, so just send every ms)
-		 */
-		X32_QR_a0 = motor0;
-		X32_QR_a1 = motor1;
-		X32_QR_a2 = motor2;
-		X32_QR_a3 = motor3;
-	}
-}
 
-/* Reset the offsets.
-   Author: Alessio
-*/
-void reset_motors()
-{
-	offset[0] = offset[1] = offset[2] = offset[3] = 0;
-	R = P = Y = T = 0;
-	set_motor_rpm(0,0,0,0);
-}
 
 
 /*
@@ -234,7 +193,7 @@ void special_request(char request){
 			panic();
 			break;
 		case ASK_MOTOR_RPM:
-			sprintf(message, "offset = [%i%i%i%i]\nmotor RPM= [%i%i%i%i]\n",offset[0],offset[1],offset[2],offset[3],get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
+			sprintf(message, "offset = [%i%i%i%i]\nmotor RPM= [%i%i%i%i]\n",get_motor_offset(0),get_motor_offset(1),get_motor_offset(2),get_motor_offset(3),get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
 			send_term_message(message);
 			break;
 		case ASK_FILTER_PARAM:
@@ -351,19 +310,6 @@ void isr_qr_link(void)
 	isr_qr_time = X32_us_clock - isr_qr_time; // why does this happen here and also at the end of the other ISR?
 }
 
-
-/* Gets the RPM of a certain motor.
- * Author: Bastiaan
- */
-int32_t get_motor_rpm(int32_t i) {
-	switch(i) {
-		case 0: return X32_QR_a0;
-		case 1: return X32_QR_a1;
-		case 2: return X32_QR_a2;
-		case 3: return X32_QR_a3;
-		default: return 0;
-	}
-}
 
 
 
