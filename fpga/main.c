@@ -400,21 +400,11 @@ void quit()
 bool flicker_slow() { return (X32_ms_clock % 1000 < 200); }
 bool flicker_fast() { return (X32_ms_clock % 100 < 20); }
 
-/*Puts the FPGA to sleep performing an active waiting.
-Author: Alessio*/
-void X32_sleep(int32_t millisec) {
-	long sleep_ms = X32_ms_clock +  (millisec);
-	while(X32_ms_clock < sleep_ms);
-	return;
-}
-
 /* checks if the QR is receiving packet in terms of ms defined by the TIMEOUT variable,
  * otherwise panic() is called.
  * Author: Alessio
  */
 void check_alive_connection() {
-	int32_t current_ms, diff;
-
 	if(X32_ms_last_packet == -1) return; //does not perform the check untill a new message arrives
 
 	if(X32_ms_clock - X32_ms_last_packet > TIMEOUT && mode >= MANUAL)
