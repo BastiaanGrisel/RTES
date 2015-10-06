@@ -64,7 +64,6 @@ int panicTimer = 0;
 Loglevel log_level = SENSORS;
 
 unsigned int sensor_log[LOG_SIZE][7];
-int sensor_log_counter = 0;
 
 char message[100];
 
@@ -193,7 +192,7 @@ void special_request(char request){
 			send_term_message(message);
 			break;
 		case RESET_SENSOR_LOG:
-			sensor_log_counter = 0;
+			clear_log();
 			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
 			break;
 		case ASK_SENSOR_LOG:
@@ -248,19 +247,8 @@ void isr_qr_link(void)
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
 
-/*	if(sensor_log_counter < LOG_SIZE) {
-		sensor_log[sensor_log_counter][0] = X32_QR_timestamp/50;
-		sensor_log[sensor_log_counter][1] = s0;
-		sensor_log[sensor_log_counter][2] = s1;
-		sensor_log[sensor_log_counter][3] = s2;
-		sensor_log[sensor_log_counter][4] = s3;
-		sensor_log[sensor_log_counter][5] = s4;
-		sensor_log[sensor_log_counter][6] = s5;
-		sensor_log_counter++;
-		if(sensor_log_counter == LOG_SIZE){
-			send_err_message(SENSOR_LOG_FULL);
-		}
-	}*/
+	// Add new sensor values to array	
+	log_sensors(sensor_log, X32_QR_timestamp/50, s0, s1, s2, s3, s4, s5);
 
 	/*YAW_CALCULATIONS*/
 	dY 		= (s5 << Y_BIAS_UPDATE) - Ybias; 		// dY is now scaled up with Y_BIAS_UPDATE
