@@ -44,7 +44,6 @@
 int32_t  X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to avoid going panic before receiving the first msg
 int32_t  time_at_last_led_switch = 0;
 int32_t  packet_counter = 0, packet_lost_counter = 0;
-int32_t	 isr_qr_time = 0, isr_qr_counter = 0;
 int32_t  R=0, P=0, Y=0, T=0;
 
 /* filter parameters*/
@@ -60,7 +59,7 @@ int	s0, s1, s2, s3, s4, s5;
 Fifo	pc_msg_q;
 
 Mode	mode = SAFE;
-int panicTimer = 0;
+int32_t panic_start_time = 0;
 Loglevel log_level = SENSORS;
 
 unsigned int sensor_log[LOG_SIZE][7];
@@ -119,7 +118,7 @@ bool set_mode(Mode new_mode) {
 
 	// If everything is OK, change the mode
 	mode = new_mode;
-	panicTimer = 0;
+	panic_start_time = X32_ms_clock;
 	reset_motors();
 
 	sprintf(message, "Succesfully changed to mode: >%i< ", new_mode);
@@ -213,7 +212,6 @@ void special_request(char request){
 void isr_rs232_rx(void)
 {
 	char c;
-	isr_qr_time = X32_us_clock;
 	X32_ms_last_packet= X32_ms_clock; //update the time the last packet was received
 
 	packet_counter++;
@@ -231,11 +229,11 @@ void isr_rs232_rx(void)
 		// Add the message to the message queue
 		fifo_put(&pc_msg_q, c);
 	}
-
-
-	isr_qr_time = X32_us_clock - isr_qr_time; //data to be logged
 }
 
+/* Two bitshift util functions. They interpre negative shift as a shift in the other direction.
+ * Author: Bastiaan
+ */
 int32_t bitshift_r(int32_t value, int32_t shift) {
 	return shift >= 0 ? value >> shift : value << -1 * shift;
 }
@@ -244,13 +242,10 @@ int32_t bitshift_l(int32_t value, int32_t shift) {
 	return bitshift_r(value, -1 * shift);
 }
 
-
 /* ISR when new sensor readings are read from the QR
  */
 void isr_qr_link(void)
 {
-	isr_qr_time = X32_us_clock;
-
 	/* get sensor and timestamp values */
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
@@ -284,7 +279,7 @@ void isr_qr_link(void)
 		case PANIC:
 			nexys_display = 0xc1a0;
 			
-			if(panicTimer++ < 3000){
+			if(X32_ms_clock - panic_start_time < 1000) {
 				set_motor_rpm(PANIC_RPM,PANIC_RPM,PANIC_RPM,PANIC_RPM);
 			} else {
 				reset_motors();
@@ -292,8 +287,6 @@ void isr_qr_link(void)
 			}
 			break;
 	}
-
-	isr_qr_time = X32_us_clock - isr_qr_time; // why does this happen here and also at the end of the other ISR?
 }
 
 /* Make the throttle scale non-linear
@@ -348,8 +341,6 @@ void packet_received(char control, PacketData data) {
 		case SPECIAL_REQUEST:
 			special_request(data.as_char);
 			break;
-		default:
-			break;
 	}
 }
 
@@ -362,7 +353,6 @@ void setup()
 
 	/* Initialize Variables */
 	nexys_display = 0x00;
-	isr_qr_counter = isr_qr_time = 0;
 
 	fifo_init(&pc_msg_q);
 
@@ -410,6 +400,7 @@ bool flicker_fast() { return (X32_ms_clock % 100 < 20); }
 void check_alive_connection() {
 	if(X32_ms_last_packet == -1) return; //does not perform the check untill a new message arrives
 
+	// If a packet has not been received within the TIMEOUT interval, go to panic mode
 	if(X32_ms_clock - X32_ms_last_packet > TIMEOUT && mode >= MANUAL)
 		set_mode(PANIC);
 }
