@@ -1,6 +1,7 @@
 #ifndef PCMESSAGE_H
 #define PCMESSAGE_H
 
+#include "communication.h"
 #include "qrio.h"
 #include "times.h"
 #include "fifo.h"

@@ -55,7 +55,9 @@ int 	P_yaw=12; // P = 2^4     Y_TO_ENGINE_SCALE
 int 	Y_stabilize;
 int dY;
 
-int	s0, s1, s2, s3, s4, s5;
+int32_t	s0, s1, s2, s3, s4, s5;
+int32_t s_bias[6] = {0};
+
 Fifo	pc_msg_q;
 
 Mode	mode = SAFE;
@@ -65,12 +67,6 @@ Loglevel log_level = SENSORS;
 unsigned int sensor_log[LOG_SIZE][7];
 
 char message[100];
-
-/* function declarations TODO put this in header */
-void panic(void);
-
-
-
 
 void update_nexys_display(){
 	nexys_display = packet_counter << 8 + packet_lost_counter;
@@ -242,6 +238,27 @@ int32_t bitshift_l(int32_t value, int32_t shift) {
 	return bitshift_r(value, -1 * shift);
 }
 
+/*
+void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t s3, int32_t s4, int32_t s5) {
+	int32_t ratio = 10;	
+	
+	if(s_bias[0] == 0) {
+		s_bias[0] = s0;
+		s_bias[1] = s1;
+		s_bias[2] = s2;
+		s_bias[3] = s3;
+		s_bias[4] = s4;
+		s_bias[5] = s5;
+	} else {
+		s_bias[0]  += -1 * (s_bias[0] >> ratio) + s0;
+		s_bias[1]  += -1 * (s_bias[1] >> ratio) + s1;
+		s_bias[2]  += -1 * (s_bias[2] >> ratio) + s2;
+		s_bias[3]  += -1 * (s_bias[3] >> ratio) + s3;
+		s_bias[4]  += -1 * (s_bias[4] >> ratio) + s4;	
+		s_bias[5]  += -1 * (s_bias[5] >> ratio) + s5;
+	}
+}*/
+
 /* ISR when new sensor readings are read from the QR
  */
 void isr_qr_link(void)
@@ -260,6 +277,9 @@ void isr_qr_link(void)
 	Y_stabilize 	= bitshift_r(0 - filtered_dY, Y_BIAS_UPDATE - P_yaw);
 
 	switch(mode) {
+		case CALIBRATE:
+			//record_bias(s_bias, s0, s1, s2, s3, s4, s5);
+			break;
 		case MANUAL:
 			// Calculate motor RPM
 			set_motor_rpm(

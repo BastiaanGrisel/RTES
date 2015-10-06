@@ -1,4 +1,8 @@
 /* Author Bastiaan */
+
+#ifndef FIFO_H
+#define FIFO_H
+
 #include <stdio.h>
 #include "types.h"
 
@@ -70,3 +74,5 @@ int fifo_size(Fifo* fifo) {
 	else
 		return FIFO_CAPACITY + fifo->in - fifo->out;
 }
+
+#endif
