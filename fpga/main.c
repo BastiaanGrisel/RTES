@@ -60,7 +60,7 @@ int	s0, s1, s2, s3, s4, s5;
 Fifo	pc_msg_q;
 
 Mode	mode = SAFE;
-int panicTimer = -1;
+int panicTimer = 0;
 Loglevel log_level = SENSORS;
 
 unsigned int sensor_log[LOG_SIZE][7];
@@ -120,6 +120,7 @@ bool set_mode(Mode new_mode) {
 
 	// If everything is OK, change the mode
 	mode = new_mode;
+	panicTimer = 0;
 	reset_motors();
 
 	sprintf(message, "Succesfully changed to mode: >%i< ", new_mode);
@@ -181,7 +182,7 @@ void special_request(char request){
 	switch(request){
 
 		case ESCAPE:
-			panic();
+			set_mode(PANIC);
 			break;
 		case ASK_MOTOR_RPM:
 			sprintf(message, "offset = [%i%i%i%i]\nmotor RPM= [%i%i%i%i]\n",get_motor_offset(0),get_motor_offset(1),get_motor_offset(2),get_motor_offset(3),get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
@@ -272,37 +273,37 @@ void isr_qr_link(void)
 		Y_stabilize 	= (0 - filtered_dY) << (-Y_BIAS_UPDATE + P_yaw); // calculate error of yaw rate
 	}
 
-	
-	if(mode == YAW_CONTROL) {
-		// Calculate motor RPM
-		set_motor_rpm(
-			get_motor_offset(0) + T  +P+Y_stabilize,
-			get_motor_offset(1) + T-R  -Y_stabilize,
-			get_motor_offset(2) + T  -P+Y_stabilize,
-			get_motor_offset(3) + T+R  -Y_stabilize);
-	} else if(mode == MANUAL){
-		// Calculate motor RPM
-		set_motor_rpm(
-			get_motor_offset(0) + T  +P+Y,
-			get_motor_offset(1) + T-R  -Y,
-			get_motor_offset(2) + T  -P+Y,
-			get_motor_offset(3) + T+R  -Y);
-		}
-
-	if(mode == PANIC){
-		if(panicTimer++<3000){
-			set_motor_rpm(PANIC_RPM,PANIC_RPM,PANIC_RPM,PANIC_RPM);
-		} else {
-			reset_motors();
-			set_mode(SAFE);
-		}
+	switch(mode) {
+		case MANUAL:
+			// Calculate motor RPM
+			set_motor_rpm(
+				get_motor_offset(0) + T  +P+Y,
+				get_motor_offset(1) + T-R  -Y,
+				get_motor_offset(2) + T  -P+Y,
+				get_motor_offset(3) + T+R  -Y);
+			break;
+		case YAW_CONTROL:
+			// Calculate motor RPM
+			set_motor_rpm(
+				get_motor_offset(0) + T  +P+Y_stabilize,
+				get_motor_offset(1) + T-R  -Y_stabilize,
+				get_motor_offset(2) + T  -P+Y_stabilize,
+				get_motor_offset(3) + T+R  -Y_stabilize);
+			break;
+		case PANIC:
+			nexys_display = 0xc1a0;
+			
+			if(panicTimer++ < 3000){
+				set_motor_rpm(PANIC_RPM,PANIC_RPM,PANIC_RPM,PANIC_RPM);
+			} else {
+				reset_motors();
+				set_mode(SAFE);
+			}
+			break;
 	}
 
 	isr_qr_time = X32_us_clock - isr_qr_time; // why does this happen here and also at the end of the other ISR?
 }
-
-
-
 
 /* Make the throttle scale non-linear
  * 0-63   = 0-600
@@ -374,7 +375,7 @@ void setup()
 
 	fifo_init(&pc_msg_q);
 
-  init_array(sensor_log);
+  	//init_array(sensor_log);
 
 	/* Prepare Interrupts */
 
@@ -419,28 +420,6 @@ void X32_sleep(int32_t millisec) {
 	return;
 }
 
-/* Set panic mode and provide a soft landing.
-* Then resets the motors and quits.
- * Author: Alessio
- */
-void panic() {
-
-	X32_ms_last_packet = -1;
-	set_mode(PANIC);
-	set_motor_rpm(PANIC_RPM,PANIC_RPM,PANIC_RPM,PANIC_RPM);
-	nexys_display = 0xc1a0;
-
-	/*nexys_display = 0x0000;
-	X32_sleep(500);
-	nexys_display = 0xC000;
-	X32_sleep(1000);
-  	nexys_display = 0xC100;
-	X32_sleep(1000);
-	reset_motors();
-	nexys_display = 0xc1a0;
-	X32_sleep(1000);*/
-}
-
 /* checks if the QR is receiving packet in terms of ms defined by the TIMEOUT variable,
  * otherwise panic() is called.
  * Author: Alessio
@@ -450,16 +429,8 @@ void check_alive_connection() {
 
 	if(X32_ms_last_packet == -1) return; //does not perform the check untill a new message arrives
 
-	current_ms = X32_ms_clock;
-
-	if(current_ms - X32_ms_last_packet > TIMEOUT)
-	{
-		if(mode >= MANUAL){
-			panic();
-		}
-	}
-
-	return;
+	if(X32_ms_clock - X32_ms_last_packet > TIMEOUT && mode >= MANUAL)
+		set_mode(PANIC);
 }
 
 void check_msg_q(Fifo *q, void (*callback)(char, PacketData), void (*error)()){
@@ -491,8 +462,6 @@ void check_msg_q(Fifo *q, void (*callback)(char, PacketData), void (*error)()){
 		}
 	}
 }
-
-
 
 int32_t main(void)
 {
