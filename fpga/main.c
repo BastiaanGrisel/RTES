@@ -85,26 +85,19 @@ void lost_packet()
 	update_nexys_display();
 }
 
-
-
-
-
 /*
  * Changes the mode to either: SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL or FULL_CONTROL.
  * Motor RPM needs to be zero to change mode except when changing to SAFE and PANIC
  * Returns a boolean indicating whether the mode change was succesful or not.
  * Author: Alessio
  */
-bool set_mode(int32_t new_mode)
-{
+bool set_mode(Mode new_mode) {
 	int32_t i;
-	/* Make sure that the mode is in bounds */
-	if(new_mode < SAFE || new_mode > FULL_CONTROL) {
+
+	if(!is_valid_mode(new_mode)) {
 		send_err_message(MODE_ILLIGAL);
 		return false;
 	}
-
-
 
 	if(mode == new_mode) {
 		send_err_message(MODE_ALREADY_SET);
@@ -112,25 +105,23 @@ bool set_mode(int32_t new_mode)
 	}
 
 	if(new_mode >= MANUAL) {
-		/* Make sure that a change to an operational mode can only be done from SAFE */
+		// Make sure that a change to an operational mode can only be done via SAFE
 		if(mode >= MANUAL){
 			send_err_message(MODE_CHANGE_ONLY_VIA_SAFE);
 			return false;
 		}
 
 		// If at least one of the motor's RPM is not zero, return false
-		
-		for(i = 0; i < 4; i++)
-			if(get_motor_rpm(i) > 0) {
-				send_err_message(MODE_CHANGE_ONLY_IF_ZERO_RPM);
-				//sprintf(message, "\n RPM= [%i%i%i%i] ",get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
-				return false;
-			}
+		if(!motors_have_zero_rpm()) {
+			send_err_message(MODE_CHANGE_ONLY_IF_ZERO_RPM);
+			return false;
+		}
 	}
 
-	/* If everything is OK, change the mode */
+	// If everything is OK, change the mode
 	mode = new_mode;
 	reset_motors();
+
 	sprintf(message, "Succesfully changed to mode: >%i< ", new_mode);
 	send_term_message(message);
 	return true;
@@ -473,32 +464,32 @@ void check_alive_connection() {
 
 void check_msg_q(Fifo *q, void (*callback)(char, PacketData), void (*error)()){
 	while(fifo_size(q) >= 4) { // Check if there are one or more packets in the queue
-			char control;
-			PacketData data;
-			char checksum;
+		char control;
+		PacketData data;
+		char checksum;
 
-			fifo_peek_at(q, &control, 0);
-			fifo_peek_at(q, &data.as_bytes[0], 1);
-			fifo_peek_at(q, &data.as_bytes[1], 2);
-			fifo_peek_at(q, &checksum, 3);
+		fifo_peek_at(q, &control, 0);
+		fifo_peek_at(q, &data.as_bytes[0], 1);
+		fifo_peek_at(q, &data.as_bytes[1], 2);
+		fifo_peek_at(q, &checksum, 3);
 
-			if(!check_packet(control,data,checksum)) {
-				// If the checksum is not correct, pop the first message off the queue and repeat the loop
-				char c;
-				fifo_pop(q, &c);
+		if(!check_packet(control,data,checksum)) {
+			// If the checksum is not correct, pop the first message off the queue and repeat the loop
+			char c;
+			fifo_pop(q, &c);
 
-				error();
-			} else {
-				// If the checksum is correct, pop the packet off the queue and notify a callback
-				char c;
-				fifo_pop(q, &c);
-				fifo_pop(q, &c);
-				fifo_pop(q, &c);
-				fifo_pop(q, &c);
+			error();
+		} else {
+			// If the checksum is correct, pop the packet off the queue and notify a callback
+			char c;
+			fifo_pop(q, &c);
+			fifo_pop(q, &c);
+			fifo_pop(q, &c);
+			fifo_pop(q, &c);
 
-				callback(control, data);
-			}
+			callback(control, data);
 		}
+	}
 }
 
 
@@ -516,7 +507,7 @@ int32_t main(void)
 		X32_leds = ((flicker_slow()?1:0) << mode) | (X32_leds & 0xC0);
 
 		// Process messages
-        DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
+        	DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
 		check_msg_q(&pc_msg_q, &packet_received, &lost_packet);
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
 	}

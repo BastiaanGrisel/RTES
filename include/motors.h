@@ -1,3 +1,4 @@
+/* Author: Bastiaan */
 #ifndef MOTORS_H
 #define MOTORS_H
 
@@ -11,10 +12,6 @@
 int32_t offset[4] = {0};
 int32_t rpm[4] = {0};
 
-/* Add offset to the four motors
- * No need to check for negative numbers since offset can be negative
- * Author: Bastiaan
- */
 void add_motor_offset(int32_t motor0, int32_t motor1, int32_t motor2, int32_t motor3) {
 	offset[0] += motor0;
 	offset[1] += motor1;
@@ -25,6 +22,14 @@ void add_motor_offset(int32_t motor0, int32_t motor1, int32_t motor2, int32_t mo
 int32_t get_motor_offset(int32_t i) {
 	if(i > 3) return 0;
 	return offset[i];
+}
+
+bool motors_have_zero_rpm() {
+	int32_t i;
+	for(i = 0; i < 4; i++)
+		if(get_motor_rpm(i) > 0)
+			return false;
+	return true;
 }
 
 void set_motor_rpm(int32_t motor0, int32_t motor1, int32_t motor2, int32_t motor3) {
@@ -52,18 +57,11 @@ void set_motor_rpm(int32_t motor0, int32_t motor1, int32_t motor2, int32_t motor
 	}*/
 }
 
-/* Reset the offsets.
-   Author: Alessio
-*/
 void reset_motors() {
 	offset[0] = offset[1] = offset[2] = offset[3] = 0;
 	set_motor_rpm(0,0,0,0);
 }
 
-
-/* Gets the RPM of a certain motor.
- * Author: Bastiaan
- */
 int32_t get_motor_rpm(int32_t i) {
 	if(i > 3) return 0;
 	return rpm[i];

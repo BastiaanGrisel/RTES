@@ -96,4 +96,9 @@ PacketData ch2pd(char in) {
 #define LOG_MSG_PART 'L'
 #define LOG_MSG_NEW_LINE '\n'
 
+/* Util functions */
+bool is_valid_mode(Mode mode) {
+	return mode >= SAFE && mode <= FULL_CONTROL;
+}
+
 #endif /* TYPES_H */
