@@ -236,6 +236,14 @@ void isr_rs232_rx(void)
 	isr_qr_time = X32_us_clock - isr_qr_time; //data to be logged
 }
 
+int32_t bitshift_r(int32_t value, int32_t shift) {
+	return shift >= 0 ? value >> shift : value << -1 * shift;
+}
+
+int32_t bitshift_l(int32_t value, int32_t shift) {
+	return bitshift_r(value, -1 * shift);
+}
+
 
 /* ISR when new sensor readings are read from the QR
  */
@@ -254,12 +262,7 @@ void isr_qr_link(void)
 	dY 		= (s5 << Y_BIAS_UPDATE) - Ybias; 		// dY is now scaled up with Y_BIAS_UPDATE
 	Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5; 		// update Ybias with 1/2^Y_BIAS_UPDATE each sample
 	filtered_dY 	+= -1 * (filtered_dY >> Y_FILTER) + (dY >> Y_BIAS_UPDATE); 	// filter dY
-	//Y +=filtered_dY;						// integrate dY to get yaw (but if I remem correct then we need the rate not the yaw)
-	if((Y_BIAS_UPDATE - P_yaw) >= 0) {
-		Y_stabilize 	= (0 - filtered_dY) >> (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
-	} else {
-		Y_stabilize 	= (0 - filtered_dY) << (-Y_BIAS_UPDATE + P_yaw); // calculate error of yaw rate
-	}
+	Y_stabilize 	= bitshift_r(0 - filtered_dY, Y_BIAS_UPDATE - P_yaw);
 
 	switch(mode) {
 		case MANUAL:
