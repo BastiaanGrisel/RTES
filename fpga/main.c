@@ -35,6 +35,7 @@
 #define OFFSET_STEP 10
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
 #define PANIC_RPM 100
+#define SENSOR_PRECISION 10
 
 /* Define global variables
  */
@@ -119,12 +120,12 @@ bool set_mode(Mode new_mode) {
 	}
 
 	if(new_mode == CALIBRATE) {
-		s_bias[0] = s0;
-		s_bias[1] = s1;
-		s_bias[2] = s2;
-		s_bias[3] = s3;
-		s_bias[4] = s4;
-		s_bias[5] = s5;
+		s_bias[0] = s0 << SENSOR_PRECISION;
+		s_bias[1] = s1 << SENSOR_PRECISION;
+		s_bias[2] = s2 << SENSOR_PRECISION;
+		s_bias[3] = s3 << SENSOR_PRECISION;
+		s_bias[4] = s4 << SENSOR_PRECISION;
+		s_bias[5] = s5 << SENSOR_PRECISION;
 
 		is_calibrated = true;
 	}
@@ -148,7 +149,7 @@ bool set_mode(Mode new_mode) {
 		Rbias = s_bias[3];
 	}
 
-	if(new_mode == FULL_CONTROL && !is_calibrated)
+	if((new_mode == FULL_CONTROL || new_mode == YAW_CONTROL) && !is_calibrated)
 		return false;
 
 	// If everything is OK, change the mode
@@ -226,7 +227,7 @@ void special_request(char request){
 			send_term_message(message);
 			break;
 		case ASK_SENSOR_BIAS:
-			sprintf(message, "Sensor bias = [%i,%i,%i,%i,%i,%i]",s_bias[0],s_bias[1],s_bias[2],s_bias[3],s_bias[4],s_bias[5]);
+			sprintf(message, "Sensor bias = [%i,%i,%i,%i,%i,%i]",s_bias[0] >> SENSOR_PRECISION,s_bias[1] >> SENSOR_PRECISION,s_bias[2] >> SENSOR_PRECISION,s_bias[3] >> SENSOR_PRECISION,s_bias[4] >> SENSOR_PRECISION,s_bias[5] >> SENSOR_PRECISION);
 			send_term_message(message);
 			break;
 		case ASK_FILTER_PARAM:
@@ -286,15 +287,12 @@ int32_t bitshift_l(int32_t value, int32_t shift) {
 }
 
 void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t s3, int32_t s4, int32_t s5) {
-
-	int32_t ratio = 10;
-
-	s_bias[0]  += -1 * (s_bias[0] >> ratio) + s0;
-	s_bias[1]  += -1 * (s_bias[1] >> ratio) + s1;
-	s_bias[2]  += -1 * (s_bias[2] >> ratio) + s2;
-	s_bias[3]  += -1 * (s_bias[3] >> ratio) + s3;
-	s_bias[4]  += -1 * (s_bias[4] >> ratio) + s4;
-	s_bias[5]  += -1 * (s_bias[5] >> ratio) + s5;
+	s_bias[0]  += -1 * (s_bias[0] >> SENSOR_PRECISION) + s0;
+	s_bias[1]  += -1 * (s_bias[1] >> SENSOR_PRECISION) + s1;
+	s_bias[2]  += -1 * (s_bias[2] >> SENSOR_PRECISION) + s2;
+	s_bias[3]  += -1 * (s_bias[3] >> SENSOR_PRECISION) + s3;
+	s_bias[4]  += -1 * (s_bias[4] >> SENSOR_PRECISION) + s4;
+	s_bias[5]  += -1 * (s_bias[5] >> SENSOR_PRECISION) + s5;
 }
 
 int32_t min(int32_t one, int32_t two) {
@@ -319,13 +317,19 @@ void isr_qr_link(void)
 
 	/*YAW_CALCULATIONS*/
 	//  scale dY up with Y_BIAS_UPDATE
-	dY 		= (s5 << Y_BIAS_UPDATE) - Ybias;
+	dY 		= (s5 << Y_BIAS_UPDATE) - (s_bias[5] << (Y_BIAS_UPDATE-SENSOR_PRECISION));
 	// update Ybias with 1/2^Y_BIAS_UPDATE each sample
-	Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5;
+	//Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5;
 	// filter dY
 	filtered_dY 	+= -1 * (filtered_dY >> Y_FILTER) + (dY >> Y_BIAS_UPDATE);
 	// calculate stabilisation value
-	Y_stabilize 	= Y+ bitshift_r(0 - filtered_dY, Y_BIAS_UPDATE - P_yaw);
+	if((Y_BIAS_UPDATE - P_yaw) >= 0) {
+		Y_stabilize 	= Y + (filtered_dY) >> (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
+	} else {
+		Y_stabilize 	= Y + (filtered_dY) << (-Y_BIAS_UPDATE + P_yaw); // calculate error of yaw rate
+	}
+
+	//QR THREE IS FLIPPED!!
 
 	/*ROLL_CALCULATIONS*/
 /*
