@@ -1,6 +1,6 @@
 #ifndef TYPES_H
 #define TYPES_H
-//#include <stdint.h>
+#include <stdint.h>
 
 
 typedef enum { false, true } bool;
@@ -9,15 +9,16 @@ typedef enum { NONE, SENSORS } Loglevel;
 typedef enum {LOG_ONLY_IN_SAFE_MODE, MODE_ILLIGAL, MODE_CHANGE_ONLY_VIA_SAFE,
   	MODE_CHANGE_ONLY_IF_ZERO_RPM, MODE_ALREADY_SET, CONTROL_DISABLED_IN_THIS_MODE ,
 	JS_LIFT_NOT_ZERO, SENSOR_LOG_FULL} Error;  /* Error Messages */
-
+/*
 typedef signed char       int8_t;
 typedef signed short      int16_t;
 typedef signed int        int32_t;
 typedef unsigned char     uint8_t;
 typedef unsigned short int    uint16_t;
-typedef unsigned int      uint32_t;
+typedef unsigned int      uint32_t;*/
 
 typedef union {
+  uint32_t as_uint32_t;
   uint16_t as_uint16_t;
 	int16_t as_int16_t;
 	int8_t as_int8_t;
