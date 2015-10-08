@@ -21,10 +21,7 @@ int offset[4];
 int ms_last_packet_sent;
 struct timeval keep_alive;
 
-//************
-int value_counter;
-unsigned short int value_to_print;
-
+//***********
 /* Main function that mainly consists of polling the different connections
  * which are: Keyboard, Joystick, RS232 (connection to QR)
  */
@@ -450,7 +447,7 @@ void print_log_to_file(PacketData data)
   //provisional workaround
 	val = (val == 32000) ? 255 : val;
 
-	fprintf(log_file, "%u ", val);
+	fprintf(log_file, "%hu ", val);
 }
 
 /*Print log values to file, taking in account the endianess
@@ -472,10 +469,11 @@ PacketData swap_byte_order(PacketData p) {
  */
 void packet_received(char control, PacketData data){
 	// Change endianness
-	data = swap_byte_order(data);
+	PacketData swapped;
+	swapped = swap_byte_order(data);
 
 	int i;
-	char value = data.as_bytes[1];
+	char value = swapped.as_bytes[1];
 	uint16_t val;
 
 	switch(control){

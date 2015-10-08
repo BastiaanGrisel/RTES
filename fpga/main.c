@@ -27,7 +27,6 @@
 #define nexys_display peripherals[0x05] //when needed
 #define X32_QR_timestamp 	peripherals[PERIPHERAL_XUFO_TIMESTAMP]
 
-
 #define X32_rs232_data		peripherals[PERIPHERAL_PRIMARY_DATA]
 #define X32_rs232_stat		peripherals[PERIPHERAL_PRIMARY_STATUS]
 #define X32_rs232_char		(X32_rs232_stat & 0x02)
@@ -40,7 +39,7 @@
 
 /* Define global variables
  */
-bool DEBUG = false;
+bool DEBUG = true;
 int32_t  X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to avoid going panic before receiving the first msg
 int32_t  time_at_last_led_switch = 0;
 int32_t  packet_counter = 0, packet_lost_counter = 0;
@@ -375,7 +374,7 @@ void setup()
 	nexys_display = 0x00;
 
 	fifo_init(&pc_msg_q);
-	
+
   if(DEBUG) init_array(sensor_log);
 
 
