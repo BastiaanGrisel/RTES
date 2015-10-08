@@ -208,7 +208,7 @@ void special_request(char request){
 			set_mode(PANIC);
 			break;
 		case ASK_MOTOR_RPM:
-			sprintf(message, "offset = [%i%i%i%i]\nmotor RPM= [%i%i%i%i]\n",get_motor_offset(0),get_motor_offset(1),get_motor_offset(2),get_motor_offset(3),get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
+			sprintf(message, "offset = [%i,%i,%i,%i], rpm = [%i,%i,%i,%i], rpyt = [%i,%i,%i,%i] T/4 = %i",get_motor_offset(0),get_motor_offset(1),get_motor_offset(2),get_motor_offset(3),get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3),R,P,Y,T,T/4);
 			send_term_message(message);
 			break;
 		case ASK_FILTER_PARAM:
@@ -310,6 +310,7 @@ void isr_qr_link(void)
 	Y_stabilize 	= Y+ bitshift_r(0 - filtered_dY, Y_BIAS_UPDATE - P_yaw);
 
 	/*ROLL_CALCULATIONS*/
+/*
 //     substract bias and scale R:
     dR = bitshift_l(s3,R_BIAS_UPDATE)-Rbias;
 //   filter
@@ -324,7 +325,7 @@ void isr_qr_link(void)
 //     calculate stabilization
     R_stabilize = R + bitshift_l(0-Rangle,-1*(R_BIAS_UPDATE - P1_R)) - bitshift_l(filtered_dR,-1*(R_BIAS_UPDATE - P2_R));
 
-
+*/
 	switch(mode) {
 		case CALIBRATE:
 			record_bias(s_bias, s0, s1, s2, s3, s4, s5);
@@ -345,14 +346,14 @@ void isr_qr_link(void)
 				max(T/4, get_motor_offset(2) + T  -P+Y_stabilize),
 				max(T/4, get_motor_offset(3) + T+R  -Y_stabilize));
 			break;
-		case FULL_CONTROL:
+		/*case FULL_CONTROL:
 			// Calculate motor RPM
 			set_motor_rpm(
 				get_motor_offset(0) + T  +P+Y_stabilize,
 				get_motor_offset(1) + T-R_stabilize  -Y_stabilize,
 				get_motor_offset(2) + T  -P+Y_stabilize,
 				get_motor_offset(3) + T+R_stabilize  -Y_stabilize);
-			break;
+			break;*/
 		case PANIC:
 			nexys_display = 0xc1a0;
 
@@ -360,6 +361,7 @@ void isr_qr_link(void)
 				set_motor_rpm(PANIC_RPM,PANIC_RPM,PANIC_RPM,PANIC_RPM);
 			} else {
 				reset_motors();
+				R = P = Y = T = 0;
 				set_mode(SAFE);
 			}
 			break;
