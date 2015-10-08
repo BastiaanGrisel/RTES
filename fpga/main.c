@@ -56,7 +56,7 @@ int 	Y_stabilize;
 int dY;
 
 int32_t	s0, s1, s2, s3, s4, s5;
-int32_t s_bias[6] = {0};
+int32_t s_bias[6];
 
 Fifo	pc_msg_q;
 
@@ -96,6 +96,15 @@ bool set_mode(Mode new_mode) {
 	if(mode == new_mode) {
 		send_err_message(MODE_ALREADY_SET);
 		return false;
+	}
+
+	if(new_mode == CALIBRATE) {
+		s_bias[0] = s0;
+		s_bias[1] = s1;
+		s_bias[2] = s2;
+		s_bias[3] = s3;
+		s_bias[4] = s4;
+		s_bias[5] = s5;
 	}
 
 	if(new_mode >= MANUAL) {
@@ -241,21 +250,12 @@ int32_t bitshift_l(int32_t value, int32_t shift) {
 void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t s3, int32_t s4, int32_t s5) {
 	int32_t ratio = 10;	
 	
-	if(s_bias[0] == 0) {
-		s_bias[0] = s0;
-		s_bias[1] = s1;
-		s_bias[2] = s2;
-		s_bias[3] = s3;
-		s_bias[4] = s4;
-		s_bias[5] = s5;
-	} else {
-		s_bias[0]  += -1 * (s_bias[0] >> ratio) + s0;
-		s_bias[1]  += -1 * (s_bias[1] >> ratio) + s1;
-		s_bias[2]  += -1 * (s_bias[2] >> ratio) + s2;
-		s_bias[3]  += -1 * (s_bias[3] >> ratio) + s3;
-		s_bias[4]  += -1 * (s_bias[4] >> ratio) + s4;	
-		s_bias[5]  += -1 * (s_bias[5] >> ratio) + s5;
-	}
+	s_bias[0]  += -1 * (s_bias[0] >> ratio) + s0;
+	s_bias[1]  += -1 * (s_bias[1] >> ratio) + s1;
+	s_bias[2]  += -1 * (s_bias[2] >> ratio) + s2;
+	s_bias[3]  += -1 * (s_bias[3] >> ratio) + s3;
+	s_bias[4]  += -1 * (s_bias[4] >> ratio) + s4;	
+	s_bias[5]  += -1 * (s_bias[5] >> ratio) + s5;
 }
 
 /* ISR when new sensor readings are read from the QR
