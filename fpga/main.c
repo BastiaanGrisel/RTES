@@ -324,6 +324,7 @@ int16_t scale_throttle(uint8_t throttle) {
  * Author: Bastiaan
  */
 void packet_received(char control, PacketData data) {
+	//data = swap_byte_order(data);
 	if(control == 0) return;
 
 	//sprintf(message, "Packet Received: %c %c\n#", control, data.as_char);

@@ -464,13 +464,6 @@ void print_data_to_log_file(PacketData data) {
 	fprintf(log_file, "%u ", data.as_uint16_t);
 }
 
-PacketData swap_byte_order(PacketData p) {
-	PacketData p2;
-	p2.as_bytes[0] = p.as_bytes[1];
-	p2.as_bytes[1] = p.as_bytes[0];
-	return p2;
-}
-
 /* Parse the QR input (one char at the time)
  * Call parse message if a message is complete
  * Author: Henko Aantjes

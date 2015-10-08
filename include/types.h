@@ -101,4 +101,11 @@ bool is_valid_mode(Mode mode) {
 	return mode >= SAFE && mode <= FULL_CONTROL;
 }
 
+PacketData swap_byte_order(PacketData p) {
+	PacketData p2;
+	p2.as_bytes[0] = p.as_bytes[1];
+	p2.as_bytes[1] = p.as_bytes[0];
+	return p2;
+}
+
 #endif /* TYPES_H */
