@@ -439,15 +439,15 @@ uint16_t swap_endianess_16(uint16_t val)
 Author: Alessio */
 void print_log_to_file(PacketData data)
 {
-	uint16_t val = data.as_uint16_t;
-	val = swap_endianess_16(val);
+	//uint16_t val = data.as_uint16_t;
+	//val = swap_endianess_16(val);
 	//uint32_t val = data.as_uint32_t;
   //val = swap_endianess_32(val);
 
   //provisional workaround
-	val = (val == 32000) ? 255 : val;
+	//val = (val == 32000) ? 255 : val;
 
-	fprintf(log_file, "%hu ", val);
+	fprintf(log_file, "%hu ", data.as_uint16_t);
 }
 
 /*Print log values to file, taking in account the endianess
@@ -485,15 +485,14 @@ void packet_received(char control, PacketData data){
 			col_off(3);
 			break;
 		case LOG_MSG_PART:
-	    print_log_to_file(data);
-
+	    		//print_log_to_file(swapped);
+			mvprintw(25, 0, "LOG: %hu", swapped.as_uint16_t);
 			break;
 		case LOG_MSG_NEW_LINE:
 			fprintf(log_file,"\n");
 			break;
 		case ERROR_MSG:
-		 	val = data.as_uint16_t;
-		  	print_error_message(val);
+		  	print_error_message(swapped.as_uint16_t);
 			break;
 		default:
 			break;

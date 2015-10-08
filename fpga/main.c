@@ -259,7 +259,7 @@ void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t 
 }
 
 int32_t min(int32_t one, int32_t two) {
-	return (one < two) ? one : two; 
+	return	 (one < two) ? one : two; 
 }
 
 int32_t max(int32_t one, int32_t two) {
@@ -358,10 +358,10 @@ void packet_received(char control, PacketData data) {
 			Y = data.as_int8_t;
 			break;
 		case JS_LIFT:
-			if(data.as_int8_t >= 0)
-				T = scale_throttle(data.as_int8_t);
-			else
-				T = scale_throttle(256 + data.as_int8_t);
+			T = scale_throttle(data.as_int8_t);
+
+			sprintf(message, "Throttle: %i",T);
+			send_term_message(message);
 			break;
 		case ADJUST:
 			trim(data.as_int8_t);
