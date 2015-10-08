@@ -45,6 +45,8 @@ int32_t  time_at_last_led_switch = 0;
 int32_t  packet_counter = 0, packet_lost_counter = 0;
 int32_t  R=0, P=0, Y=0, T=0;
 
+bool is_calibrated = false;
+
 /* filter parameters*/
 int		Ybias = 400;
 int 	filtered_dY = 0; //
@@ -121,6 +123,8 @@ bool set_mode(Mode new_mode) {
 		s_bias[3] = s3;
 		s_bias[4] = s4;
 		s_bias[5] = s5;
+
+		is_calibrated = true;
 	}
 
 	if(new_mode >= MANUAL) {
@@ -136,6 +140,14 @@ bool set_mode(Mode new_mode) {
 			return false;
 		}
 	}
+
+	if(new_mode == FULL_CONTROL) {
+		R_ACC_BIAS = s_bias[0];
+		Rbias = s_bias[3];
+	}	
+
+	if(new_mode == FULL_CONTROL && !is_calibrated) 
+		return false;
 
 	// If everything is OK, change the mode
 	mode = new_mode;
