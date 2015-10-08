@@ -220,7 +220,11 @@ void special_request(char request){
 			set_mode(PANIC);
 			break;
 		case ASK_MOTOR_RPM:
-			sprintf(message, "offset = [%i,%i,%i,%i], rpm = [%i,%i,%i,%i], rpyt = [%i,%i,%i,%i] T/4 = %i",get_motor_offset(0),get_motor_offset(1),get_motor_offset(2),get_motor_offset(3),get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3),R,P,Y,T,T/4);
+			sprintf(message, "offset = [%i,%i,%i,%i], rpm = [%i,%i,%i,%i], rpyt = [%i,%i,%i,%i] T/4 = %i S = [%i,%i,%i,%i,%i,%i ]",get_motor_offset(0),get_motor_offset(1),get_motor_offset(2),get_motor_offset(3),get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3),R,P,Y,T,T/4,s_bias[0],s_bias[1],s_bias[2],s_bias[3],s_bias[4],s_bias[5]);
+			send_term_message(message);
+			break;
+		case ASK_SENSOR_BIAS:
+			sprintf(message, "Sensor bias = [%i,%i,%i,%i,%i,%i]",s_bias[0],s_bias[1],s_bias[2],s_bias[3],s_bias[4],s_bias[5]);
 			send_term_message(message);
 			break;
 		case ASK_FILTER_PARAM:

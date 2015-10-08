@@ -8,6 +8,7 @@ int	axis[6];
 bool axisflags[6];
 int	button[12];
 FILE *log_file;
+FILE *terminal_log_file;
 char received_chars[QR_INPUT_BUFFERSIZE];
 int charpos = 0;
 int TermMessageReceiveTimer = -1;
@@ -339,6 +340,10 @@ void sendKeyData(int c){
 			case 'x':
 			  control = SPECIAL_REQUEST;
 				value = ASK_SENSOR_LOG;
+				break;
+			case 'b':
+				control = SPECIAL_REQUEST;
+				value = ASK_SENSOR_BIAS;
 				break;
 			case ESCAPE: // ESCAPEKEY
 				control = SPECIAL_REQUEST;
