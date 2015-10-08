@@ -45,6 +45,8 @@ int32_t  packet_counter = 0, packet_lost_counter = 0;
 int32_t  R=0, P=0, Y=0, T=0;
 int missed_packet_counter;
 
+bool is_calibrated = false;
+
 /* filter parameters*/
 int		Ybias = 400;
 int 	filtered_dY = 0; //
@@ -123,6 +125,8 @@ bool set_mode(Mode new_mode) {
 		s_bias[3] = s3;
 		s_bias[4] = s4;
 		s_bias[5] = s5;
+
+		is_calibrated = true;
 	}
 
 	if(new_mode >= MANUAL) {
@@ -138,6 +142,14 @@ bool set_mode(Mode new_mode) {
 			return false;
 		}
 	}
+
+	if(new_mode == FULL_CONTROL) {
+		R_ACC_BIAS = s_bias[0];
+		Rbias = s_bias[3];
+	}
+
+	if(new_mode == FULL_CONTROL && !is_calibrated)
+		return false;
 
 	// If everything is OK, change the mode
 	mode = new_mode;
@@ -210,7 +222,11 @@ void special_request(char request){
 			set_mode(PANIC);
 			break;
 		case ASK_MOTOR_RPM:
-			sprintf(message, "offset = [%i%i%i%i]\nmotor RPM= [%i%i%i%i]\n",get_motor_offset(0),get_motor_offset(1),get_motor_offset(2),get_motor_offset(3),get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
+			sprintf(message, "offset = [%i,%i,%i,%i], rpm = [%i,%i,%i,%i], rpyt = [%i,%i,%i,%i] T/4 = %i S = [%i,%i,%i,%i,%i,%i ]",get_motor_offset(0),get_motor_offset(1),get_motor_offset(2),get_motor_offset(3),get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3),R,P,Y,T,T/4,s_bias[0],s_bias[1],s_bias[2],s_bias[3],s_bias[4],s_bias[5]);
+			send_term_message(message);
+			break;
+		case ASK_SENSOR_BIAS:
+			sprintf(message, "Sensor bias = [%i,%i,%i,%i,%i,%i]",s_bias[0],s_bias[1],s_bias[2],s_bias[3],s_bias[4],s_bias[5]);
 			send_term_message(message);
 			break;
 		case ASK_FILTER_PARAM:
@@ -281,11 +297,20 @@ void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t 
 	s_bias[5]  += -1 * (s_bias[5] >> ratio) + s5;
 }
 
+int32_t min(int32_t one, int32_t two) {
+	return	 (one < two) ? one : two;
+}
+
+int32_t max(int32_t one, int32_t two) {
+	return (one > two) ? one : two;
+}
+
 /* ISR when new sensor readings are read from the QR
  */
 void isr_qr_link(void)
 {
-	/* get sensor and timestamp values */
+	/*
+/* get sensor and timestamp values */
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
 
@@ -303,6 +328,7 @@ void isr_qr_link(void)
 	Y_stabilize 	= Y+ bitshift_r(0 - filtered_dY, Y_BIAS_UPDATE - P_yaw);
 
 	/*ROLL_CALCULATIONS*/
+/*
 //     substract bias and scale R:
     dR = bitshift_l(s3,R_BIAS_UPDATE)-Rbias;
 //   filter
@@ -317,7 +343,7 @@ void isr_qr_link(void)
 //     calculate stabilization
     R_stabilize = R + bitshift_l(0-Rangle,-1*(R_BIAS_UPDATE - P1_R)) - bitshift_l(filtered_dR,-1*(R_BIAS_UPDATE - P2_R));
 
-
+*/
 	switch(mode) {
 		case CALIBRATE:
 			record_bias(s_bias, s0, s1, s2, s3, s4, s5);
@@ -325,34 +351,35 @@ void isr_qr_link(void)
 		case MANUAL:
 			// Calculate motor RPM
 			set_motor_rpm(
-				get_motor_offset(0) + T  +P+Y,
-				get_motor_offset(1) + T-R  -Y,
-				get_motor_offset(2) + T  -P+Y,
-				get_motor_offset(3) + T+R  -Y);
+				max(T/4, get_motor_offset(0) + T  +P+Y),
+				max(T/4, get_motor_offset(1) + T-R  -Y),
+				max(T/4, get_motor_offset(2) + T  -P+Y),
+				max(T/4, get_motor_offset(3) + T+R  -Y));
 			break;
 		case YAW_CONTROL:
 			// Calculate motor RPM
 			set_motor_rpm(
-				get_motor_offset(0) + T  +P+Y_stabilize,
-				get_motor_offset(1) + T-R  -Y_stabilize,
-				get_motor_offset(2) + T  -P+Y_stabilize,
-				get_motor_offset(3) + T+R  -Y_stabilize);
+				max(T/4, get_motor_offset(0) + T  +P+Y_stabilize),
+				max(T/4, get_motor_offset(1) + T-R  -Y_stabilize),
+				max(T/4, get_motor_offset(2) + T  -P+Y_stabilize),
+				max(T/4, get_motor_offset(3) + T+R  -Y_stabilize));
 			break;
-		case FULL_CONTROL:
+		/*case FULL_CONTROL:
 			// Calculate motor RPM
 			set_motor_rpm(
 				get_motor_offset(0) + T  +P+Y_stabilize,
 				get_motor_offset(1) + T-R_stabilize  -Y_stabilize,
 				get_motor_offset(2) + T  -P+Y_stabilize,
 				get_motor_offset(3) + T+R_stabilize  -Y_stabilize);
-			break;
+			break;*/
 		case PANIC:
 			nexys_display = 0xc1a0;
 
-			if(X32_ms_clock - panic_start_time < 1000) {
+			if(X32_ms_clock - panic_start_time < 2000) {
 				set_motor_rpm(PANIC_RPM,PANIC_RPM,PANIC_RPM,PANIC_RPM);
 			} else {
 				reset_motors();
+				R = P = Y = T = 0;
 				set_mode(SAFE);
 			}
 			break;
@@ -375,6 +402,7 @@ int16_t scale_throttle(uint8_t throttle) {
  * Author: Bastiaan
  */
 void packet_received(char control, PacketData data) {
+	//data = swap_byte_order(data);
 	if(control == 0) return;
 
 	//sprintf(message, "Packet Received: %c %c\n#", control, data.as_char);
@@ -400,10 +428,10 @@ void packet_received(char control, PacketData data) {
 			Y = data.as_int8_t;
 			break;
 		case JS_LIFT:
-			if(data.as_int8_t >= 0)
-				T = scale_throttle(data.as_int8_t);
-			else
-				T = scale_throttle(256 + data.as_int8_t);
+			T = scale_throttle(data.as_int8_t);
+
+			//sprintf(message, "Throttle: %i",T);
+			//send_term_message(message);
 			break;
 		case ADJUST:
 			trim(data.as_int8_t);
@@ -428,8 +456,7 @@ void setup()
 
 	fifo_init(&pc_msg_q);
 
-  if(DEBUG) init_array(sensor_log);
-
+  	if(DEBUG) init_array(sensor_log);
 
 	/* Prepare Interrupts */
 
@@ -474,11 +501,11 @@ void check_alive_connection() {
 	if(X32_ms_last_packet == -1) return; //does not perform the check untill a new message arrives
 
 	// If a packet has not been received within the TIMEOUT interval, go to panic mode
-	if(X32_ms_clock - X32_ms_last_packet > TIMEOUT && mode >= MANUAL)
-	{
-	   set_mode(PANIC);
+	if((X32_ms_clock - X32_ms_last_packet > TIMEOUT) && mode >= MANUAL) {
+		set_mode(PANIC);
+		sprintf(message, "X32_ms_clock:%i, X32_ms_last_packet:%i, diff:%i, TIMEOUT:%i!\n", X32_ms_clock, X32_ms_last_packet, X32_ms_clock - X32_ms_last_packet, TIMEOUT);
+		send_term_message(message);
 	}
-
 }
 
 int32_t main(void)

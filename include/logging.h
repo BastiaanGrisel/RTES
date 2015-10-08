@@ -10,6 +10,7 @@ sensor_log_counter = 0;
 
 extern char message[100] = {0};
 
+
 /*Just for testing*/
 void init_array(unsigned int sensor_log[][7])
 {
@@ -17,7 +18,7 @@ void init_array(unsigned int sensor_log[][7])
   	for(i=0; i < LOG_SIZE; i++)
     {
    		sensor_log[i][0] = 1;
-   		sensor_log[i][1] = 500;
+   		sensor_log[i][1] = 65500;
    		sensor_log[i][2] = 255;
    		sensor_log[i][3] = 500;
    		sensor_log[i][4] = 65101;
@@ -52,6 +53,8 @@ void send_logs(unsigned int sensor_log[][7]) {
 	int i;
 	int j;
 	PacketData p;
+	/*p.as_uint16_t = 255;
+	send_message(LOG_MSG_PART, p);*/
 
 	for(i = 0; i < LOG_SIZE; i++) {
 		for(j = 0; j < 7; j++) {

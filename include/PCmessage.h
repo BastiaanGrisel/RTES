@@ -12,7 +12,7 @@
  */
 void pc_send_message(char control, char value){
 	PacketData p;
-	p.as_bytes[0] = value;
+	p.as_char = value;
 
 	rs232_putchar(control);
 	rs232_putchar(p.as_bytes[0]);

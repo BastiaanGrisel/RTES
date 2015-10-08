@@ -8,6 +8,7 @@ int	axis[6];
 bool axisflags[6];
 int	button[12];
 FILE *log_file;
+FILE *terminal_log_file;
 char received_chars[QR_INPUT_BUFFERSIZE];
 int charpos = 0;
 int TermMessageReceiveTimer = -1;
@@ -340,6 +341,10 @@ void sendKeyData(int c){
 			  control = SPECIAL_REQUEST;
 				value = ASK_SENSOR_LOG;
 				break;
+			case 'b':
+				control = SPECIAL_REQUEST;
+				value = ASK_SENSOR_BIAS;
+				break;
 			case ESCAPE: // ESCAPEKEY
 				control = SPECIAL_REQUEST;
 				value = ESCAPE;
@@ -439,15 +444,15 @@ uint16_t swap_endianess_16(uint16_t val)
 Author: Alessio */
 void print_log_to_file(PacketData data)
 {
-	uint16_t val = data.as_uint16_t;
-	val = swap_endianess_16(val);
+	//uint16_t val = data.as_uint16_t;
+	//val = swap_endianess_16(val);
 	//uint32_t val = data.as_uint32_t;
   //val = swap_endianess_32(val);
 
   //provisional workaround
-	val = (val == 32000) ? 255 : val;
+	//val = (val == 32000) ? 255 : val;
 
-	fprintf(log_file, "%hu ", val);
+	fprintf(log_file, "%hu ", data.as_uint16_t);
 }
 
 /*Print log values to file, taking in account the endianess
@@ -455,13 +460,6 @@ Author: Alessio */
 /*void print_data_to_log_file(PacketData data) {
 	fprintf(log_file, "%u ", data.as_uint16_t);
 }*/
-
-PacketData swap_byte_order(PacketData p) {
-	PacketData p2;
-	p2.as_bytes[0] = p.as_bytes[1];
-	p2.as_bytes[1] = p.as_bytes[0];
-	return p2;
-}
 
 /* Parse the QR input (one char at the time)
  * Call parse message if a message is complete
@@ -492,8 +490,8 @@ void packet_received(char control, PacketData data){
 			col_off(3);
 			break;
 		case LOG_MSG_PART:
-	    print_log_to_file(data);
-
+	    		print_log_to_file(swapped);
+			//mvprintw(25, 0, "LOG: %hu", swapped.as_uint16_t);
 			break;
 		case LOG_MSG_NEW_LINE:
 			fprintf(log_file,"\n");

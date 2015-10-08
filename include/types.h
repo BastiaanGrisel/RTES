@@ -1,6 +1,6 @@
 #ifndef TYPES_H
 #define TYPES_H
-#include <stdint.h>
+//#include <stdint.h>
 
 
 typedef enum { false, true } bool;
@@ -9,19 +9,20 @@ typedef enum { NONE, SENSORS } Loglevel;
 typedef enum {LOG_ONLY_IN_SAFE_MODE, MODE_ILLIGAL, MODE_CHANGE_ONLY_VIA_SAFE,
   	MODE_CHANGE_ONLY_IF_ZERO_RPM, MODE_ALREADY_SET, CONTROL_DISABLED_IN_THIS_MODE ,
 	JS_LIFT_NOT_ZERO, SENSOR_LOG_FULL} Error;  /* Error Messages */
-/*
+
 typedef signed char       int8_t;
 typedef signed short      int16_t;
 typedef signed int        int32_t;
 typedef unsigned char     uint8_t;
 typedef unsigned short int    uint16_t;
-typedef unsigned int      uint32_t;*/
+typedef unsigned int      uint32_t;
 
 typedef union {
   uint32_t as_uint32_t;
   uint16_t as_uint16_t;
 	int16_t as_int16_t;
 	int8_t as_int8_t;
+	uint8_t as_uint8_t;
 	char as_char;
 	char as_bytes[2];
 } PacketData;
@@ -81,7 +82,7 @@ PacketData ch2pd(char in) {
 #define ASK_FILTER_PARAM 'f'
 #define RESET_SENSOR_LOG 's'
 #define ASK_SENSOR_LOG 'L'
-
+#define ASK_SENSOR_BIAS 'b'
 
 /************
  *  QR->PC  *
@@ -100,6 +101,13 @@ PacketData ch2pd(char in) {
 /* Util functions */
 bool is_valid_mode(Mode mode) {
 	return mode >= SAFE && mode <= FULL_CONTROL;
+}
+
+PacketData swap_byte_order(PacketData p) {
+	PacketData p2;
+	p2.as_bytes[0] = p.as_bytes[1];
+	p2.as_bytes[1] = p.as_bytes[0];
+	return p2;
 }
 
 #endif /* TYPES_H */
