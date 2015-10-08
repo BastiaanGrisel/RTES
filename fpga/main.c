@@ -34,7 +34,6 @@
 
 #define OFFSET_STEP 10
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
-//#define LOG_SIZE 10
 #define PANIC_RPM 100
 
 /* Define global variables
@@ -44,6 +43,7 @@ int32_t  X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to
 int32_t  time_at_last_led_switch = 0;
 int32_t  packet_counter = 0, packet_lost_counter = 0;
 int32_t  R=0, P=0, Y=0, T=0;
+int missed_packet_counter;
 
 bool is_calibrated = false;
 
@@ -84,7 +84,7 @@ Loglevel log_level = SENSORS;
 
 unsigned int sensor_log[LOG_SIZE][7];
 
-char message[200];
+
 
 void update_nexys_display(){
 	nexys_display = packet_counter << 8 + packet_lost_counter;
@@ -94,6 +94,8 @@ void update_nexys_display(){
 void lost_packet()
 {
 	packet_lost_counter++;
+	sprintf(message,"Lost packets: %d\n",packet_lost_counter);
+	send_term_message(message);
 	update_nexys_display();
 }
 
@@ -144,9 +146,9 @@ bool set_mode(Mode new_mode) {
 	if(new_mode == FULL_CONTROL) {
 		R_ACC_BIAS = s_bias[0];
 		Rbias = s_bias[3];
-	}	
+	}
 
-	if(new_mode == FULL_CONTROL && !is_calibrated) 
+	if(new_mode == FULL_CONTROL && !is_calibrated)
 		return false;
 
 	// If everything is OK, change the mode
@@ -296,18 +298,18 @@ void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t 
 }
 
 int32_t min(int32_t one, int32_t two) {
-	return	 (one < two) ? one : two; 
+	return	 (one < two) ? one : two;
 }
 
 int32_t max(int32_t one, int32_t two) {
-	return (one > two) ? one : two; 
+	return (one > two) ? one : two;
 }
 
 /* ISR when new sensor readings are read from the QR
  */
 void isr_qr_link(void)
 {
-	/*	
+	/*
 /* get sensor and timestamp values */
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
@@ -317,11 +319,11 @@ void isr_qr_link(void)
 
 	/*YAW_CALCULATIONS*/
 	//  scale dY up with Y_BIAS_UPDATE
-	dY 		= (s5 << Y_BIAS_UPDATE) - Ybias; 		
+	dY 		= (s5 << Y_BIAS_UPDATE) - Ybias;
 	// update Ybias with 1/2^Y_BIAS_UPDATE each sample
-	Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5; 		
+	Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5;
 	// filter dY
-	filtered_dY 	+= -1 * (filtered_dY >> Y_FILTER) + (dY >> Y_BIAS_UPDATE); 	
+	filtered_dY 	+= -1 * (filtered_dY >> Y_FILTER) + (dY >> Y_BIAS_UPDATE);
 	// calculate stabilisation value
 	Y_stabilize 	= Y+ bitshift_r(0 - filtered_dY, Y_BIAS_UPDATE - P_yaw);
 
@@ -446,9 +448,11 @@ void packet_received(char control, PacketData data) {
 void setup()
 {
 	int32_t c;
-
+  char message[200];
 	/* Initialize Variables */
 	nexys_display = 0x00;
+  missed_packet_counter = 0;
+
 
 	fifo_init(&pc_msg_q);
 
@@ -502,8 +506,6 @@ void check_alive_connection() {
 		sprintf(message, "X32_ms_clock:%i, X32_ms_last_packet:%i, diff:%i, TIMEOUT:%i!\n", X32_ms_clock, X32_ms_last_packet, X32_ms_clock - X32_ms_last_packet, TIMEOUT);
 		send_term_message(message);
 	}
-		
-
 }
 
 int32_t main(void)
@@ -520,7 +522,7 @@ int32_t main(void)
 
 		// Process messages
         	DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
-		check_for_new_packets(&pc_msg_q, &packet_received, &lost_packet);
+					check_for_new_packets(&pc_msg_q, &packet_received, &lost_packet);
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
 	}
 

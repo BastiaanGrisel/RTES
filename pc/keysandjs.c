@@ -490,13 +490,14 @@ void packet_received(char control, PacketData data){
 			col_off(3);
 			break;
 		case LOG_MSG_PART:
-	    		//print_log_to_file(swapped);
-			mvprintw(25, 0, "LOG: %hu", swapped.as_uint16_t);
+	    		print_log_to_file(swapped);
+			//mvprintw(25, 0, "LOG: %hu", swapped.as_uint16_t);
 			break;
 		case LOG_MSG_NEW_LINE:
 			fprintf(log_file,"\n");
 			break;
 		case ERROR_MSG:
+		 	val = data.as_uint16_t;
 		  	print_error_message(swapped.as_uint16_t);
 			break;
 		default:
