@@ -53,10 +53,6 @@ void send_logs(unsigned int sensor_log[][7]) {
 	int j;
 	PacketData p;
 
-	p.as_uint16_t = 365;
-	send_message(LOG_MSG_PART, p);
-	return;
-
 	for(i = 0; i < LOG_SIZE; i++) {
 		for(j = 0; j < 7; j++) {
 			p.as_uint16_t = sensor_log[i][j];
@@ -70,7 +66,7 @@ void send_logs(unsigned int sensor_log[][7]) {
 			send_term_message(message);
 		}
 	}
-	//send_term_message("LOGGING COMPLETED");
+	send_term_message("LOGGING COMPLETED");
 }
 
 #endif

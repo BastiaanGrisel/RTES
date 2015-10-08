@@ -460,10 +460,8 @@ void init_log(void){
 
 /*Print log values to file, taking in account the endianess
 Author: Alessio */
-void print_data_to_log_file(PacketData data)
-{
-	uint16_t val = data.as_uint16_t;
-	fprintf(log_file, "%u ", val);
+void print_data_to_log_file(PacketData data) {
+	fprintf(log_file, "%u ", data.as_uint16_t);
 }
 
 PacketData swap_byte_order(PacketData p) {
@@ -501,7 +499,6 @@ void packet_received(char control, PacketData data){
 			col_off(3);
 			break;
 		case LOG_MSG_PART:
-			mvprintw(15,0,"LOG: %i\n",data.as_uint16_t);
 	    		print_data_to_log_file(data);
 			break;
 		case LOG_MSG_NEW_LINE:
