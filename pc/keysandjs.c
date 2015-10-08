@@ -500,7 +500,7 @@ void packet_received(char control, PacketData data){
 			break;
 		case ERROR_MSG:
 		 	val = data.as_uint16_t;
-		  	print_error_message(val);
+		  	print_error_message(swapped.as_uint16_t);
 			break;
 		default:
 			break;
