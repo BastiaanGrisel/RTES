@@ -38,7 +38,7 @@
 
 /* Define global variables
  */
-bool DEBUG = true;
+bool DEBUG = false;
 int32_t  X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to avoid going panic before receiving the first msg
 int32_t  time_at_last_led_switch = 0;
 int32_t  packet_counter = 0, packet_lost_counter = 0;
@@ -222,7 +222,7 @@ void special_request(char request){
 			set_mode(PANIC);
 			break;
 		case ASK_MOTOR_RPM:
-			sprintf(message, "offset = [%i,%i,%i,%i], rpm = [%i,%i,%i,%i], rpyt = [%i,%i,%i,%i] T/4 = %i S = [%i,%i,%i,%i,%i,%i ]",get_motor_offset(0),get_motor_offset(1),get_motor_offset(2),get_motor_offset(3),get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3),R,P,Y,T,T/4,s_bias[0],s_bias[1],s_bias[2],s_bias[3],s_bias[4],s_bias[5]);
+			sprintf(message, "offset = [%i,%i,%i,%i], rpm = [%i,%i,%i,%i], rpyt = [%i,%i,%i,%i] T/4 = %i",get_motor_offset(0),get_motor_offset(1),get_motor_offset(2),get_motor_offset(3),get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3),R,P,Y,T,T/4);
 			send_term_message(message);
 			break;
 		case ASK_SENSOR_BIAS:
