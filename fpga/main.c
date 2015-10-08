@@ -258,6 +258,14 @@ void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t 
 	s_bias[5]  += -1 * (s_bias[5] >> ratio) + s5;
 }
 
+int32_t min(int32_t one, int32_t two) {
+	return (one < two) ? one : two; 
+}
+
+int32_t max(int32_t one, int32_t two) {
+	return (one > two) ? one : two; 
+}
+
 /* ISR when new sensor readings are read from the QR
  */
 void isr_qr_link(void)
@@ -282,18 +290,18 @@ void isr_qr_link(void)
 		case MANUAL:
 			// Calculate motor RPM
 			set_motor_rpm(
-				get_motor_offset(0) + T  +P+Y,
-				get_motor_offset(1) + T-R  -Y,
-				get_motor_offset(2) + T  -P+Y,
-				get_motor_offset(3) + T+R  -Y);
+				max(T/4, get_motor_offset(0) + T  +P+Y),
+				max(T/4, get_motor_offset(1) + T-R  -Y),
+				max(T/4, get_motor_offset(2) + T  -P+Y),
+				max(T/4, get_motor_offset(3) + T+R  -Y));
 			break;
 		case YAW_CONTROL:
 			// Calculate motor RPM
 			set_motor_rpm(
-				get_motor_offset(0) + T  +P+Y_stabilize,
-				get_motor_offset(1) + T-R  -Y_stabilize,
-				get_motor_offset(2) + T  -P+Y_stabilize,
-				get_motor_offset(3) + T+R  -Y_stabilize);
+				max(T/4, get_motor_offset(0) + T  +P+Y_stabilize),
+				max(T/4, get_motor_offset(1) + T-R  -Y_stabilize),
+				max(T/4, get_motor_offset(2) + T  -P+Y_stabilize),
+				max(T/4, get_motor_offset(3) + T+R  -Y_stabilize));
 			break;
 		case PANIC:
 			nexys_display = 0xc1a0;
