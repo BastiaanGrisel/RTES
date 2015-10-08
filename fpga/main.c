@@ -291,7 +291,8 @@ int32_t max(int32_t one, int32_t two) {
  */
 void isr_qr_link(void)
 {
-	/* get sensor and timestamp values */
+	/*	
+/* get sensor and timestamp values */
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
 
@@ -355,7 +356,7 @@ void isr_qr_link(void)
 		case PANIC:
 			nexys_display = 0xc1a0;
 
-			if(X32_ms_clock - panic_start_time < 1000) {
+			if(X32_ms_clock - panic_start_time < 2000) {
 				set_motor_rpm(PANIC_RPM,PANIC_RPM,PANIC_RPM,PANIC_RPM);
 			} else {
 				reset_motors();
@@ -409,8 +410,8 @@ void packet_received(char control, PacketData data) {
 		case JS_LIFT:
 			T = scale_throttle(data.as_int8_t);
 
-			sprintf(message, "Throttle: %i",T);
-			send_term_message(message);
+			//sprintf(message, "Throttle: %i",T);
+			//send_term_message(message);
 			break;
 		case ADJUST:
 			trim(data.as_int8_t);
@@ -433,8 +434,7 @@ void setup()
 
 	fifo_init(&pc_msg_q);
 
-  if(DEBUG) init_array(sensor_log);
-
+  	if(DEBUG) init_array(sensor_log);
 
 	/* Prepare Interrupts */
 
@@ -479,8 +479,13 @@ void check_alive_connection() {
 	if(X32_ms_last_packet == -1) return; //does not perform the check untill a new message arrives
 
 	// If a packet has not been received within the TIMEOUT interval, go to panic mode
-	if(X32_ms_clock - X32_ms_last_packet > TIMEOUT && mode >= MANUAL)
+	if((X32_ms_clock - X32_ms_last_packet > TIMEOUT) && mode >= MANUAL) {
 		set_mode(PANIC);
+		sprintf(message, "X32_ms_clock:%i, X32_ms_last_packet:%i, diff:%i, TIMEOUT:%i!\n", X32_ms_clock, X32_ms_last_packet, X32_ms_clock - X32_ms_last_packet, TIMEOUT);
+		send_term_message(message);
+	}
+		
+
 }
 
 int32_t main(void)

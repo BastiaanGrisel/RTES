@@ -8,7 +8,7 @@
 #define LOG_SIZE 20
 sensor_log_counter = 0;
 
-extern char message[100];
+extern char message[200];
 
 /*Just for testing*/
 void init_array(unsigned int sensor_log[][7])
