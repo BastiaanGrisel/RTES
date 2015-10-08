@@ -389,10 +389,10 @@ void isr_qr_link(void)
  * 64-255 = 600-800
  */
 int16_t scale_throttle(uint8_t throttle) {
-	if(throttle < 63) {
+	if(throttle < 40) {
 		return throttle * 10;
 	} else {
-		return throttle - 64 + 630;
+		return throttle - 40 + 400;
 	}
 }
 
