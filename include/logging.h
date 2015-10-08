@@ -8,7 +8,7 @@
 #define LOG_SIZE 20
 sensor_log_counter = 0;
 
-extern char message[100];
+extern char message[100] = {0};
 
 /*Just for testing*/
 void init_array(unsigned int sensor_log[][7])
@@ -21,8 +21,8 @@ void init_array(unsigned int sensor_log[][7])
    		sensor_log[i][2] = 255;
    		sensor_log[i][3] = 500;
    		sensor_log[i][4] = 65101;
-   		sensor_log[i][5] = 65540;
-   		sensor_log[i][6] = 65499;
+   		sensor_log[i][5] = 400;
+   		sensor_log[i][6] = 0;
    }
 }
 
@@ -55,7 +55,8 @@ void send_logs(unsigned int sensor_log[][7]) {
 
 	for(i = 0; i < LOG_SIZE; i++) {
 		for(j = 0; j < 7; j++) {
-			p.as_uint16_t = sensor_log[i][j];
+			p.as_uint16_t = (sensor_log[i][j] == 255) ? 32000 : sensor_log[i][j];
+
 			send_message(LOG_MSG_PART, p);
 		}
 
