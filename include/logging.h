@@ -53,19 +53,14 @@ void send_logs(unsigned int sensor_log[][7]) {
 	int j;
 	PacketData p;
 
+	p.as_uint16_t = 365;
+	send_message(LOG_MSG_PART, p);
+	return;
+
 	for(i = 0; i < LOG_SIZE; i++) {
 		for(j = 0; j < 7; j++) {
-
-			//PROVISIONAL workaround
-			p.as_uint16_t = (sensor_log[i][j] == 255) ? 32000 : sensor_log[i][j];
-
-			send_message(LOG_MSG_PART,p);
-
-      //OLD WAY
-			/*  unsigned char low  =  sensor_log[i][j]       & 0xff;
-      unsigned char high = (sensor_log[i][j] >> 8) & 0xff;
-      send_message(LOG_MSG_PART, ch2pd(high));
-			send_message(LOG_MSG_PART, ch2pd(low));*/
+			p.as_uint16_t = sensor_log[i][j];
+			send_message(LOG_MSG_PART, p);
 		}
 
 		send_control_message(LOG_MSG_NEW_LINE);
@@ -75,9 +70,7 @@ void send_logs(unsigned int sensor_log[][7]) {
 			send_term_message(message);
 		}
 	}
-	send_term_message("LOGGING COMPLETED");
+	//send_term_message("LOGGING COMPLETED");
 }
-
-
 
 #endif

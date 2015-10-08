@@ -192,7 +192,7 @@ void special_request(char request){
 			break;
 		case ASK_SENSOR_LOG:
 			if(mode==SAFE) send_logs(sensor_log);
-		   else send_err_message(LOG_ONLY_IN_SAFE_MODE);
+		   	else send_err_message(LOG_ONLY_IN_SAFE_MODE);
 
 			break;
 		case RESET_MOTORS: //reset
@@ -375,7 +375,7 @@ void setup()
 
 	fifo_init(&pc_msg_q);
 
-  	//init_array(sensor_log);
+  	init_array(sensor_log);
 
 	/* Prepare Interrupts */
 
