@@ -408,8 +408,6 @@ struct timeval sendJSData(struct timeval last_packet_time){
 	}
 }
 
-
-
 /* initialize the log file
  * Author: Henko Aantjes
  */
@@ -417,7 +415,8 @@ void init_log(void){
 	value_counter = 0;
 	value_to_print = 0;
 
-	log_file = fopen("flight_log.txt", "w");
+	log_file = fopen("flight_log2.txt", "w");
+
 	if (log_file == NULL)
 	{
 		printw("Error opening file!\n");
@@ -459,35 +458,29 @@ void init_log(void){
 	 value_counter++;
 } */
 
-
-/*Swap the endianess.
-Author: Alessio*/
-uint16_t swap_endianess_16(uint16_t val)
-{
-	return (val >> 8) | (val << 8 );
-}
-
 /*Print log values to file, taking in account the endianess
 Author: Alessio */
-void print_log_to_file(PacketData data)
-{
-	uint16_t val = data.as_uint16_t;
-	val = swap_endianess_16(val);
-
-  //provisional workaround
-	val = (val == 32000) ? 255 : val;
-
-	fprintf(log_file, "%hu ", val);
+void print_data_to_log_file(PacketData data) {
+	fprintf(log_file, "%u ", data.as_uint16_t);
 }
 
+PacketData swap_byte_order(PacketData p) {
+	PacketData p2;
+	p2.as_bytes[0] = p.as_bytes[1];
+	p2.as_bytes[1] = p.as_bytes[0];
+	return p2;
+}
 
 /* Parse the QR input (one char at the time)
  * Call parse message if a message is complete
  * Author: Henko Aantjes
  */
 void packet_received(char control, PacketData data){
+	// Change endianness
+	data = swap_byte_order(data);
+
 	int i;
-	char value = data.as_bytes[0];
+	char value = data.as_bytes[1];
 	uint16_t val;
 
 	switch(control){
@@ -506,15 +499,14 @@ void packet_received(char control, PacketData data){
 			col_off(3);
 			break;
 		case LOG_MSG_PART:
-	//		print_value_to_file((unsigned char) value);
-	    print_log_to_file(data);
+	    		print_data_to_log_file(data);
 			break;
 		case LOG_MSG_NEW_LINE:
 			fprintf(log_file,"\n");
 			break;
 		case ERROR_MSG:
-		  val = data.as_uint16_t;
-		  print_error_message(swap_endianess_16(val));
+		 	val = data.as_uint16_t;
+		  	print_error_message(val);
 			break;
 		default:
 			break;
@@ -525,11 +517,11 @@ void packet_received(char control, PacketData data){
 Author: Alessio */
 print_error_message(Error err)
 {
-	char msg[50];
+	char msg[100];
 	col_on(1);
 	switch(err) {
 		case LOG_ONLY_IN_SAFE_MODE:
-			sprintf(msg,"[QR]: Switch to SAFE before asking for the logging.]");
+			sprintf(msg,"[QR]: Switch to SAFE before asking for the logging.");
 			break;
 		case MODE_ILLIGAL:
 		  sprintf(msg,"[QR]: Invalid or illigal mode.]");
@@ -556,7 +548,7 @@ print_error_message(Error err)
 		default:
 		 sprintf(msg, "[QR] Wrong not recognized. Wrong error code.");
 	}
-
+	
 	mvprintw (LINE_NR_ERROR_MSG,0,"%s \n\n",msg);
 	errorMessageTimer =0;
 	col_off(1);

@@ -1,9 +1,9 @@
 #ifndef QRMESSAGE_H
 #define QRMESSAGE_H
 
+#include "communication.h"
 #include "types.h"
 #include "fifo.h"
-
 
 /************** QR --> PC ************/
 
