@@ -110,7 +110,7 @@ void checkTimeMessages(void){
 		if(TermMessageReceiveTimer++> MAX_MSG_TIME){
 			j = (TermMessageReceiveTimer-MAX_MSG_TIME)/1000;
 			move(LINE_NR_RECEIVED_MSG,0);
-			for(i = 0;i<j;i++){ 
+			for(i = 0;i<j;i++){
 				printw(" ");
 			}
 			if(j>50){
@@ -123,7 +123,7 @@ void checkTimeMessages(void){
 		if(errorMessageTimer++>MAX_ERROR_MSG_TIME){
 			j = (errorMessageTimer-MAX_ERROR_MSG_TIME)/1000;
 			move(LINE_NR_ERROR_MSG,0);
-			for(i = 0;i<j;i++){ 
+			for(i = 0;i<j;i++){
 				printw(" ");
 			}
 			if(j>50){
@@ -132,7 +132,7 @@ void checkTimeMessages(void){
 			}
 		}
 	}
-	
+
 }
 
 /* Process a joystick event
@@ -392,7 +392,7 @@ struct timeval sendJSData(struct timeval last_packet_time){
 				gettimeofday(&timenew,NULL);
 				int timediff = timenew.tv_usec+1000000*timenew.tv_sec-last_packet_time.tv_usec-1000000*last_packet_time.tv_sec;
 				if(timediff<1000*10){
-					mvprintw(2,0,"timediff is to low: ", timediff);
+					mvprintw(2,0,"timediff is too low: ", timediff);
 					return last_packet_time;
 				} else {
 					axisflags[number] = false;
@@ -414,8 +414,6 @@ struct timeval sendJSData(struct timeval last_packet_time){
  * Author: Henko Aantjes
  */
 void init_log(void){
-	value_counter = 0;
-	value_to_print = 0;
 
 	log_file = fopen("flight_log.txt", "w");
 	if (log_file == NULL)
@@ -427,40 +425,14 @@ void init_log(void){
 	}
 }
 
-/* Prints the value to the log file with #awesomesauce
-   Author: Alessio
-*/
-/*void print_value_to_file(unsigned char c)
-{
-	int a,b;
-	unsigned char uns = (unsigned char) c;
+uint32_t swap_endianess_32(uint32_t num){
+	return ((num>>24)&0xff) | // move byte 3 to byte 0
+                    ((num<<8)&0xff0000) | // move byte 1 to byte 2
+                    ((num>>8)&0xff00) | // move byte 2 to byte 1
+                    ((num<<24)&0xff000000); // byte 0 to byte 3
+}
 
-   //even: read most significant bytes
-	 if(value_counter % 2 == 0) {
-		 value_to_print = uns;
-		 value_to_print = (value_to_print << 8) & 0xFF00;
-
-		 //a = (int) c;
-		 //fprintf(log_file,"%i ",a);
-	 }
-
-  //odd: read least signifative bytes and print the value
-	 else {
-		 value_to_print |= uns;
-
-		fprintf(log_file,"%hu ",value_to_print);
-		value_to_print = 0;
-
-		//b = (int) c;
-    //	fprintf(log_file,"%i ",b);
-		// if(value_counter % 14 == 1) fprintf(log_file, ": ");
-	 }
-
-	 value_counter++;
-} */
-
-
-/*Swap the endianess.
+/*Swap the endianess for 16bits unsigned int.
 Author: Alessio*/
 uint16_t swap_endianess_16(uint16_t val)
 {
@@ -473,11 +445,13 @@ void print_log_to_file(PacketData data)
 {
 	uint16_t val = data.as_uint16_t;
 	val = swap_endianess_16(val);
-
+	//uint32_t val = data.as_uint32_t;
+  //val = swap_endianess_32(val);
+	
   //provisional workaround
 	val = (val == 32000) ? 255 : val;
 
-	fprintf(log_file, "%hu ", val);
+	fprintf(log_file, "%u ", val);
 }
 
 
@@ -506,7 +480,6 @@ void packet_received(char control, PacketData data){
 			col_off(3);
 			break;
 		case LOG_MSG_PART:
-	//		print_value_to_file((unsigned char) value);
 	    print_log_to_file(data);
 			break;
 		case LOG_MSG_NEW_LINE:

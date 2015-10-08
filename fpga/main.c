@@ -40,7 +40,7 @@
 
 /* Define global variables
  */
-
+bool DEBUG = false;
 int32_t  X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to avoid going panic before receiving the first msg
 int32_t  time_at_last_led_switch = 0;
 int32_t  packet_counter = 0, packet_lost_counter = 0;
@@ -239,8 +239,8 @@ int32_t bitshift_l(int32_t value, int32_t shift) {
 }
 
 void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t s3, int32_t s4, int32_t s5) {
-	int32_t ratio = 10;	
-	
+	int32_t ratio = 10;
+
 	if(s_bias[0] == 0) {
 		s_bias[0] = s0;
 		s_bias[1] = s1;
@@ -253,7 +253,7 @@ void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t 
 		s_bias[1]  += -1 * (s_bias[1] >> ratio) + s1;
 		s_bias[2]  += -1 * (s_bias[2] >> ratio) + s2;
 		s_bias[3]  += -1 * (s_bias[3] >> ratio) + s3;
-		s_bias[4]  += -1 * (s_bias[4] >> ratio) + s4;	
+		s_bias[4]  += -1 * (s_bias[4] >> ratio) + s4;
 		s_bias[5]  += -1 * (s_bias[5] >> ratio) + s5;
 	}
 }
@@ -266,7 +266,7 @@ void isr_qr_link(void)
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
 
-	// Add new sensor values to array	
+	// Add new sensor values to array
 	log_sensors(sensor_log, X32_QR_timestamp/50, s0, s1, s2, s3, s4, s5);
 
 	/*YAW_CALCULATIONS*/
@@ -297,7 +297,7 @@ void isr_qr_link(void)
 			break;
 		case PANIC:
 			nexys_display = 0xc1a0;
-			
+
 			if(X32_ms_clock - panic_start_time < 1000) {
 				set_motor_rpm(PANIC_RPM,PANIC_RPM,PANIC_RPM,PANIC_RPM);
 			} else {
@@ -375,7 +375,7 @@ void setup()
 
 	fifo_init(&pc_msg_q);
 
-  	//init_array(sensor_log);
+  if(DEBUG) init_array(sensor_log);
 
 	/* Prepare Interrupts */
 

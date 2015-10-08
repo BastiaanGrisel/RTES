@@ -20,9 +20,9 @@ void init_array(unsigned int sensor_log[][7])
    		sensor_log[i][1] = 500;
    		sensor_log[i][2] = 255;
    		sensor_log[i][3] = 500;
-   		sensor_log[i][4] = 100;
-   		sensor_log[i][5] = 200;
-   		sensor_log[i][6] = 0;
+   		sensor_log[i][4] = 65101;
+   		sensor_log[i][5] = 65540;
+   		sensor_log[i][6] = 65499;
    }
 }
 
@@ -75,7 +75,7 @@ void send_logs(unsigned int sensor_log[][7]) {
 			send_term_message(message);
 		}
 	}
-	send_term_message("LOGGING COMPLETED");
+	send_term_message("LOGGING COMPLETED.");
 }
 
 
