@@ -46,13 +46,30 @@ int32_t  packet_counter = 0, packet_lost_counter = 0;
 int32_t  R=0, P=0, Y=0, T=0;
 
 /* filter parameters*/
-int	Ybias = 400;
+int		Ybias = 400;
 int 	filtered_dY = 0; //
 int 	Y_BIAS_UPDATE = 10; // update bias each sample with a fraction of 1/2^13
 int 	Y_FILTER = 3; // simple filter that updates 1/2^Y_filter
 int 	P_yaw=12; // P = 2^4     Y_TO_ENGINE_SCALE
 int 	Y_stabilize;
-int dY;
+int 	dY;
+ /*Roll parameters*/
+int		R_FILTER = 3;
+int		R_BIAS_UPDATE = 14;
+int		R_ANGLE = 5;
+int		R_ACC_RATIO = 2000;
+int		R_ACC_BIAS = 0;  /*set this in CALIBRATION mode*/
+int		C1_R = 7;
+int		C2_R = 16;
+int		P1_R = 6;
+int		P2_R = 5;
+
+int		dR = 0; // init (not very important)
+int		Rangle = 0; // init to zero
+int		Rbias = 0;// bitshift_l(calibratedRgyro,R_BIAS_UPDATE);
+int		filtered_dR = 0;
+int		R_stabilize = 0;
+
 
 int32_t	s0, s1, s2, s3, s4, s5;
 int32_t s_bias[6];
@@ -65,7 +82,7 @@ Loglevel log_level = SENSORS;
 
 unsigned int sensor_log[LOG_SIZE][7];
 
-char message[100];
+char message[200];
 
 void update_nexys_display(){
 	nexys_display = packet_counter << 8 + packet_lost_counter;
@@ -167,8 +184,12 @@ void trim(char c){
 			P_yaw--;
 			break;
 		case P_ROLL_UP:
+			P1_R++;
+			P2_R++;
 			break;
 		case P_ROLL_DOWN:
+			P1_R--;
+			P2_R--;
 			break;
 		case P_PITCH_UP:
 			break;
@@ -191,7 +212,7 @@ void special_request(char request){
 			send_term_message(message);
 			break;
 		case ASK_FILTER_PARAM:
-			sprintf(message, "dY = %i, Y_stabilize = %i,  Ybias = %i, filtered_dY = %i\n#", dY >> Y_BIAS_UPDATE, Y_stabilize, (Ybias >> Y_BIAS_UPDATE), (filtered_dY >> Y_BIAS_UPDATE));
+			sprintf(message, "Y_stabilize = %i,  Ybias = %i, filtered_dY = %i\n R_stabilize = %i,", Y_stabilize, (Ybias >> Y_BIAS_UPDATE), (filtered_dY >> Y_BIAS_UPDATE), R_stabilize);
 			send_term_message(message);
 			break;
 		case RESET_SENSOR_LOG:
@@ -278,10 +299,30 @@ void isr_qr_link(void)
 	log_sensors(sensor_log, X32_QR_timestamp/50, s0, s1, s2, s3, s4, s5);
 
 	/*YAW_CALCULATIONS*/
-	dY 		= (s5 << Y_BIAS_UPDATE) - Ybias; 		// dY is now scaled up with Y_BIAS_UPDATE
-	Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5; 		// update Ybias with 1/2^Y_BIAS_UPDATE each sample
-	filtered_dY 	+= -1 * (filtered_dY >> Y_FILTER) + (dY >> Y_BIAS_UPDATE); 	// filter dY
-	Y_stabilize 	= bitshift_r(0 - filtered_dY, Y_BIAS_UPDATE - P_yaw);
+	//  scale dY up with Y_BIAS_UPDATE
+	dY 		= (s5 << Y_BIAS_UPDATE) - Ybias; 		
+	// update Ybias with 1/2^Y_BIAS_UPDATE each sample
+	Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5; 		
+	// filter dY
+	filtered_dY 	+= -1 * (filtered_dY >> Y_FILTER) + (dY >> Y_BIAS_UPDATE); 	
+	// calculate stabilisation value
+	Y_stabilize 	= Y+ bitshift_r(0 - filtered_dY, Y_BIAS_UPDATE - P_yaw);
+
+	/*ROLL_CALCULATIONS*/
+//     substract bias and scale R:
+    dR = bitshift_l(s3,R_BIAS_UPDATE)-Rbias;
+//   filter
+    filtered_dR+= - bitshift_l(filtered_dR,-R_FILTER) + bitshift_l(dR,-R_FILTER);
+//     integrate for the angle and add something to react agianst
+//     rounding error
+    Rangle += bitshift_l(filtered_dR+bitshift_l(1,-R_BIAS_UPDATE+R_ANGLE-1),-R_BIAS_UPDATE+R_ANGLE);
+    // kalman
+	Rangle += - bitshift_l(Rangle-(s0-R_ACC_BIAS)*R_ACC_RATIO+bitshift_l(1,C1_R-1),-C1_R);
+//		update bias
+    Rbias += bitshift_l(Rangle-(s0-R_ACC_BIAS)*R_ACC_RATIO+ bitshift_l(1,C2_R-1),-C2_R);
+//     calculate stabilization
+    R_stabilize = R + bitshift_l(0-Rangle,-1*(R_BIAS_UPDATE - P1_R)) - bitshift_l(filtered_dR,-1*(R_BIAS_UPDATE - P2_R));
+
 
 	switch(mode) {
 		case CALIBRATE:
@@ -302,6 +343,14 @@ void isr_qr_link(void)
 				max(T/4, get_motor_offset(1) + T-R  -Y_stabilize),
 				max(T/4, get_motor_offset(2) + T  -P+Y_stabilize),
 				max(T/4, get_motor_offset(3) + T+R  -Y_stabilize));
+			break;
+		case FULL_CONTROL:
+			// Calculate motor RPM
+			set_motor_rpm(
+				get_motor_offset(0) + T  +P+Y_stabilize,
+				get_motor_offset(1) + T-R_stabilize  -Y_stabilize,
+				get_motor_offset(2) + T  -P+Y_stabilize,
+				get_motor_offset(3) + T+R_stabilize  -Y_stabilize);
 			break;
 		case PANIC:
 			nexys_display = 0xc1a0;
