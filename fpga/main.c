@@ -220,7 +220,7 @@ void special_request(char request){
 	switch(request){
 
 		case ESCAPE:
-			set_mode(PANIC);
+			if(mode >= MANUAL) set_mode(PANIC);
 			break;
 		case ASK_MOTOR_RPM:
 			sprintf(message, "offset = [%i,%i,%i,%i], rpm = [%i,%i,%i,%i], rpyt = [%i,%i,%i,%i] T/4 = %i",get_motor_offset(0),get_motor_offset(1),get_motor_offset(2),get_motor_offset(3),get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3),R,P,Y,T,T/4);
@@ -236,6 +236,7 @@ void special_request(char request){
 			break;
 		case RESET_SENSOR_LOG:
 			clear_log();
+			send_term_message("Resetted sensor log");
 			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
 			break;
 		case ASK_SENSOR_LOG:
@@ -321,7 +322,7 @@ void isr_qr_link(void)
 	// update Ybias with 1/2^Y_BIAS_UPDATE each sample
 	//Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5;
 	// filter dY
-	filtered_dY 	+= -1 * (filtered_dY >> Y_FILTER) + (dY >> Y_BIAS_UPDATE);
+	filtered_dY 	+= -1 * (filtered_dY >> Y_FILTER) - (dY >> Y_BIAS_UPDATE);
 	// calculate stabilisation value
 	if((Y_BIAS_UPDATE - P_yaw) >= 0) {
 		Y_stabilize 	= Y + (filtered_dY) >> (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
