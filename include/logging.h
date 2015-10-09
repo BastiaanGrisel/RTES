@@ -5,7 +5,7 @@
 #include "QRmessage.h"
 
 
-#define LOG_SIZE 20
+#define LOG_SIZE 10000
 sensor_log_counter = 0;
 
 extern char message[100] = {0};

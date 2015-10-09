@@ -329,6 +329,10 @@ void sendKeyData(int c){
 				control = SPECIAL_REQUEST;
 				value = ASK_FILTER_PARAM;
 				break;
+			case 'g':
+				control = SPECIAL_REQUEST;
+				value = ASK_FULL_CONTROL_PARAM;
+				break;
 			case 'r':
 				control = SPECIAL_REQUEST;
 				value = RESET_MOTORS;

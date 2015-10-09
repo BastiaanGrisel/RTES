@@ -36,10 +36,11 @@
 #define OFFSET_STEP 10
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
 #define PANIC_RPM 100
+#define SENSOR_PRECISION 10
 
 /* Define global variables
  */
-bool DEBUG = true;
+bool DEBUG = false;
 int32_t  X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to avoid going panic before receiving the first msg
 int32_t  time_at_last_led_switch = 0;
 int32_t  packet_counter = 0, packet_lost_counter = 0;
@@ -53,7 +54,7 @@ int		Ybias = 400;
 int 	filtered_dY = 0; //
 int 	Y_BIAS_UPDATE = 10; // update bias each sample with a fraction of 1/2^13
 int 	Y_FILTER = 3; // simple filter that updates 1/2^Y_filter
-int 	P_yaw=12; // P = 2^4     Y_TO_ENGINE_SCALE
+int 	P_yaw=10; // P = 2^4     Y_TO_ENGINE_SCALE
 int 	Y_stabilize;
 int 	dY;
  /*Roll parameters*/
@@ -76,6 +77,7 @@ int		R_stabilize = 0;
 
 int32_t	s0, s1, s2, s3, s4, s5;
 int32_t s_bias[6];
+int32_t isr_counter = 0;
 
 Fifo	pc_msg_q;
 
@@ -120,12 +122,12 @@ bool set_mode(Mode new_mode) {
 	}
 
 	if(new_mode == CALIBRATE) {
-		s_bias[0] = s0;
-		s_bias[1] = s1;
-		s_bias[2] = s2;
-		s_bias[3] = s3;
-		s_bias[4] = s4;
-		s_bias[5] = s5;
+		s_bias[0] = s0 << SENSOR_PRECISION;
+		s_bias[1] = s1 << SENSOR_PRECISION;
+		s_bias[2] = s2 << SENSOR_PRECISION;
+		s_bias[3] = s3 << SENSOR_PRECISION;
+		s_bias[4] = s4 << SENSOR_PRECISION;
+		s_bias[5] = s5 << SENSOR_PRECISION;
 
 		is_calibrated = true;
 	}
@@ -149,7 +151,7 @@ bool set_mode(Mode new_mode) {
 		Rbias = s_bias[3];
 	}
 
-	if(new_mode == FULL_CONTROL && !is_calibrated)
+	if((new_mode == FULL_CONTROL || new_mode == YAW_CONTROL) && !is_calibrated)
 		return false;
 
 	// If everything is OK, change the mode
@@ -220,22 +222,27 @@ void special_request(char request){
 	switch(request){
 
 		case ESCAPE:
-			set_mode(PANIC);
+			if(mode >= MANUAL) set_mode(PANIC);
 			break;
 		case ASK_MOTOR_RPM:
-			sprintf(message, "offset = [%i,%i,%i,%i], rpm = [%i,%i,%i,%i], rpyt = [%i,%i,%i,%i] T/4 = %i S = [%i,%i,%i,%i,%i,%i ]",get_motor_offset(0),get_motor_offset(1),get_motor_offset(2),get_motor_offset(3),get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3),R,P,Y,T,T/4,s_bias[0],s_bias[1],s_bias[2],s_bias[3],s_bias[4],s_bias[5]);
+			sprintf(message, "offset = [%i,%i,%i,%i], rpm = [%i,%i,%i,%i], rpyt = [%i,%i,%i,%i] T/4 = %i",get_motor_offset(0),get_motor_offset(1),get_motor_offset(2),get_motor_offset(3),get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3),R,P,Y,T,T/4);
 			send_term_message(message);
 			break;
 		case ASK_SENSOR_BIAS:
-			sprintf(message, "Sensor bias = [%i,%i,%i,%i,%i,%i]",s_bias[0],s_bias[1],s_bias[2],s_bias[3],s_bias[4],s_bias[5]);
+			sprintf(message, "Sensor bias = [%i,%i,%i,%i,%i,%i]",s_bias[0] >> SENSOR_PRECISION,s_bias[1] >> SENSOR_PRECISION,s_bias[2] >> SENSOR_PRECISION,s_bias[3] >> SENSOR_PRECISION,s_bias[4] >> SENSOR_PRECISION,s_bias[5] >> SENSOR_PRECISION);
 			send_term_message(message);
 			break;
 		case ASK_FILTER_PARAM:
 			sprintf(message, "Y_stabilize = %i,  Ybias = %i, filtered_dY = %i\n R_stabilize = %i,", Y_stabilize, (Ybias >> Y_BIAS_UPDATE), (filtered_dY >> Y_BIAS_UPDATE), R_stabilize);
 			send_term_message(message);
 			break;
+		case ASK_FULL_CONTROL_PARAM:
+			sprintf(message, "dR = %i,  Rangle = %i, Rbias = %i, filtered_dR = %i, R_stablize = %i", dR>>R_BIAS_UPDATE, bitshift_l(Rangle,-R_BIAS_UPDATE+R_ANGLE), Rbias, filtered_dR, R_stabilize); 
+			send_term_message(message);
+			break;
 		case RESET_SENSOR_LOG:
 			clear_log();
+			send_term_message("Resetted sensor log");
 			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
 			break;
 		case ASK_SENSOR_LOG:
@@ -287,15 +294,12 @@ int32_t bitshift_l(int32_t value, int32_t shift) {
 }
 
 void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t s3, int32_t s4, int32_t s5) {
-
-	int32_t ratio = 10;
-
-	s_bias[0]  += -1 * (s_bias[0] >> ratio) + s0;
-	s_bias[1]  += -1 * (s_bias[1] >> ratio) + s1;
-	s_bias[2]  += -1 * (s_bias[2] >> ratio) + s2;
-	s_bias[3]  += -1 * (s_bias[3] >> ratio) + s3;
-	s_bias[4]  += -1 * (s_bias[4] >> ratio) + s4;
-	s_bias[5]  += -1 * (s_bias[5] >> ratio) + s5;
+	s_bias[0]  += -1 * (s_bias[0] >> SENSOR_PRECISION) + s0;
+	s_bias[1]  += -1 * (s_bias[1] >> SENSOR_PRECISION) + s1;
+	s_bias[2]  += -1 * (s_bias[2] >> SENSOR_PRECISION) + s2;
+	s_bias[3]  += -1 * (s_bias[3] >> SENSOR_PRECISION) + s3;
+	s_bias[4]  += -1 * (s_bias[4] >> SENSOR_PRECISION) + s4;
+	s_bias[5]  += -1 * (s_bias[5] >> SENSOR_PRECISION) + s5;
 }
 
 int32_t min(int32_t one, int32_t two) {
@@ -320,31 +324,39 @@ void isr_qr_link(void)
 
 	/*YAW_CALCULATIONS*/
 	//  scale dY up with Y_BIAS_UPDATE
-	dY 		= (s5 << Y_BIAS_UPDATE) - Ybias;
+	dY 		= (s5 << Y_BIAS_UPDATE) - (s_bias[5] << (Y_BIAS_UPDATE-SENSOR_PRECISION));
 	// update Ybias with 1/2^Y_BIAS_UPDATE each sample
-	Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5;
+	//Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5;
 	// filter dY
-	filtered_dY 	+= -1 * (filtered_dY >> Y_FILTER) + (dY >> Y_BIAS_UPDATE);
+	filtered_dY 	+= -1 * (filtered_dY >> Y_FILTER) - (dY >> Y_BIAS_UPDATE);
 	// calculate stabilisation value
-	Y_stabilize 	= Y+ bitshift_r(0 - filtered_dY, Y_BIAS_UPDATE - P_yaw);
+	if((Y_BIAS_UPDATE - P_yaw) >= 0) {
+		Y_stabilize 	= Y + (filtered_dY) >> (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
+	} else {
+		Y_stabilize 	= Y + (filtered_dY) << (-Y_BIAS_UPDATE + P_yaw); // calculate error of yaw rate
+	}
+
+	//QR THREE IS FLIPPED!!
 
 	/*ROLL_CALCULATIONS*/
-/*
-//     substract bias and scale R:
-    dR = bitshift_l(s3,R_BIAS_UPDATE)-Rbias;
-//   filter
-    filtered_dR+= - bitshift_l(filtered_dR,-R_FILTER) + bitshift_l(dR,-R_FILTER);
-//     integrate for the angle and add something to react agianst
-//     rounding error
-    Rangle += bitshift_l(filtered_dR+bitshift_l(1,-R_BIAS_UPDATE+R_ANGLE-1),-R_BIAS_UPDATE+R_ANGLE);
-    // kalman
-	Rangle += - bitshift_l(Rangle-(s0-R_ACC_BIAS)*R_ACC_RATIO+bitshift_l(1,C1_R-1),-C1_R);
-//		update bias
-    Rbias += bitshift_l(Rangle-(s0-R_ACC_BIAS)*R_ACC_RATIO+ bitshift_l(1,C2_R-1),-C2_R);
-//     calculate stabilization
-    R_stabilize = R + bitshift_l(0-Rangle,-1*(R_BIAS_UPDATE - P1_R)) - bitshift_l(filtered_dR,-1*(R_BIAS_UPDATE - P2_R));
 
-*/
+	if(isr_counter++ == 10) {
+		isr_counter = 0;	
+		//     substract bias and scale R:
+	    dR = bitshift_l(s3,R_BIAS_UPDATE)-Rbias;
+		//   filter
+	    filtered_dR+= - bitshift_l(filtered_dR,-R_FILTER) + bitshift_l(dR,-R_FILTER);
+		//     integrate for the angle and add something to react agianst
+		//     rounding error
+	    Rangle += bitshift_l(filtered_dR+bitshift_l(1,-R_BIAS_UPDATE+R_ANGLE-1),-R_BIAS_UPDATE+R_ANGLE);
+	    // kalman
+		Rangle += - bitshift_l(Rangle-(s1-R_ACC_BIAS)*R_ACC_RATIO+bitshift_l(1,C1_R-1),-C1_R);
+		//		update bias
+	    Rbias += bitshift_l(Rangle-(s1-R_ACC_BIAS)*R_ACC_RATIO+ bitshift_l(1,C2_R-1),-C2_R);
+	//     calculate stabilization
+	    R_stabilize = R + bitshift_l(0-Rangle,-1*(R_BIAS_UPDATE - P1_R)) - bitshift_l(filtered_dR,-1*(R_BIAS_UPDATE - P2_R));
+	}
+
 	switch(mode) {
 		case CALIBRATE:
 			record_bias(s_bias, s0, s1, s2, s3, s4, s5);
@@ -365,14 +377,14 @@ void isr_qr_link(void)
 				max(T/4, get_motor_offset(2) + T  -P+Y_stabilize),
 				max(T/4, get_motor_offset(3) + T+R  -Y_stabilize));
 			break;
-		/*case FULL_CONTROL:
+		case FULL_CONTROL:
 			// Calculate motor RPM
-			set_motor_rpm(
+			/*set_motor_rpm(
 				get_motor_offset(0) + T  +P+Y_stabilize,
 				get_motor_offset(1) + T-R_stabilize  -Y_stabilize,
 				get_motor_offset(2) + T  -P+Y_stabilize,
-				get_motor_offset(3) + T+R_stabilize  -Y_stabilize);
-			break;*/
+				get_motor_offset(3) + T+R_stabilize  -Y_stabilize);*/
+			break;
 		case PANIC:
 			nexys_display = 0xc1a0;
 
@@ -392,10 +404,10 @@ void isr_qr_link(void)
  * 64-255 = 600-800
  */
 int16_t scale_throttle(uint8_t throttle) {
-	if(throttle < 63) {
+	if(throttle < 40) {
 		return throttle * 10;
 	} else {
-		return throttle - 64 + 630;
+		return throttle - 40 + 400;
 	}
 }
 
