@@ -10,6 +10,7 @@
 #include "checksum.h"
 #include "logging.h"
 #include "motors.h"
+#include "control.h"
 
 /* define some peripheral short hands
  */

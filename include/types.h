@@ -1,7 +1,5 @@
 #ifndef TYPES_H
 #define TYPES_H
-//#include <stdint.h>
-
 
 typedef enum { false, true } bool;
 typedef enum { SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL, FULL_CONTROL } Mode;
