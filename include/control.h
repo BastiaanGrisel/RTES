@@ -10,7 +10,7 @@
 
 #define RSHIFT(num,shift) ( (num) >> (shift) )
 #define LSHIFT(num,shift) ( (num) << (shift) )
-#define INCREASE_PRECISION(num,shift) ( (num) << (shift) )
-#define DECREASE_PRECISION(num,shift) ( (num) >> (shift) )
+#define INCREASE_SHIFT(num,shift) ( (num) << (shift) )
+#define DECREASE_SHIFT(num,shift) ( (num) >> (shift) )
 
 #endif

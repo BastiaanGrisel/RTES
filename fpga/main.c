@@ -59,18 +59,20 @@ int 	Y_stabilize;
 int 	dY;
  /*Roll parameters*/
 int		R_FILTER = 3;
-int		R_BIAS_UPDATE = 14;
-int		R_ANGLE = 5;
+int		C2_R_BIAS_UPDATE = 14; // if you change this, change also C2_rounding_error and R_integrate_rounding_error
+int		R_ANGLE = 5; // if you change this, change also R_integrate_rounding_error
 int		R_ACC_RATIO = 2000;
 int		R_ACC_BIAS = 0;  /*set this in CALIBRATION mode*/
 int		C1_R = 7;
-int		C2_R = 16;
-int		P1_R = 6;
-int		P2_R = 5;
+int 	C1_R_ROUNDING_ERROR = 1<<6; //INCREASE_SHIFT(1,C1_R-1);
+int		C2_R_ROUNDING_ERROR = 1<<14; //INCREASE_SHIFT(1,C2_R_BIAS_UPDATE-1);
+int		P1_R = 6; // watch out! if P1_R is higher then C2_R_BIAS_UPDATE then things will go wrong
+int		P2_R = 8; // watch out! if P2_R is higher then C2_R_BIAS_UPDATE then things will go wrong
 
 int		dR = 0; // init (not very important)
 int		Rangle = 0; // init to zero
-int		Rbias = 0;// bitshift_l(calibratedRgyro,R_BIAS_UPDATE);
+int		Rbias = 0;// bitshift_l(calibratedRgyro,C2_R_BIAS_UPDATE);
+int 	R_INTEGRATE_ROUNDING_ERROR = 1<<8; //INCREASE_SHIFT(1,C2_R_BIAS_UPDATE-R_ANGLE+1);
 int		filtered_dR = 0;
 int		R_stabilize = 0;
 
@@ -147,12 +149,14 @@ bool set_mode(Mode new_mode) {
 	}
 
 	if(new_mode == FULL_CONTROL) {
-		R_ACC_BIAS = s_bias[0];
-		Rbias = s_bias[3];
+		R_ACC_BIAS = DECREASE_SHIFT(s_bias[0]*R_ACC_RATIO,SENSOR_PRECISION);
+		Rbias = INCREASE_SHIFT(s_bias[3],C2_R_BIAS_UPDATE-SENSOR_PRECISION);
 	}
 
-	if((new_mode == FULL_CONTROL || new_mode == YAW_CONTROL) && !is_calibrated)
+	if((new_mode == FULL_CONTROL || new_mode == YAW_CONTROL) && !is_calibrated){
+		send_err_message(FIRST_CALIBRATE);
 		return false;
+	}
 
 	// If everything is OK, change the mode
 	mode = new_mode;
@@ -237,7 +241,7 @@ void special_request(char request){
 			send_term_message(message);
 			break;
 		case ASK_FULL_CONTROL_PARAM:
-			sprintf(message, "dR = %i,  Rangle = %i, Rbias = %i, filtered_dR = %i, R_stablize = %i", dR>>R_BIAS_UPDATE, bitshift_l(Rangle,-R_BIAS_UPDATE+R_ANGLE), Rbias, filtered_dR, R_stabilize); 
+			sprintf(message, "dR = %i,  Rangle = %i, Rbias = %i, filtered_dR = %i, R_stablize = %i", dR>>C2_R_BIAS_UPDATE, bitshift_l(Rangle,-C2_R_BIAS_UPDATE+R_ANGLE), Rbias, filtered_dR, R_stabilize); 
 			send_term_message(message);
 			break;
 		case RESET_SENSOR_LOG:
@@ -294,12 +298,12 @@ int32_t bitshift_l(int32_t value, int32_t shift) {
 }
 
 void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t s3, int32_t s4, int32_t s5) {
-	s_bias[0]  += -1 * (s_bias[0] >> SENSOR_PRECISION) + s0;
-	s_bias[1]  += -1 * (s_bias[1] >> SENSOR_PRECISION) + s1;
-	s_bias[2]  += -1 * (s_bias[2] >> SENSOR_PRECISION) + s2;
-	s_bias[3]  += -1 * (s_bias[3] >> SENSOR_PRECISION) + s3;
-	s_bias[4]  += -1 * (s_bias[4] >> SENSOR_PRECISION) + s4;
-	s_bias[5]  += -1 * (s_bias[5] >> SENSOR_PRECISION) + s5;
+	s_bias[0]  -= DECREASE_SHIFT(s_bias[0],SENSOR_PRECISION) - s0;
+	s_bias[1]  -= DECREASE_SHIFT(s_bias[1],SENSOR_PRECISION) - s1;
+	s_bias[2]  -= DECREASE_SHIFT(s_bias[2],SENSOR_PRECISION) - s2;
+	s_bias[3]  -= DECREASE_SHIFT(s_bias[3],SENSOR_PRECISION) - s3;
+	s_bias[4]  -= DECREASE_SHIFT(s_bias[4],SENSOR_PRECISION) - s4;
+	s_bias[5]  -= DECREASE_SHIFT(s_bias[5],SENSOR_PRECISION) - s5;
 }
 
 int32_t min(int32_t one, int32_t two) {
@@ -325,10 +329,9 @@ void isr_qr_link(void)
 	/*YAW_CALCULATIONS*/
 	//  scale dY up with Y_BIAS_UPDATE
 	dY 		= (s5 << Y_BIAS_UPDATE) - (s_bias[5] << (Y_BIAS_UPDATE-SENSOR_PRECISION));
-	// update Ybias with 1/2^Y_BIAS_UPDATE each sample
-	//Ybias   	+= -1 * (Ybias >> Y_BIAS_UPDATE) + s5;
+
 	// filter dY
-	filtered_dY 	+= -1 * (filtered_dY >> Y_FILTER) - (dY >> Y_BIAS_UPDATE);
+	filtered_dY 	+= - (filtered_dY >> Y_FILTER) + (dY >> Y_BIAS_UPDATE);
 	// calculate stabilisation value
 	if((Y_BIAS_UPDATE - P_yaw) >= 0) {
 		Y_stabilize 	= Y + (filtered_dY) >> (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
@@ -343,18 +346,19 @@ void isr_qr_link(void)
 	if(isr_counter++ == 10) {
 		isr_counter = 0;	
 		//     substract bias and scale R:
-	    dR = bitshift_l(s3,R_BIAS_UPDATE)-Rbias;
+	    dR = INCREASE_SHIFT(s3,C2_R_BIAS_UPDATE)-Rbias;
 		//   filter
-	    filtered_dR+= - bitshift_l(filtered_dR,-R_FILTER) + bitshift_l(dR,-R_FILTER);
+	    filtered_dR+= - DECREASE_SHIFT(filtered_dR,R_FILTER) + DECREASE_SHIFT(dR,R_FILTER);
 		//     integrate for the angle and add something to react agianst
 		//     rounding error
-	    Rangle += bitshift_l(filtered_dR+bitshift_l(1,-R_BIAS_UPDATE+R_ANGLE-1),-R_BIAS_UPDATE+R_ANGLE);
+	    Rangle += DECREASE_SHIFT(filtered_dR+R_INTEGRATE_ROUNDING_ERROR,C2_R_BIAS_UPDATE-R_ANGLE);
 	    // kalman
-		Rangle += - bitshift_l(Rangle-(s1-R_ACC_BIAS)*R_ACC_RATIO+bitshift_l(1,C1_R-1),-C1_R);
+		Rangle -= DECREASE_SHIFT(Rangle-(s1*R_ACC_RATIO-R_ACC_BIAS)+C1_R_ROUNDING_ERROR,C1_R);
 		//		update bias
-	    Rbias += bitshift_l(Rangle-(s1-R_ACC_BIAS)*R_ACC_RATIO+ bitshift_l(1,C2_R-1),-C2_R);
+	    Rbias += DECREASE_SHIFT(Rangle-(s1*R_ACC_RATIO-R_ACC_BIAS)+C2_R_ROUNDING_ERROR,C2_R_BIAS_UPDATE);
 	//     calculate stabilization
-	    R_stabilize = R + bitshift_l(0-Rangle,-1*(R_BIAS_UPDATE - P1_R)) - bitshift_l(filtered_dR,-1*(R_BIAS_UPDATE - P2_R));
+	    R_stabilize = R + DECREASE_SHIFT(0-Rangle,C2_R_BIAS_UPDATE - P1_R) 
+						- DECREASE_SHIFT(filtered_dR,C2_R_BIAS_UPDATE - P2_R);
 	}
 
 	switch(mode) {

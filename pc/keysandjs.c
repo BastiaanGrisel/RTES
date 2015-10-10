@@ -536,13 +536,16 @@ print_error_message(Error err)
 			sprintf(msg, "[QR]: Manual control disabled in this mode. ");
 			break;
 		case JS_LIFT_NOT_ZERO:
-			sprintf(msg, "[pc]: Make sure JS- lift is zero. ");
+			sprintf(msg, "[PC]: Make sure JS- lift is zero. ");
 			break;
 		case SENSOR_LOG_FULL:
 			sprintf(msg, "[QR]: Sensor log is full. ");
 			break;
+		case FIRST_CALIBRATE:
+			sprintf(msg, "[QR]: You first need to calibrate! ");
+			break;
 		default:
-		 sprintf(msg, "[QR] Wrong not recognized. Wrong error code.");
+		 sprintf(msg, "[PC] Wrong! not recognized. Wrong error code.");
 	}
 
 	mvprintw (LINE_NR_ERROR_MSG,0,"%s \n\n",msg);
