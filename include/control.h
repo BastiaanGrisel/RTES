@@ -13,4 +13,7 @@
 #define INCREASE_SHIFT(num,shift) ( (num) << (shift) )
 #define DECREASE_SHIFT(num,shift) ( (num) >> (shift) )
 
+#define SENSOR_PRECISION 10
+
+
 #endif

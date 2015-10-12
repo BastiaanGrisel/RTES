@@ -5,6 +5,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 
 #include "x32.h"
 #include "checksum.h"
@@ -36,7 +37,6 @@
 #define OFFSET_STEP 10
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
 #define PANIC_RPM 100
-#define SENSOR_PRECISION 10
 
 /* Define global variables
  */
@@ -46,6 +46,7 @@ int32_t  time_at_last_led_switch = 0;
 int32_t  packet_counter = 0, packet_lost_counter = 0;
 int32_t  R=0, P=0, Y=0, T=0;
 int missed_packet_counter;
+int32_t control_loop_time = 0;
 
 bool is_calibrated = false;
 
@@ -57,6 +58,7 @@ int 	Y_FILTER = 3; // simple filter that updates 1/2^Y_filter
 int 	P_yaw=10; // P = 2^4     Y_TO_ENGINE_SCALE
 int 	Y_stabilize;
 int 	dY;
+
  /*Roll parameters*/
 int		R_FILTER = 3;
 int		C2_R_BIAS_UPDATE = 14; // if you change this, change also C2_rounding_error and R_integrate_rounding_error
@@ -66,8 +68,8 @@ int		R_ACC_BIAS = 0;  /*set this in CALIBRATION mode*/
 int		C1_R = 7;
 int 	C1_R_ROUNDING_ERROR = 1<<6; //INCREASE_SHIFT(1,C1_R-1);
 int		C2_R_ROUNDING_ERROR = 1<<14; //INCREASE_SHIFT(1,C2_R_BIAS_UPDATE-1);
-int		P1_R = 6; // watch out! if P1_R is higher then C2_R_BIAS_UPDATE then things will go wrong
-int		P2_R = 8; // watch out! if P2_R is higher then C2_R_BIAS_UPDATE then things will go wrong
+int		P1_roll = 6; // watch out! if P1_roll is higher then C2_R_BIAS_UPDATE then things will go wrong
+int		P2_roll = 8; // watch out! if P2_roll is higher then C2_R_BIAS_UPDATE then things will go wrong
 
 int		dR = 0; // init (not very important)
 int		Rangle = 0; // init to zero
@@ -76,6 +78,10 @@ int 	R_INTEGRATE_ROUNDING_ERROR = 1<<8; //INCREASE_SHIFT(1,C2_R_BIAS_UPDATE-R_AN
 int		filtered_dR = 0;
 int		R_stabilize = 0;
 
+/*Pitch paramaters*/
+int P_stabilize = -2;
+int P_angle = -3;
+int P_pitch = -2;
 
 int32_t	s0, s1, s2, s3, s4, s5;
 int32_t s_bias[6];
@@ -87,8 +93,8 @@ Mode	mode = SAFE;
 int32_t panic_start_time = 0;
 Loglevel log_level = SENSORS;
 
+//Timestamp mode sensors[6] ae[4] R&P&Ystabilization R&Pangle Joystick changes
 unsigned int sensor_log[LOG_SIZE][7];
-
 
 
 void update_nexys_display(){
@@ -205,12 +211,12 @@ void trim(char c){
 			P_yaw--;
 			break;
 		case P_ROLL_UP:
-			P1_R++;
-			P2_R++;
+			P1_roll++;
+			P2_roll++;
 			break;
 		case P_ROLL_DOWN:
-			P1_R--;
-			P2_R--;
+			P1_roll--;
+			P2_roll--;
 			break;
 		case P_PITCH_UP:
 			break;
@@ -241,7 +247,7 @@ void special_request(char request){
 			send_term_message(message);
 			break;
 		case ASK_FULL_CONTROL_PARAM:
-			sprintf(message, "dR = %i,  Rangle = %i, Rbias = %i, filtered_dR = %i, R_stablize = %i", dR>>C2_R_BIAS_UPDATE, bitshift_l(Rangle,-C2_R_BIAS_UPDATE+R_ANGLE), Rbias, filtered_dR, R_stabilize); 
+			sprintf(message, "dR = %i,  Rangle = %i, Rbias = %i, filtered_dR = %i, R_stablize = %i", dR>>C2_R_BIAS_UPDATE, LSHIFT(Rangle,-C2_R_BIAS_UPDATE+R_ANGLE), Rbias, filtered_dR, R_stabilize);
 			send_term_message(message);
 			break;
 		case RESET_SENSOR_LOG:
@@ -270,6 +276,7 @@ void isr_rs232_rx(void)
 	X32_ms_last_packet= X32_ms_clock; //update the time the last packet was received
 
 	packet_counter++;
+	P_yaw++; //*******************************************TO BE DELETED, TESTING TERMINAL OUTPUT*******************
 	update_nexys_display();
 
 	/* handle all bytes, note that the processor will sometimes generate
@@ -284,17 +291,6 @@ void isr_rs232_rx(void)
 		// Add the message to the message queue
 		fifo_put(&pc_msg_q, c);
 	}
-}
-
-/* Two bitshift util functions. They interpre negative shift as a shift in the other direction.
- * Author: Bastiaan
- */
-int32_t bitshift_r(int32_t value, int32_t shift) {
-	return shift >= 0 ? value >> shift : value << -1 * shift;
-}
-
-int32_t bitshift_l(int32_t value, int32_t shift) {
-	return bitshift_r(value, -1 * shift);
 }
 
 void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t s3, int32_t s4, int32_t s5) {
@@ -315,10 +311,10 @@ int32_t max(int32_t one, int32_t two) {
 }
 
 /* ISR when new sensor readings are read from the QR
- */
+*/
 void isr_qr_link(void)
 {
-	/*
+  control_loop_time = X32_us_clock;
 /* get sensor and timestamp values */
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
@@ -344,7 +340,7 @@ void isr_qr_link(void)
 	/*ROLL_CALCULATIONS*/
 
 	if(isr_counter++ == 10) {
-		isr_counter = 0;	
+		isr_counter = 0;
 		//     substract bias and scale R:
 	    dR = INCREASE_SHIFT(s3,C2_R_BIAS_UPDATE)-Rbias;
 		//   filter
@@ -357,8 +353,8 @@ void isr_qr_link(void)
 		//		update bias
 	    Rbias += DECREASE_SHIFT(Rangle-(s1*R_ACC_RATIO-R_ACC_BIAS)+C2_R_ROUNDING_ERROR,C2_R_BIAS_UPDATE);
 	//     calculate stabilization
-	    R_stabilize = R + DECREASE_SHIFT(0-Rangle,C2_R_BIAS_UPDATE - P1_R) 
-						- DECREASE_SHIFT(filtered_dR,C2_R_BIAS_UPDATE - P2_R);
+	    R_stabilize = R + DECREASE_SHIFT(0-Rangle,C2_R_BIAS_UPDATE - P1_roll)
+						- DECREASE_SHIFT(filtered_dR,C2_R_BIAS_UPDATE - P2_roll);
 	}
 
 	switch(mode) {
@@ -372,6 +368,7 @@ void isr_qr_link(void)
 				max(T/4, get_motor_offset(1) + T-R  -Y),
 				max(T/4, get_motor_offset(2) + T  -P+Y),
 				max(T/4, get_motor_offset(3) + T+R  -Y));
+				control_loop_time -= X32_us_clock;
 			break;
 		case YAW_CONTROL:
 			// Calculate motor RPM
@@ -380,6 +377,7 @@ void isr_qr_link(void)
 				max(T/4, get_motor_offset(1) + T-R  -Y_stabilize),
 				max(T/4, get_motor_offset(2) + T  -P+Y_stabilize),
 				max(T/4, get_motor_offset(3) + T+R  -Y_stabilize));
+			control_loop_time -= X32_us_clock;
 			break;
 		case FULL_CONTROL:
 			// Calculate motor RPM
@@ -388,13 +386,15 @@ void isr_qr_link(void)
 				get_motor_offset(1) + T-R_stabilize  -Y_stabilize,
 				get_motor_offset(2) + T  -P+Y_stabilize,
 				get_motor_offset(3) + T+R_stabilize  -Y_stabilize);*/
+				control_loop_time -= X32_us_clock;
 			break;
 		case PANIC:
 			nexys_display = 0xc1a0;
 
 			if(X32_ms_clock - panic_start_time < 2000) {
 				set_motor_rpm(PANIC_RPM,PANIC_RPM,PANIC_RPM,PANIC_RPM);
-			} else {
+			}
+			else {
 				reset_motors();
 				R = P = Y = T = 0;
 				set_mode(SAFE);
@@ -411,7 +411,7 @@ int16_t scale_throttle(uint8_t throttle) {
 	if(throttle < 40) {
 		return throttle * 10;
 	} else {
-		return throttle - 40 + 400;
+				return throttle - 40 + 400;
 	}
 }
 
@@ -525,6 +525,33 @@ void check_alive_connection() {
 	}
 }
 
+/*Send real-time feedback from the QR.
+Included: Timestamp mode sensors[6] motor offset and RPM, control and signal proc chain values, telemetry.
+Author: Alessio*/
+void send_feedback()
+{
+	char fb_msg[300];
+	//Real Time Data: Timestamp mode sensors[6] ae[4] R&P&Ystabilization R&Pangle Joystick changes
+  sprintf(message,"X32_ms_clock:%i M=%i Sensor bias = [%i,%i,%i,%i,%i,%i]\n",X32_ms_clock,mode,s_bias[0] >> SENSOR_PRECISION,s_bias[1] >> SENSOR_PRECISION,s_bias[2] >> SENSOR_PRECISION,s_bias[3] >> SENSOR_PRECISION,s_bias[4] >> SENSOR_PRECISION,s_bias[5] >> SENSOR_PRECISION);
+	//send_feedback_message(message);
+	strcat(fb_msg,message);
+
+	sprintf(message,"offset = [%i,%i,%i,%i] rpm = [%i,%i,%i,%i]\n",get_motor_offset(0),get_motor_offset(1),get_motor_offset(2),get_motor_offset(3),
+	get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
+	//send_feedback_message(message);
+  strcat(fb_msg,message);
+	if(mode < YAW_CONTROL)
+	 send_feedback_message(fb_msg);
+
+	else
+	{
+		sprintf(message,"P:[r1=%i r2=%i,p=%i,y=%i] # R_stab=%i P_stab=%i Y_stab=%i # R_angle=%i P_angle=%i\n",P1_roll,P2_roll,P_pitch, P_yaw, R_stabilize,P_stabilize,Y_stabilize,Rangle,P_angle);
+		strcat(fb_msg,message);
+		send_feedback_message(fb_msg);
+	}
+}
+
+
 int32_t main(void)
 {
 	setup();
@@ -538,9 +565,12 @@ int32_t main(void)
 		X32_leds = ((flicker_slow()?1:0) << mode) | (X32_leds & 0xC0);
 
 		// Process messages
-        	DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
-					check_for_new_packets(&pc_msg_q, &packet_received, &lost_packet);
+    DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
+		 check_for_new_packets(&pc_msg_q, &packet_received, &lost_packet);
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
+
+		if(X32_ms_clock %100 == 0)
+		send_feedback();
 	}
 
 	quit();

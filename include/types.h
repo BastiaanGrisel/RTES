@@ -87,13 +87,16 @@ PacketData ch2pd(char in) {
  *  QR->PC  *
  ************/
 
-
+/*Since these are codes used only by the main function (i.e. are not keys),
+shouldn't be cardinal ordered? Like A,B,C,ecc */
 #define TERMINAL_MSG_START 'S'
 #define TERMINAL_MSG_PART 'T'
 #define TERMINAL_MSG_FINISH 'F'
 
 #define ERROR_MSG 'E'
 #define SENSOR_LOG_FULL 'O' //TODO implement
+#define FB_MSG 'R'
+#define FB_MSG_END  'Q'
 #define LOG_MSG_PART 'L'
 #define LOG_MSG_NEW_LINE '\n'
 

@@ -52,5 +52,11 @@ void send_err_message(Error err)
 	send_message(ERROR_MSG,p); //Sending error code
 }
 
+void send_feedback_message(char message[])
+{
+	send_long_message(FB_MSG,message);
+	send_control_message(FB_MSG_END);
+}
+
 
 #endif

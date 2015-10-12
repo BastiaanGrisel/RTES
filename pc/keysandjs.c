@@ -11,6 +11,9 @@ FILE *log_file;
 FILE *terminal_log_file;
 char received_chars[QR_INPUT_BUFFERSIZE];
 int charpos = 0;
+char fb_msg[QR_INPUT_BUFFERSIZE];
+int fb_ch =0; //feedback message char position
+int fb_msg_counter = 0;
 int TermMessageReceiveTimer = -1;
 int errorMessageTimer = -1;
 Fifo qr_msg_q;
@@ -108,9 +111,7 @@ void checkTimeMessages(void){
 		if(TermMessageReceiveTimer++> MAX_MSG_TIME){
 			j = (TermMessageReceiveTimer-MAX_MSG_TIME)/1000;
 			move(LINE_NR_RECEIVED_MSG,0);
-			for(i = 0;i<j;i++){
-				printw(" ");
-			}
+			clrtoeol();
 			if(j>50){
 				printw("\n\n\n");
 				TermMessageReceiveTimer = -1;
@@ -121,15 +122,15 @@ void checkTimeMessages(void){
 		if(errorMessageTimer++>MAX_ERROR_MSG_TIME){
 			j = (errorMessageTimer-MAX_ERROR_MSG_TIME)/1000;
 			move(LINE_NR_ERROR_MSG,0);
-			for(i = 0;i<j;i++){
-				printw(" ");
-			}
+			clrtoeol();
 			if(j>50){
 				printw("\n");
 				errorMessageTimer = -1;
 			}
 		}
 	}
+
+
 
 }
 
@@ -194,6 +195,7 @@ void init_keyboard(void){
 	init_pair(1, COLOR_RED, COLOR_BLACK);
 	init_pair(2, COLOR_GREEN, COLOR_BLACK);
 	init_pair(3, COLOR_BLUE, COLOR_BLACK);
+	init_pair(4, COLOR_YELLOW, COLOR_BLACK);
 }
 
 /* Change color of terminal output */
@@ -473,13 +475,15 @@ void packet_received(char control, PacketData data){
 	// Change endianness
 	PacketData swapped;
 	swapped = swap_byte_order(data);
+	gettimeofday(&keep_alive,NULL);
+
 
 	int i;
 	char value = swapped.as_bytes[1];
 	uint16_t val;
 
 	switch(control){
-		case TERMINAL_MSG_START: // start new qr terminal message
+		case TERMINAL_MSG_START: // start new qr terminal message (not necessary)
 			charpos = 0;
 			break;
 		case TERMINAL_MSG_PART: // characters of the terminal message
@@ -492,6 +496,18 @@ void packet_received(char control, PacketData data){
 			mvprintw(LINE_NR_RECEIVED_MSG, 0, "received messages: (X32 -> pc) == {%.*s}         \n\n\n\n", charpos, received_chars);
 			TermMessageReceiveTimer = 0;
 			col_off(3);
+			break;
+		case FB_MSG:
+		  if(fb_ch < QR_INPUT_BUFFERSIZE)
+			  fb_msg[fb_ch++] = value;
+				break;
+		case FB_MSG_END:
+		  col_on(4);
+			mvprintw(LINE_RT_FEEDBACK-1,0,"<<QR Real-time data>>");
+	    mvprintw(LINE_RT_FEEDBACK,0,"%s",fb_msg);
+			if(keep_alive.tv_sec % 5 == 0) clrtoeol();
+	    fb_ch = 0;
+			col_off(4);
 			break;
 		case LOG_MSG_PART:
 	    		print_log_to_file(swapped);

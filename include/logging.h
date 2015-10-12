@@ -8,7 +8,7 @@
 #define LOG_SIZE 10000
 sensor_log_counter = 0;
 
-extern char message[100] = {0};
+extern char message[200] = {0};
 
 
 /*Just for testing*/
