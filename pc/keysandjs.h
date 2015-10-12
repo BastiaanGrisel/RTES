@@ -32,7 +32,9 @@
 #define LINE_NR_FPS 0
 #define LINE_NR_JS_STATE 4
 #define LINE_NR_RECEIVED_MSG 10
-#define LINE_NR_ERROR_MSG 18 
+#define LINE_NR_ERROR_MSG 14
+#define LINE_RT_FEEDBACK 18
+#define MAX_LINES 10
 
 void init_keyboard(void);
 struct timeval updateFPS(struct timeval oldtime);
