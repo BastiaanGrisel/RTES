@@ -28,19 +28,19 @@ void init_array(unsigned int sensor_log[][7])
 }
 
 void log_sensors(unsigned int sensor_log[][7], int32_t timestamp, int32_t s0, int32_t s1, int32_t s2, int32_t s3, int32_t s4, int32_t s5) {
-	if(sensor_log_counter < LOG_SIZE) {
-		sensor_log[sensor_log_counter][0] = timestamp;
-		sensor_log[sensor_log_counter][1] = s0;
-		sensor_log[sensor_log_counter][2] = s1;
-		sensor_log[sensor_log_counter][3] = s2;
-		sensor_log[sensor_log_counter][4] = s3;
-		sensor_log[sensor_log_counter][5] = s4;
-		sensor_log[sensor_log_counter][6] = s5;
+	if(sensor_log_counter < LOG_SIZE) {} else {sensor_log_counter--;}
+	sensor_log[sensor_log_counter][0] = timestamp;
+	sensor_log[sensor_log_counter][1] = s0;
+	sensor_log[sensor_log_counter][2] = s1;
+	sensor_log[sensor_log_counter][3] = s2;
+	sensor_log[sensor_log_counter][4] = s3;
+	sensor_log[sensor_log_counter][5] = s4;
+	sensor_log[sensor_log_counter][6] = s5;
 
-		if(sensor_log_counter++ == LOG_SIZE){
-			send_err_message(SENSOR_LOG_FULL);
-		}
+	if(sensor_log_counter++ == LOG_SIZE){
+		send_err_message(SENSOR_LOG_FULL);
 	}
+	//}
 }
 
 void clear_log() {

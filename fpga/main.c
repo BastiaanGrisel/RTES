@@ -93,7 +93,6 @@ unsigned int sensor_log[LOG_SIZE][7];
 
 void update_nexys_display(){
 	nexys_display = packet_counter << 8 + packet_lost_counter;
-	///nexys_display = [debugValue];
 }
 
 void lost_packet()
@@ -319,14 +318,16 @@ int32_t max(int32_t one, int32_t two) {
  */
 void isr_qr_link(void)
 {
+	int timeTime, timeRead, timeLog, timeYaw, timeRoll,timeAct, timestart = X32_US_CLOCK;
+	if(DEBUG) timeTime = X32_US_CLOCK;
 	/*
 /* get sensor and timestamp values */
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
-
+	if(DEBUG) timeRead = X32_US_CLOCK;
 	// Add new sensor values to array
 	log_sensors(sensor_log, X32_QR_timestamp/50, s0, s1, s2, s3, s4, s5);
-
+	if(DEBUG) timeLog = X32_US_CLOCK;
 	/*YAW_CALCULATIONS*/
 	//  scale dY up with Y_BIAS_UPDATE
 	dY 		= (s5 << Y_BIAS_UPDATE) - (s_bias[5] << (Y_BIAS_UPDATE-SENSOR_PRECISION));
@@ -339,13 +340,13 @@ void isr_qr_link(void)
 	} else {
 		Y_stabilize 	= Y + (filtered_dY) << (-Y_BIAS_UPDATE + P_yaw); // calculate error of yaw rate
 	}
-
+	if(DEBUG) timeYaw = X32_US_CLOCK;
 	//QR THREE IS FLIPPED!!
 
 	/*ROLL_CALCULATIONS*/
 
-	if(isr_counter++ == 10) {
-		isr_counter = 0;	
+	//if(isr_counter++ == 100) {
+	//	isr_counter = 0;	
 		//     substract bias and scale R:
 	    dR = INCREASE_SHIFT(s3,C2_R_BIAS_UPDATE)-Rbias;
 		//   filter
@@ -360,8 +361,25 @@ void isr_qr_link(void)
 	//     calculate stabilization
 	    R_stabilize = R + DECREASE_SHIFT(0-Rangle,C2_R_BIAS_UPDATE - P1_R) 
 						- DECREASE_SHIFT(filtered_dR,C2_R_BIAS_UPDATE - P2_R);
-	}
+	//}
+	/*// OLD ROLL_CALCULATIONS
+//     substract bias and scale R:
+    dR = bitshift_l(s3,C2_R_BIAS_UPDATE)-Rbias;
+//   filter
+    filtered_dR+= - bitshift_l(filtered_dR,-R_FILTER) + bitshift_l(dR,-R_FILTER);
+//     integrate for the angle and add something to react agianst
+//     rounding error
+    Rangle += bitshift_l(filtered_dR+bitshift_l(1,-C2_R_BIAS_UPDATE+R_ANGLE-1),-C2_R_BIAS_UPDATE+R_ANGLE);
+    // kalman
+	Rangle += - bitshift_l(Rangle-(s0-R_ACC_BIAS)*R_ACC_RATIO+bitshift_l(1,C1_R-1),-C1_R);
+//		update bias
+    Rbias += bitshift_l(Rangle-(s0-R_ACC_BIAS)*R_ACC_RATIO+ bitshift_l(1,C2_R_BIAS_UPDATE-1),-C2_R_BIAS_UPDATE);
+//     calculate stabilization
+    R_stabilize = R + bitshift_l(0-Rangle,-1*(C2_R_BIAS_UPDATE - P1_R)) - bitshift_l(filtered_dR,-1*(C2_R_BIAS_UPDATE - P2_R));*/
 
+
+	if(DEBUG) timeRoll = X32_US_CLOCK;
+	
 	switch(mode) {
 		case CALIBRATE:
 			record_bias(s_bias, s0, s1, s2, s3, s4, s5);
@@ -401,6 +419,15 @@ void isr_qr_link(void)
 				set_mode(SAFE);
 			}
 			break;
+	}
+	if(DEBUG){
+		timeAct = X32_US_CLOCK;
+		if(isr_counter++ ==99){
+			int timefinish = X32_US_CLOCK;
+			isr_counter =0;
+			sprintf(message, "\ntimeoffset = %i, Read = %i,Log = %i, Yaw = %i, Roll = %i, Act = %i, total = %i",timeTime -timestart,timeRead-timeTime,timeLog-timeRead,timeYaw-timeLog, timeRoll-timeYaw,timeAct-timeRoll,timefinish-timestart);
+			send_term_message(message);
+		}
 	}
 }
 
@@ -534,6 +561,7 @@ int32_t main(void)
 	while (1) {
 		// Pings from the PC
 	   	check_alive_connection();
+		isr_qr_link();
 
 		// Turn on the LED corresponding to the mode and don't change led 6 and 7
 		X32_leds = ((flicker_slow()?1:0) << mode) | (X32_leds & 0xC0);
