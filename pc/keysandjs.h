@@ -31,8 +31,9 @@
 #define MAX_ERROR_MSG_TIME 200000 //frames
 #define LINE_NR_FPS 0
 #define LINE_NR_JS_STATE 4
-#define LINE_NR_RECEIVED_MSG 10
+#define LINE_NR_RECEIVED_MSG 12
 #define LINE_NR_ERROR_MSG 18 
+#define LINE_NR_QR_STATE 9
 
 void init_keyboard(void);
 struct timeval updateFPS(struct timeval oldtime);
@@ -41,6 +42,7 @@ void sendKeyData(int c);
 void save_JS_event(int type, int number,int value);
 struct timeval sendJSData(struct timeval packet_time);
 void printJSstate(void);
+void printQRstate(void);
 void checkTimeMessages(void);
 
 void init_log(void);

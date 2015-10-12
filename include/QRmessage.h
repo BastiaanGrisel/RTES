@@ -25,7 +25,7 @@ void send_control_message(char control){
 }
 
 /* send a sequence of messages, for example: write log or to terminal
- *
+ * Author: Henko
  */
 void send_long_message(char control, char message[]){
 	int i;
@@ -35,7 +35,7 @@ void send_long_message(char control, char message[]){
 }
 
 /* send something to the terminal
- *
+ * Author: Henko
  */
 void send_term_message(char message[]){
 	send_control_message(TERMINAL_MSG_START); // begin terminal message
@@ -52,5 +52,13 @@ void send_err_message(Error err)
 	send_message(ERROR_MSG,p); //Sending error code
 }
 
+/* Send the current mode to the PC
+ * Author: Henko
+ */
+void send_mode_message(Mode mode){
+	PacketData p;
+	p.as_uint16_t = mode;
+	send_message(CURRENT_MODE,p);
+}
 
 #endif

@@ -74,7 +74,7 @@ PacketData ch2pd(char in) {
 /* SPECIAL REQUESTS */
 #define SPECIAL_REQUEST 'S'  //= control value
 /* Possible paramaters*/
-#define ESCAPE 27 // TODO send this if pc-panic-button is pressed (if pc quits)
+#define ESCAPE 27 
 #define RESET_MOTORS 'r'
 #define ASK_MOTOR_RPM 'm'
 #define ASK_FILTER_PARAM 'f'
@@ -93,9 +93,16 @@ PacketData ch2pd(char in) {
 #define TERMINAL_MSG_FINISH 'F'
 
 #define ERROR_MSG 'E'
-#define SENSOR_LOG_FULL 'O' //TODO implement
+#define SENSOR_LOG_FULL 'O'
 #define LOG_MSG_PART 'L'
 #define LOG_MSG_NEW_LINE '\n'
+
+#define CURRENT_MODE 'M'
+#define RPM0 '0'
+#define RPM1 '1'
+#define RPM2 '2'
+#define RPM3 '3'
+
 
 /* Util functions */
 bool is_valid_mode(Mode mode) {

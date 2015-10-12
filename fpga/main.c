@@ -165,6 +165,7 @@ bool set_mode(Mode new_mode) {
 
 	sprintf(message, "Succesfully changed to mode: >%i< ", new_mode);
 	send_term_message(message);
+	send_mode_message(mode);
 	return true;
 }
 

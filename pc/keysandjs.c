@@ -17,8 +17,8 @@ Fifo qr_msg_q;
 int packet_counter=0;
 
 int loopcount = 0; // to calculate the FPS
-int	ae[4];
-int offset[4];
+int RPM[4];
+Mode QRMode = -1;
 int ms_last_packet_sent;
 struct timeval keep_alive;
 
@@ -74,10 +74,17 @@ int main (int argc, char **argv)
 		/* Print the Joystick state */
 		printJSstate();
 
+		/* Print QR state */
+		printQRstate();
+
 		checkTimeMessages();
 
-		/* Terminate program if user presses panic button or ESC */
-		if (button[0] || c ==27){
+		/* send escape if user presses panic button or ESC */
+		if (button[0]){
+			pc_send_message(SPECIAL_REQUEST, ESCAPE);
+		}
+		if(c ==27){
+			pc_send_message(SPECIAL_REQUEST, ESCAPE);
 			break;
 		}
 	}
@@ -95,13 +102,17 @@ struct timeval updateFPS(struct timeval timeold){
 		loopcount=0;
 		gettimeofday(&timenew,NULL);
 		int frametime = (timenew.tv_usec+1000000*timenew.tv_sec-timeold.tv_usec-1000000*timeold.tv_sec)/100;
-		mvprintw(LINE_NR_FPS,0,"pc looptime: %i \tusec (%i \tHz) ",frametime,1000000/frametime);
+		mvprintw(LINE_NR_FPS,0,"pc looptime: %3i usec (%6i Hz)        \n",frametime,1000000/frametime);
 		return timenew;
 	} else {
 		return timeold;
 	}
 }
 
+/* Check the time that the terminal message is shown and 
+ * delete the message if that time is to long
+ * Author: Henko Aantjes
+ */
 void checkTimeMessages(void){
 	int i,j;
 	if(TermMessageReceiveTimer != -1){
@@ -158,18 +169,61 @@ void save_JS_event(int type, int number,int value){
 void printJSstate(void){
 	int i;
 	move(LINE_NR_JS_STATE,0);
-	printw("Joystick axis: ");
+	col_on(6);
+	printw("+-------------------------------------------------------------+\n| ");
+	col_off(6);
+	printw(" Joystick axis: ");
 	col_on(2);
 	for (i = 0; i < 6; i++) {
 		printw("%6d ",axis[i]);
 	}
 	col_off(2);
-	printw("\nJoystick buttons: ");
+	printw(" ");
+	col_on(6); printw(" |\n| ");	col_off(6);
+	
+	printw(" Joystick buttons: ");
 	col_on(2);
 	for (i = 0; i < 12; i++) {
 		printw("%d ",button[i]);
 	}
 	col_off(2);
+	printw("                ");
+	col_on(6);
+	printw(" |\n+-------------------------------------------------------------+");
+	col_off(6);
+}
+
+/* Print the most current received state of the QR
+ */
+void printQRstate(void){
+	col_on(4);
+	mvprintw(LINE_NR_QR_STATE,0,"Mode QR = ");
+	switch(QRMode){
+		case SAFE:
+			printw("SAFE");
+			break;
+		case PANIC:
+			printw("PANIC");
+			break;
+		case MANUAL:
+			printw("MANUAL");
+			break;
+		case CALIBRATE:
+			printw("CALIBRATE");
+			break;
+		case YAW_CONTROL:
+			printw("YAW_CONTROL");
+			break;
+		case FULL_CONTROL:
+			printw("FULL_CONTROL");
+			break;
+		default:
+			printw("UNDEFINED");
+	}
+	printw("\n");
+	col_off(4);
+
+	
 }
 
 /* Initialize the key input
@@ -194,6 +248,10 @@ void init_keyboard(void){
 	init_pair(1, COLOR_RED, COLOR_BLACK);
 	init_pair(2, COLOR_GREEN, COLOR_BLACK);
 	init_pair(3, COLOR_BLUE, COLOR_BLACK);
+	init_pair(4, COLOR_BLACK, COLOR_GREEN);
+	init_pair(5, COLOR_BLACK, COLOR_CYAN);
+	init_pair(6, COLOR_BLACK, COLOR_YELLOW);
+	init_pair(7, COLOR_YELLOW, COLOR_RED);
 }
 
 /* Change color of terminal output */
@@ -475,8 +533,8 @@ void packet_received(char control, PacketData data){
 	swapped = swap_byte_order(data);
 
 	int i;
-	char value = swapped.as_bytes[1];
-	uint16_t val;
+	char valueChar = swapped.as_bytes[1];
+	uint16_t value = swapped.as_uint16_t;
 
 	switch(control){
 		case TERMINAL_MSG_START: // start new qr terminal message
@@ -484,7 +542,7 @@ void packet_received(char control, PacketData data){
 			break;
 		case TERMINAL_MSG_PART: // characters of the terminal message
 			if(charpos<QR_INPUT_BUFFERSIZE)
-				received_chars[charpos++]= value;
+				received_chars[charpos++]= valueChar;
 			break;
 		case TERMINAL_MSG_FINISH:
 			// print the terminal message
@@ -501,8 +559,22 @@ void packet_received(char control, PacketData data){
 			fprintf(log_file,"\n");
 			break;
 		case ERROR_MSG:
-		 	val = data.as_uint16_t;
-		  	print_error_message(swapped.as_uint16_t);
+		  	print_error_message(value);
+			break;
+		case CURRENT_MODE:
+			QRMode = value;
+			break;
+		case RPM0:
+			RPM[0] = value;
+			break;
+		case RPM1:
+			RPM[1] = value;
+			break;
+		case RPM2:
+			RPM[2] = value;
+			break;
+		case RPM3:
+			RPM[3] = value;
 			break;
 		default:
 			break;
@@ -514,7 +586,7 @@ Author: Alessio */
 print_error_message(Error err)
 {
 	char msg[100];
-	col_on(1);
+	col_on(7);
 	switch(err) {
 		case LOG_ONLY_IN_SAFE_MODE:
 			sprintf(msg,"[QR]: Switch to SAFE before asking for the logging.");
@@ -548,9 +620,9 @@ print_error_message(Error err)
 		 sprintf(msg, "[PC] Wrong! not recognized. Wrong error code.");
 	}
 
-	mvprintw (LINE_NR_ERROR_MSG,0,"%s \n\n",msg);
+	mvprintw (LINE_NR_ERROR_MSG,0," %s \n\n",msg);
 	errorMessageTimer =0;
-	col_off(1);
+	col_off(7);
 }
 
 
