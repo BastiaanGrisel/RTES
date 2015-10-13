@@ -40,7 +40,7 @@
 
 /* Define global variables
  */
-bool DEBUG = false;
+bool DEBUG = true;
 int32_t  X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to avoid going panic before receiving the first msg
 int32_t  time_at_last_led_switch = 0;
 int32_t  packet_counter = 0, packet_lost_counter = 0;
@@ -92,10 +92,11 @@ Fifo	pc_msg_q;
 
 Mode mode = SAFE;
 int32_t panic_start_time = 0;
-Loglevel log_level = SENSORS;
+//Loglevel log_level = SENSORS;
 
 //Timestamp mode sensors[6] ae[4] R&P&Ystabilization R&Pangle Joystick changes
-unsigned int sensor_log[LOG_SIZE][7];
+unsigned int tm_log[LOG_SIZE][3];
+unsigned int sensor_log[LOG_SIZE][10]; //sensors + actuators
 
 
 void update_nexys_display(){
@@ -322,7 +323,7 @@ void isr_qr_link(void)
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
 	if(DEBUG) timeRead = X32_US_CLOCK;
 	// Add new sensor values to array
-	log_sensors(sensor_log, X32_QR_timestamp/50, s0, s1, s2, s3, s4, s5);
+	//log_sensors(sensor_log, X32_QR_timestamp/50, s0, s1, s2, s3, s4, s5,0,0,0,0); COMMENTED FOR TESTING THE LOGGING WITH ARBITRARY VALUES
 	if(DEBUG) timeLog = X32_US_CLOCK;
 	/*YAW_CALCULATIONS*/
 	//  scale dY up with Y_BIAS_UPDATE
@@ -493,11 +494,12 @@ void setup()
 	/* Initialize Variables */
 	nexys_display = 0x00;
   missed_packet_counter = 0;
+	init_log_arrays(tm_log,sensor_log);
 
 
 	fifo_init(&pc_msg_q);
 
-  	if(DEBUG) init_array(sensor_log);
+  	if(DEBUG) init_array_test(sensor_log);
 
 	/* Prepare Interrupts */
 
@@ -554,7 +556,7 @@ void check_alive_connection() {
 /*Send real-time feedback from the QR.
 Included: Timestamp mode sensors[6] RPM, control and signal proc chain values, telemetry.
 Author: Alessio*/
-void send_feedback()
+void send_feedback()		//TODO: make this function parametric in order to put it in header file.
 {
 	send_int_message(TIMESTAMP,X32_ms_clock);
 	send_int_message(CURRENT_MODE,mode);

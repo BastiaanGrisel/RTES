@@ -561,12 +561,6 @@ void print_log_to_file(PacketData data)
 	fprintf(log_file, "%hu ", data.as_uint16_t);
 }
 
-/*Print log values to file, taking in account the endianess
-Author: Alessio */
-/*void print_data_to_log_file(PacketData data) {
-	fprintf(log_file, "%u ", data.as_uint16_t);
-}*/
-
 /*Draw a stilyzed QR in the window*/
 void draw_QR(int col,int line)
 {
