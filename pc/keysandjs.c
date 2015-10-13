@@ -64,7 +64,7 @@ int main (int argc, char **argv)
 
 		/* Check QR to pc communication */
 		if(fd_RS232>0){
-			while ((rec_c = rs232_getchar_nb(fd_RS232))!= -1){
+			while ((rec_c = rs232_getchar_nb(fd_RS232))!= -1000){
 				fifo_put(&qr_msg_q, rec_c);
 				check_msg_q();
 				mvprintw(LINE_NR_RECEIVED_MSG-1,0,"# packets: %i",packet_counter++);
@@ -525,8 +525,6 @@ void print_log_to_file(PacketData data)
 	//uint32_t val = data.as_uint32_t;
   //val = swap_endianess_32(val);
 
-  //provisional workaround
-	//val = (val == 32000) ? 255 : val;
 
 	fprintf(log_file, "%hu ", data.as_uint16_t);
 }
