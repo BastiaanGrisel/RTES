@@ -36,7 +36,7 @@ int main (int argc, char **argv)
 	int i;
 	int c, last_c;
 	struct timeval time, last_packet_time;
-	char rec_c;
+	int rec_c;
 
   	init();
 	gettimeofday(&time,NULL);
