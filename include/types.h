@@ -3,7 +3,7 @@
 
 typedef enum { false, true } bool;
 typedef enum { SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL, FULL_CONTROL } Mode;
-typedef enum { NONE, SENSORS } Loglevel;
+typedef enum { NONE, SENSORS,YAW,FULL } Loglevel;
 typedef enum {LOG_ONLY_IN_SAFE_MODE, MODE_ILLIGAL, MODE_CHANGE_ONLY_VIA_SAFE,
   	MODE_CHANGE_ONLY_IF_ZERO_RPM, MODE_ALREADY_SET, CONTROL_DISABLED_IN_THIS_MODE ,
 	JS_LIFT_NOT_ZERO, SENSOR_LOG_FULL,FIRST_CALIBRATE} Error;  /* Error Messages */
@@ -89,23 +89,36 @@ PacketData ch2pd(char in) {
 
 /*Since these are codes used only by the main function (i.e. are not keys),
 shouldn't be cardinal ordered? Like A,B,C,ecc */
-#define TERMINAL_MSG_START 'S'
-#define TERMINAL_MSG_PART 'T'
-#define TERMINAL_MSG_FINISH 'F'
+#define TERMINAL_MSG_START '0'
+#define TERMINAL_MSG_PART '1'
+#define TERMINAL_MSG_FINISH '2'
 
-#define ERROR_MSG 'E'
-#define FB_MSG 'R'
-#define FB_MSG_END  'Q'
-#define SENSOR_LOG_FULL 'O'
-#define LOG_MSG_PART 'L'
+#define ERROR_MSG '3'
+#define FB_MSG '4'
+#define FB_MSG_END  '5'
+#define SENSOR_LOG_FULL '6'
+#define LOG_MSG_PART '7'
 #define LOG_MSG_NEW_LINE '\n'
 
-/*
+
 #define CURRENT_MODE 'M'
-#define RPM0 '0'
-#define RPM1 '1'
-#define RPM2 '2'
-#define RPM3 '3'*/
+#define TIMESTAMP 'T'
+#define RPM0 '8'
+#define RPM1 '9'
+#define RPM2 'A'
+#define RPM3 'B'
+#define Y_STAB 'C'
+#define P_STAB 'D'
+#define R_STAB 'E'
+#define R_ANGLE 'F'
+#define P_ANGLE 'G'
+#define SENS_0 'H'
+#define SENS_1 'I'
+#define SENS_2 'L'
+#define SENS_3 'M'
+#define SENS_4 'N'
+#define SENS_5 'O'
+
 
 
 /* Util functions */
