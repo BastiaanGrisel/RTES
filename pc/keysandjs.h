@@ -39,7 +39,7 @@
 #define LINE_NR_ERROR_MSG 14
 #define LINE_NR_QR_STATE 16
 #define DRONE_COL 100
-#define DRONE_LN 15
+#define DRONE_LN 12
 
 
 void init(void);

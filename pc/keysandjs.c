@@ -75,7 +75,7 @@ int main (int argc, char **argv)
 		printJSstate();
 
 		/* Print QR state */
-		printQRstate();
+	//	printQRstate(); We'll do this in the cases
 
 		clearMessages();
 
@@ -616,11 +616,13 @@ void packet_received(char control, PacketData data){
 		Author: Alessio*/
     case CURRENT_MODE:
 		    ret = (char *) malloc(sizeof(char)*15);
-				mvprintw(LINE_NR_QR_STATE,17,"Mode: %s",getEnum(value,ret));
+				col_on(4);
+				mvprintw(LINE_NR_QR_STATE,0,"Mode: %s",getEnum(value,ret));
+				col_off(4);
 				free(ret);
 				break;
 		case TIMESTAMP:
-		    mvprintw(LINE_NR_QR_STATE,0,"TIMESTAMP: %4i",value);
+		    mvprintw(LINE_NR_QR_STATE,20,"TIMESTAMP: %4i",value);
 				break;
 		case SENS_0:
 		    mvprintw(LINE_NR_QR_STATE+1,0,"Sensors: [%4i,",value);
