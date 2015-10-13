@@ -33,7 +33,7 @@
 #define LINE_NR_FPS 0
 #define LINE_NR_JS_STATE 4
 #define LINE_NR_RECEIVED_MSG 10
-#define LINE_NR_ERROR_MSG 14
+#define LINE_NR_ERROR_MSG 9
 #define LINE_NR_QR_STATE 18
 
 
