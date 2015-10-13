@@ -24,6 +24,8 @@ Mode QRMode = -1;
 int ms_last_packet_sent;
 struct timeval keep_alive;
 
+void init();
+
 //***********
 /* Main function that mainly consists of polling the different connections
  * which are: Keyboard, Joystick, RS232 (connection to QR)
@@ -36,7 +38,7 @@ int main (int argc, char **argv)
 	struct timeval time, last_packet_time;
 	char rec_c;
 
-  init();
+  	init();
 	gettimeofday(&time,NULL);
 	gettimeofday(&keep_alive,NULL);
 	gettimeofday(&last_packet_time,NULL);
