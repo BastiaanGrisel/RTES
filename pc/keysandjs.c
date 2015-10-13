@@ -64,7 +64,7 @@ int main (int argc, char **argv)
 
 		/* Check QR to pc communication */
 		if(fd_RS232>0){
-			while ((rec_c = rs232_getchar_nb(fd_RS232))!= -1){
+			while ((rec_c = rs232_getchar_nb(fd_RS232))!= -1000){
 				fifo_put(&qr_msg_q, rec_c);
 				check_msg_q();
 				mvprintw(LINE_NR_RECEIVED_MSG-1,0,"# packets: %i",packet_counter++);
@@ -75,7 +75,7 @@ int main (int argc, char **argv)
 		printJSstate();
 
 		/* Print QR state */
-		//printQRstate();
+		printQRstate();
 
 		clearMessages();
 
@@ -112,7 +112,9 @@ struct timeval updateFPS(struct timeval timeold){
 		loopcount=0;
 		gettimeofday(&timenew,NULL);
 		int frametime = (timenew.tv_usec+1000000*timenew.tv_sec-timeold.tv_usec-1000000*timeold.tv_sec)/100;
-		mvprintw(LINE_NR_FPS,0,"pc looptime: %3i usec (%6i Hz)        \n",frametime,1000000/frametime);
+		col_on(9);
+		mvprintw(LINE_NR_FPS,0,"    pc looptime: %3i usec (%6i Hz)                          \n",frametime,1000000/frametime);
+		col_on(9);
 		return timenew;
 	} else {
 		return timeold;
@@ -130,10 +132,7 @@ void clearMessages(void){
 			j = (timers[0]-MAX_MSG_TIME)/1000;
 			move(LINE_NR_RECEIVED_MSG,0);
 			clrtoeol();
-			if(j>50){
-				printw("\n\n\n");
-				timers[0] = -1;
-			}
+			timers[0] = -1;
 		}
 	}
 	if(timers[1] != -1){
@@ -141,10 +140,7 @@ void clearMessages(void){
 			j = (timers[1]-MAX_ERROR_MSG_TIME)/1000;
 			move(LINE_NR_ERROR_MSG,0);
 			clrtoeol();
-			if(j>50){
-				printw("\n");
-				timers[1] = -1;
-			}
+			timers[1] = -1;
 		}
 	}
 
@@ -152,13 +148,10 @@ void clearMessages(void){
 		if(timers[2]++>MAX_ERROR_MSG_TIME){
 			j = (timers[2]-MAX_ERROR_MSG_TIME)/1000;
 			for(i=0; i < 7; i++) {
-			move(LINE_NR_QR_STATE+i,0);
-			clrtoeol();
-		}
-			if(j>50){
-				printw("\n");
-				timers[2] = -1;
+				move(LINE_NR_QR_STATE+i,0);
+				clrtoeol();
 			}
+			timers[2] = -1;
 		}
 	}
 }
@@ -214,9 +207,9 @@ void printJSstate(void){
 
 /* Print the most current received state of the QR
  */
-/*void printQRstate(void){
+void printQRstate(void){
 	col_on(4);
-	mvprintw(LINE_NR_QR_STATE,0,"Mode QR = ");
+	mvprintw(LINE_NR_QR_STATE-1,0,"Mode QR = ");
 	switch(QRMode){
 		case SAFE:
 			printw("SAFE");
@@ -241,7 +234,7 @@ void printJSstate(void){
 	}
 	printw("\n");
 	col_off(4);
-} */
+}
 
 char * getEnum(Mode m,char *ret){
 
@@ -302,7 +295,8 @@ void init_keyboard(void){
 	init_pair(5, COLOR_BLACK, COLOR_CYAN);
 	init_pair(6, COLOR_BLACK, COLOR_YELLOW);
 	init_pair(7, COLOR_YELLOW, COLOR_BLACK);
-	init_pair(8,COLOR_RED,COLOR_YELLOW);
+	init_pair(8, COLOR_RED,COLOR_YELLOW);
+	init_pair(9, COLOR_BLACK,COLOR_WHITE);
 }
 
 /* Change color of terminal output */
@@ -564,9 +558,6 @@ void print_log_to_file(PacketData data)
 	//uint32_t val = data.as_uint32_t;
   //val = swap_endianess_32(val);
 
-  //provisional workaround
-	//val = (val == 32000) ? 255 : val;
-
 	fprintf(log_file, "%hu ", data.as_uint16_t);
 }
 
@@ -747,7 +738,7 @@ print_error_message(Error err)
 		 sprintf(msg, "[PC] Wrong! not recognized. Wrong error code.");
 	}
 	col_on(8);
-	mvprintw (LINE_NR_ERROR_MSG,0," %s \n\n",msg);
+	mvprintw (LINE_NR_ERROR_MSG,25," %s \n\n",msg);
 	timers[1] =0;
 	col_off(8);
 }

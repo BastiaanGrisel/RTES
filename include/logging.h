@@ -59,7 +59,7 @@ void send_logs(unsigned int sensor_log[][7]) {
 
 	for(i = 0; i < LOG_SIZE; i++) {
 		for(j = 0; j < 7; j++) {
-			p.as_uint16_t = (sensor_log[i][j] == 255) ? 32000 : sensor_log[i][j];
+			p.as_uint16_t = sensor_log[i][j];
 
 			send_message(LOG_MSG_PART, p);
 		}

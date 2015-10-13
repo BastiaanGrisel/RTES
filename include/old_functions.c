@@ -1,4 +1,4 @@
-
+//THIS FILE CONTAINS ALL THE OLD FUNCTIONS THAT ARE NOW NOT NECESSARY BUT THAT CAN BE STILL USEFUL (MAYBE)
 /* Prints the value to the log file with #awesomesauce
    Author: Alessio
 */
@@ -35,7 +35,7 @@ void print_value_to_file(unsigned char c)
 /*Send real-time feedback from the QR.
 Included: Timestamp mode sensors[6] RPM, control and signal proc chain values, telemetry.
 Author: Alessio*/
-/*void send_feedback()
+void send_feedback()
 {
 	char fb_msg[250];
 	//Real Time Data: Timestamp mode sensors[6] ae[4] R&P&Ystabilization R&Pangle Joystick changes
@@ -55,4 +55,3 @@ Author: Alessio*/
 		send_feedback_message(fb_msg);
 	}
 }
-*/
