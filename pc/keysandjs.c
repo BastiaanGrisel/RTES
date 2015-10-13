@@ -9,12 +9,12 @@ bool axisflags[6];
 int	button[12];
 FILE *log_file;
 FILE *terminal_log_file;
+int timers[3];
 char received_chars[QR_INPUT_BUFFERSIZE];
 int charpos = 0;
 char fb_msg[QR_INPUT_BUFFERSIZE];
 int fb_ch =0; //feedback message char position
 int fb_msg_counter = 0;
-int timers[3] = {0};
 Fifo qr_msg_q;
 int packet_counter=0;
 
@@ -36,11 +36,7 @@ int main (int argc, char **argv)
 	struct timeval time, last_packet_time;
 	char rec_c;
 
-	// init
-	init_keyboard();
-	init_joystick();
-	rs232_open(fd_RS232);
-	init_log();
+  init();
 	gettimeofday(&time,NULL);
 	gettimeofday(&keep_alive,NULL);
 	gettimeofday(&last_packet_time,NULL);
@@ -93,6 +89,16 @@ int main (int argc, char **argv)
 
 	exitmain();
 	return 0;
+}
+
+void init(void)
+{
+	init_keyboard();
+	init_joystick();
+	rs232_open(fd_RS232);
+	init_log();
+
+  timers[3] = 0;
 }
 
 /* Calculate the mean loop frequency (100 loopcount mean)
@@ -153,8 +159,6 @@ void clearMessages(void){
 			}
 		}
 	}
-
-
 }
 
 /* Process a joystick event
