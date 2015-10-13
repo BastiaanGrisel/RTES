@@ -128,6 +128,25 @@ bool set_mode(Mode new_mode) {
 		return false;
 	}
 
+	if(new_mode >= MANUAL) {
+		// Make sure that a change to an operational mode can only be done via SAFE
+		if(mode >= MANUAL){
+			send_err_message(MODE_CHANGE_ONLY_VIA_SAFE);
+			return false;
+		}
+
+		// If at least one of the motor's RPM is not zero, return false
+		if(!motors_have_zero_rpm() || R != 0 || P != 0 || Y != 0 || T != 0 || !motors_have_zero_offset()) {
+			send_err_message(MODE_CHANGE_ONLY_IF_ZERO_RPM);
+			return false;
+		}
+	}
+
+	if((new_mode == FULL_CONTROL || new_mode == YAW_CONTROL) && !is_calibrated){
+		send_err_message(FIRST_CALIBRATE);
+		return false;
+	}
+
 	if(new_mode == CALIBRATE) {
 		s_bias[0] = s0 << SENSOR_PRECISION;
 		s_bias[1] = s1 << SENSOR_PRECISION;
@@ -139,29 +158,11 @@ bool set_mode(Mode new_mode) {
 		is_calibrated = true;
 	}
 
-	if(new_mode >= MANUAL) {
-		// Make sure that a change to an operational mode can only be done via SAFE
-		if(mode >= MANUAL){
-			send_err_message(MODE_CHANGE_ONLY_VIA_SAFE);
-			return false;
-		}
-
-		// If at least one of the motor's RPM is not zero, return false
-		if(!motors_have_zero_rpm()) {
-			send_err_message(MODE_CHANGE_ONLY_IF_ZERO_RPM);
-			return false;
-		}
-	}
-
 	if(new_mode == FULL_CONTROL) {
 		R_ACC_BIAS = DECREASE_SHIFT(s_bias[0]*R_ACC_RATIO,SENSOR_PRECISION);
 		Rbias = INCREASE_SHIFT(s_bias[3],C2_R_BIAS_UPDATE-SENSOR_PRECISION);
 	}
 
-	if((new_mode == FULL_CONTROL || new_mode == YAW_CONTROL) && !is_calibrated){
-		send_err_message(FIRST_CALIBRATE);
-		return false;
-	}
 
 	// If everything is OK, change the mode
 	mode = new_mode;

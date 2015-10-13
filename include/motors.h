@@ -32,6 +32,14 @@ bool motors_have_zero_rpm() {
 	return true;
 }
 
+bool motors_have_zero_offset() {
+	int32_t i;
+	for(i = 0; i < 4; i++)
+		if(get_motor_offset(i) != 0)
+			return false;
+	return true;
+}
+
 void set_motor_rpm(int32_t motor0, int32_t motor1, int32_t motor2, int32_t motor3) {
 	int32_t i;
 
@@ -48,13 +56,6 @@ void set_motor_rpm(int32_t motor0, int32_t motor1, int32_t motor2, int32_t motor
 	X32_QR_a1 = rpm[1];
 	X32_QR_a2 = rpm[2];
 	X32_QR_a3 = rpm[3];
-
-	/*if(T>0){ TODO: This logic does not belong here
-		motor0 = ((motor0 < T/4 ? T/4 : motor0) > 0x3ff)? 0x3ff : motor0;
-		motor1 = ((motor1 < T/4 ? T/4 : motor1) > 0x3ff)? 0x3ff : motor1;
-		motor2 = ((motor2 < T/4 ? T/4 : motor2) > 0x3ff)? 0x3ff : motor2;
-		motor3 = ((motor3 < T/4 ? T/4 : motor3) > 0x3ff)? 0x3ff : motor3;
-	}*/
 }
 
 void reset_motors() {
