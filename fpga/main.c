@@ -71,8 +71,9 @@ int		C2_R_ROUNDING_ERROR = 1<<14; //INCREASE_SHIFT(1,C2_R_BIAS_UPDATE-1);
 int		P1_roll = 6; // watch out! if P1_roll is higher then C2_R_BIAS_UPDATE then things will go wrong
 int		P2_roll = 8; // watch out! if P2_roll is higher then C2_R_BIAS_UPDATE then things will go wrong
 
+/*All the init should be done in a proper function*/
 int		dR = 0; // init (not very important)
-int		Rangle = 0; // init to zero
+int		R_angle = 0; // init to zero
 int		Rbias = 0;// bitshift_l(calibratedRgyro,C2_R_BIAS_UPDATE);
 int 	R_INTEGRATE_ROUNDING_ERROR = 1<<8; //INCREASE_SHIFT(1,C2_R_BIAS_UPDATE-R_ANGLE+1);
 int		filtered_dR = 0;
@@ -89,7 +90,7 @@ int32_t isr_counter = 0;
 
 Fifo	pc_msg_q;
 
-Mode	mode = SAFE;
+Mode mode = SAFE;
 int32_t panic_start_time = 0;
 Loglevel log_level = SENSORS;
 
@@ -128,25 +129,6 @@ bool set_mode(Mode new_mode) {
 		return false;
 	}
 
-	if(new_mode >= MANUAL) {
-		// Make sure that a change to an operational mode can only be done via SAFE
-		if(mode >= MANUAL){
-			send_err_message(MODE_CHANGE_ONLY_VIA_SAFE);
-			return false;
-		}
-
-		// If at least one of the motor's RPM is not zero, return false
-		if(!motors_have_zero_rpm() || R != 0 || P != 0 || Y != 0 || T != 0 || !motors_have_zero_offset()) {
-			send_err_message(MODE_CHANGE_ONLY_IF_ZERO_RPM);
-			return false;
-		}
-	}
-
-	if((new_mode == FULL_CONTROL || new_mode == YAW_CONTROL) && !is_calibrated){
-		send_err_message(FIRST_CALIBRATE);
-		return false;
-	}
-
 	if(new_mode == CALIBRATE) {
 		s_bias[0] = s0 << SENSOR_PRECISION;
 		s_bias[1] = s1 << SENSOR_PRECISION;
@@ -158,11 +140,29 @@ bool set_mode(Mode new_mode) {
 		is_calibrated = true;
 	}
 
+	if(new_mode >= MANUAL) {
+		// Make sure that a change to an operational mode can only be done via SAFE
+		if(mode >= MANUAL){
+			send_err_message(MODE_CHANGE_ONLY_VIA_SAFE);
+			return false;
+		}
+
+		// If at least one of the motor's RPM is not zero, return false
+		if(!motors_have_zero_rpm()) {
+			send_err_message(MODE_CHANGE_ONLY_IF_ZERO_RPM);
+			return false;
+		}
+	}
+
 	if(new_mode == FULL_CONTROL) {
 		R_ACC_BIAS = DECREASE_SHIFT(s_bias[0]*R_ACC_RATIO,SENSOR_PRECISION);
 		Rbias = INCREASE_SHIFT(s_bias[3],C2_R_BIAS_UPDATE-SENSOR_PRECISION);
 	}
 
+	if((new_mode == FULL_CONTROL || new_mode == YAW_CONTROL) && !is_calibrated){
+		send_err_message(FIRST_CALIBRATE);
+		return false;
+	}
 
 	// If everything is OK, change the mode
 	mode = new_mode;
@@ -247,7 +247,7 @@ void special_request(char request){
 			send_term_message(message);
 			break;
 		case ASK_FULL_CONTROL_PARAM:
-			sprintf(message, "dR = %i,  Rangle = %i, Rbias = %i, filtered_dR = %i, R_stablize = %i", dR>>C2_R_BIAS_UPDATE, LSHIFT(Rangle,-C2_R_BIAS_UPDATE+R_ANGLE), Rbias, filtered_dR, R_stabilize);
+			sprintf(message, "dR = %i,  Rangle = %i, Rbias = %i, filtered_dR = %i, R_stablize = %i", dR>>C2_R_BIAS_UPDATE, LSHIFT(R_angle,-C2_R_BIAS_UPDATE+R_ANGLE), Rbias, filtered_dR, R_stabilize);
 			send_term_message(message);
 			break;
 		case RESET_SENSOR_LOG:
@@ -354,13 +354,13 @@ void isr_qr_link(void)
 	    filtered_dR+= - DECREASE_SHIFT(filtered_dR,R_FILTER) + DECREASE_SHIFT(dR,R_FILTER);
 		//     integrate for the angle and add something to react agianst
 		//     rounding error
-	    Rangle += DECREASE_SHIFT(filtered_dR+R_INTEGRATE_ROUNDING_ERROR,C2_R_BIAS_UPDATE-R_ANGLE);
+	    R_angle += DECREASE_SHIFT(filtered_dR+R_INTEGRATE_ROUNDING_ERROR,C2_R_BIAS_UPDATE-R_ANGLE);
 	    // kalman
-		Rangle -= DECREASE_SHIFT(Rangle-(s1*R_ACC_RATIO-R_ACC_BIAS)+C1_R_ROUNDING_ERROR,C1_R);
+		R_angle -= DECREASE_SHIFT(R_angle-(s1*R_ACC_RATIO-R_ACC_BIAS)+C1_R_ROUNDING_ERROR,C1_R);
 		//		update bias
-	    Rbias += DECREASE_SHIFT(Rangle-(s1*R_ACC_RATIO-R_ACC_BIAS)+C2_R_ROUNDING_ERROR,C2_R_BIAS_UPDATE);
+	    Rbias += DECREASE_SHIFT(R_angle-(s1*R_ACC_RATIO-R_ACC_BIAS)+C2_R_ROUNDING_ERROR,C2_R_BIAS_UPDATE);
 	//     calculate stabilization
-	    R_stabilize = R + DECREASE_SHIFT(0-Rangle,C2_R_BIAS_UPDATE - P1_roll)
+	    R_stabilize = R + DECREASE_SHIFT(0-R_angle,C2_R_BIAS_UPDATE - P1_roll)
 						- DECREASE_SHIFT(filtered_dR,C2_R_BIAS_UPDATE - P2_roll);
 	//}
 
@@ -371,13 +371,13 @@ void isr_qr_link(void)
     filtered_dR+= - bitshift_l(filtered_dR,-R_FILTER) + bitshift_l(dR,-R_FILTER);
 //     integrate for the angle and add something to react agianst
 //     rounding error
-    Rangle += bitshift_l(filtered_dR+bitshift_l(1,-C2_R_BIAS_UPDATE+R_ANGLE-1),-C2_R_BIAS_UPDATE+R_ANGLE);
+    R_angle += bitshift_l(filtered_dR+bitshift_l(1,-C2_R_BIAS_UPDATE+R_ANGLE-1),-C2_R_BIAS_UPDATE+R_ANGLE);
     // kalman
-	Rangle += - bitshift_l(Rangle-(s0-R_ACC_BIAS)*R_ACC_RATIO+bitshift_l(1,C1_R-1),-C1_R);
+	R_angle += - bitshift_l(R_angle-(s0-R_ACC_BIAS)*R_ACC_RATIO+bitshift_l(1,C1_R-1),-C1_R);
 //		update bias
-    Rbias += bitshift_l(Rangle-(s0-R_ACC_BIAS)*R_ACC_RATIO+ bitshift_l(1,C2_R_BIAS_UPDATE-1),-C2_R_BIAS_UPDATE);
+    Rbias += bitshift_l(R_angle-(s0-R_ACC_BIAS)*R_ACC_RATIO+ bitshift_l(1,C2_R_BIAS_UPDATE-1),-C2_R_BIAS_UPDATE);
 //     calculate stabilization
-    R_stabilize = R + bitshift_l(0-Rangle,-1*(C2_R_BIAS_UPDATE - P1_roll)) - bitshift_l(filtered_dR,-1*(C2_R_BIAS_UPDATE - P2_roll));*/
+    R_stabilize = R + bitshift_l(0-R_angle,-1*(C2_R_BIAS_UPDATE - P1_roll)) - bitshift_l(filtered_dR,-1*(C2_R_BIAS_UPDATE - P2_roll));*/
 
 
 	if(DEBUG) timeRoll = X32_us_clock;
@@ -560,28 +560,35 @@ void check_alive_connection() {
 	}
 }
 
+
+
 /*Send real-time feedback from the QR.
-Included: Timestamp mode sensors[6] motor offset and RPM, control and signal proc chain values, telemetry.
+Included: Timestamp mode sensors[6] RPM, control and signal proc chain values, telemetry.
 Author: Alessio*/
 void send_feedback()
 {
-	char fb_msg[250];
-	//Real Time Data: Timestamp mode sensors[6] ae[4] R&P&Ystabilization R&Pangle Joystick changes
-  sprintf(message,"X32_ms_clock:%i M=%i Sensor bias = [%i,%i,%i,%i,%i,%i]\n",X32_ms_clock,mode,s_bias[0] >> SENSOR_PRECISION,s_bias[1] >> SENSOR_PRECISION,s_bias[2] >> SENSOR_PRECISION,s_bias[3] >> SENSOR_PRECISION,s_bias[4] >> SENSOR_PRECISION,s_bias[5] >> SENSOR_PRECISION);
-	strcat(fb_msg,message);
+	send_int_message(TIMESTAMP,X32_ms_clock);
+	send_int_message(CURRENT_MODE,mode);
 
-	sprintf(message,"offset = [%i,%i,%i,%i] rpm = [%i,%i,%i,%i]\n",get_motor_offset(0),get_motor_offset(1),get_motor_offset(2),get_motor_offset(3),
-	get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
-  strcat(fb_msg,message);
+	send_int_message(SENS_0,s_bias[0] >> SENSOR_PRECISION);
+	send_int_message(SENS_1,s_bias[1] >> SENSOR_PRECISION);
+	send_int_message(SENS_2,s_bias[2] >> SENSOR_PRECISION);
+	send_int_message(SENS_3,s_bias[3] >> SENSOR_PRECISION);
+	send_int_message(SENS_4,s_bias[4] >> SENSOR_PRECISION);
+	send_int_message(SENS_5,s_bias[5] >> SENSOR_PRECISION);
 
-	if(mode < YAW_CONTROL)
-	 send_feedback_message(fb_msg);
-	else
-	{
-		sprintf(message,"Control loop time(us) = %i P:[r1=%i r2=%i,p=%i,y=%i] # R_stab=%i P_stab=%i Y_stab=%i # R_angle=%i P_angle=%i\n",control_loop_time,P1_roll,P2_roll,P_pitch, P_yaw, R_stabilize,P_stabilize,Y_stabilize,Rangle,P_angle);
-		strcat(fb_msg,message);
-		send_feedback_message(fb_msg);
-	}
+	send_int_message(RPM0,get_motor_rpm(0));
+	send_int_message(RPM1,get_motor_rpm(1));
+	send_int_message(RPM2,get_motor_rpm(2));
+	send_int_message(RPM3,get_motor_rpm(3));
+
+	if(mode >= YAW_CONTROL) {
+	 send_int_message(MR_STAB,R_stabilize);
+	 send_int_message(MP_STAB,P_stabilize);
+	 send_int_message(MY_STAB,Y_stabilize);
+	 send_int_message(MP_ANGLE,P_angle);
+	 send_int_message(MR_ANGLE,R_angle);
+ }
 }
 
 

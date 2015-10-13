@@ -6,6 +6,7 @@
 
 
 #define LOG_SIZE 10000
+ //Loglevel log_level = SENSORS;
 sensor_log_counter = 0;
 
 extern char message[100] = {0};

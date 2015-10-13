@@ -243,6 +243,39 @@ void printJSstate(void){
 	col_off(4);
 } */
 
+char * getEnum(Mode m,char *ret){
+
+	switch(m){
+		case SAFE:
+      sprintf(ret,"SAFE");
+			return ret;
+			break;
+		case PANIC:
+		sprintf(ret,"PANIC");
+		return ret;
+			break;
+		case MANUAL:
+		sprintf(ret,"MANUAL");
+		return ret;
+			break;
+		case CALIBRATE:
+		sprintf(ret,"CALIBRATE");
+		return ret;
+			break;
+		case YAW_CONTROL:
+		sprintf(ret,"YAW_CONTROL");
+		return ret;
+			break;
+		case FULL_CONTROL:
+		sprintf(ret,"FULL_CONTROL");
+		return ret;
+			break;
+		default:
+		sprintf(ret,"UNDEFINED");
+		return ret;
+	}
+}
+
 /* Initialize the key input
  *
  * Henko Aantjes
@@ -543,6 +576,21 @@ Author: Alessio */
 	fprintf(log_file, "%u ", data.as_uint16_t);
 }*/
 
+/*Draw a stilyzed QR in the window*/
+void draw_QR(int col,int line)
+{
+	int i;
+	mvprintw(line,col,"+");
+	for(i=1; i < 3; i++)
+	{
+		mvprintw(line-i,col,"|"); //0
+		mvprintw(line,col+i,"-"); //1
+		mvprintw(line+i,col,"|"); //2
+		mvprintw(line,col-i,"-"); //3
+	}
+}
+
+
 /* Parse the QR input (one char at the time)
  * Call parse message if a message is complete
  * Originally created by: Henko Aantjes
@@ -551,7 +599,7 @@ void packet_received(char control, PacketData data){
 	// Change endianness
 	PacketData swapped;
 	swapped = swap_byte_order(data);
-	gettimeofday(&keep_alive,NULL);
+	char *ret;
 
 	int i;
 	char valueChar = swapped.as_bytes[1];
@@ -575,6 +623,63 @@ void packet_received(char control, PacketData data){
 			break;
 		/*Cases to print QR state in real-time and logging data
 		Author: Alessio*/
+    case CURRENT_MODE:
+		    ret = (char *) malloc(sizeof(char)*15);
+				mvprintw(LINE_NR_QR_STATE,17,"Mode: %s",getEnum(value,ret));
+				free(ret);
+				break;
+		case TIMESTAMP:
+		    mvprintw(LINE_NR_QR_STATE,0,"TIMESTAMP: %4i",value);
+				break;
+		case SENS_0:
+		    mvprintw(LINE_NR_QR_STATE+1,0,"Sensors: [%4i,",value);
+				break;
+		case SENS_1:
+		    mvprintw(LINE_NR_QR_STATE+1,16,"%4i,",value);
+				break;
+		case SENS_2:
+		mvprintw(LINE_NR_QR_STATE+1,24,"%4i,",value);
+		break;
+		case SENS_3:
+		mvprintw(LINE_NR_QR_STATE+1,32,"%4i,",value);
+		break;
+		case SENS_4:
+		mvprintw(LINE_NR_QR_STATE+1,40,"%4i,",value);
+		break;
+		case SENS_5:
+		mvprintw(LINE_NR_QR_STATE+1,48,"%4i]",value);
+		break;
+		case RPM0:
+		  draw_QR(DRONE_COL,DRONE_LN);
+		  mvprintw(DRONE_LN-3,DRONE_COL-2,"%4i",value);
+			//mvprintw(LINE_NR_QR_STATE+2,0,"RPM [%4i",value);
+			break;
+		case RPM1:
+		mvprintw(DRONE_LN,DRONE_COL+3,"%4i",value);
+		break;
+    case RPM2:
+		mvprintw(DRONE_LN+3,DRONE_COL-2,"%4i",value);
+		break;
+		case RPM3:
+		mvprintw(DRONE_LN,DRONE_COL-(3+4),"%4i",value);
+		break;
+
+		case MY_STAB:
+	   mvprintw(LINE_NR_QR_STATE+2,0,"Y_stab=%4i",value);
+		 break;
+		case MP_STAB:
+		 mvprintw(LINE_NR_QR_STATE+2,13,"P_stab=%4i",value);
+     break;
+		case MR_STAB:
+		 mvprintw(LINE_NR_QR_STATE+2,26,"R_stab=%4i",value);
+     break;
+		case MP_ANGLE:
+		 mvprintw(LINE_NR_QR_STATE+2,39,"P_Angle=%4i",value);
+     break;
+		case MR_ANGLE:
+		 mvprintw(LINE_NR_QR_STATE+2,55,"R_Angle=%4i",value);
+     break;
+
 		case FB_MSG:
 		  if(fb_ch < QR_INPUT_BUFFERSIZE)
 			  fb_msg[fb_ch++] = valueChar;

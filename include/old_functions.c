@@ -30,3 +30,29 @@ void print_value_to_file(unsigned char c)
 
 	 value_counter++;
 }
+
+
+/*Send real-time feedback from the QR.
+Included: Timestamp mode sensors[6] RPM, control and signal proc chain values, telemetry.
+Author: Alessio*/
+/*void send_feedback()
+{
+	char fb_msg[250];
+	//Real Time Data: Timestamp mode sensors[6] ae[4] R&P&Ystabilization R&Pangle Joystick changes
+  sprintf(message,"X32_ms_clock:%i M=%i Sensor bias = [%i,%i,%i,%i,%i,%i]\n",X32_ms_clock,mode,s_bias[0] >> SENSOR_PRECISION,s_bias[1] >> SENSOR_PRECISION,s_bias[2] >> SENSOR_PRECISION,s_bias[3] >> SENSOR_PRECISION,s_bias[4] >> SENSOR_PRECISION,s_bias[5] >> SENSOR_PRECISION);
+	strcat(fb_msg,message);
+
+	sprintf(message,"offset = [%i,%i,%i,%i] rpm = [%i,%i,%i,%i]\n",get_motor_offset(0),get_motor_offset(1),get_motor_offset(2),get_motor_offset(3),
+	get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
+  strcat(fb_msg,message);
+
+	if(mode < YAW_CONTROL)
+	 send_feedback_message(fb_msg);
+	else
+	{
+		sprintf(message,"Control loop time(us) = %i P:[r1=%i r2=%i,p=%i,y=%i] # R_stab=%i P_stab=%i Y_stab=%i # R_angle=%i P_angle=%i\n",control_loop_time,P1_roll,P2_roll,P_pitch, P_yaw, R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle);
+		strcat(fb_msg,message);
+		send_feedback_message(fb_msg);
+	}
+}
+*/

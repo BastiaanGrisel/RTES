@@ -1,3 +1,6 @@
+#ifndef KEYSANDJS_H
+#define KEYSANDJS_H
+
 #include <sys/ioctl.h>
 
 #include <stdlib.h>
@@ -34,9 +37,12 @@
 #define LINE_NR_JS_STATE 4
 #define LINE_NR_RECEIVED_MSG 10
 #define LINE_NR_ERROR_MSG 14
-#define LINE_NR_QR_STATE 18
+#define LINE_NR_QR_STATE 16
+#define DRONE_COL 100
+#define DRONE_LN 15
 
 
+void init(void);
 void init_keyboard(void);
 struct timeval updateFPS(struct timeval oldtime);
 int joystickInit(void);
@@ -53,3 +59,5 @@ void col_on(int col);
 void col_off(int col);
 void exitmain(void);
 void check_alive_connection();
+
+#endif

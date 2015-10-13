@@ -60,13 +60,12 @@ void send_feedback_message(char message[])
 	send_control_message(FB_MSG_END);
 }
 
-/* Send the current mode to the PC
- * Author: Henko
- */
-/*void send_mode_message(Mode mode){
+/*Send int16_t messages with different control values*/
+void send_int_message(char control,int16_t value) {
 	PacketData p;
-	p.as_uint16_t = mode;
-	send_message(CURRENT_MODE,p);
-}*/
+	p.as_uint16_t = value;
+	send_message(control,p);
+}
+
 
 #endif
