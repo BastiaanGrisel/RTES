@@ -99,7 +99,6 @@ unsigned int sensor_log[LOG_SIZE][7];
 
 void update_nexys_display(){
 	nexys_display = packet_counter << 8 + packet_lost_counter;
-	///nexys_display = [debugValue];
 }
 
 void lost_packet()
@@ -276,7 +275,6 @@ void isr_rs232_rx(void)
 	X32_ms_last_packet= X32_ms_clock; //update the time the last packet was received
 
 	packet_counter++;
-	P_yaw++; //*******************************************TO BE DELETED, TESTING TERMINAL OUTPUT*******************
 	update_nexys_display();
 
 	/* handle all bytes, note that the processor will sometimes generate
@@ -314,14 +312,17 @@ int32_t max(int32_t one, int32_t two) {
 */
 void isr_qr_link(void)
 {
-  control_loop_time = X32_us_clock;
+  int32_t control_loop_time = X32_us_clock;
+	int timeTime, timeRead, timeLog, timeYaw, timeRoll,timeAct, timestart;
+
+	if(DEBUG) timeTime = X32_us_clock;
 /* get sensor and timestamp values */
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
-
+	if(DEBUG) timeRead = X32_us_clock;
 	// Add new sensor values to array
 	log_sensors(sensor_log, X32_QR_timestamp/50, s0, s1, s2, s3, s4, s5);
-
+	if(DEBUG) timeLog = X32_us_clock;
 	/*YAW_CALCULATIONS*/
 	//  scale dY up with Y_BIAS_UPDATE
 	dY 		= (s5 << Y_BIAS_UPDATE) - (s_bias[5] << (Y_BIAS_UPDATE-SENSOR_PRECISION));
@@ -334,13 +335,18 @@ void isr_qr_link(void)
 	} else {
 		Y_stabilize 	= Y + (filtered_dY) << (-Y_BIAS_UPDATE + P_yaw); // calculate error of yaw rate
 	}
-
+	if(DEBUG) timeYaw = X32_us_clock;
 	//QR THREE IS FLIPPED!!
 
 	/*ROLL_CALCULATIONS*/
 
+/*<<<<<<< HEAD
 	if(isr_counter++ == 10) {
 		isr_counter = 0;
+=======*/
+	//if(isr_counter++ == 100) {
+	//	isr_counter = 0;
+//>>>>>>> 33759be21381284acfeadd052deab08cbe677e4d
 		//     substract bias and scale R:
 	    dR = INCREASE_SHIFT(s3,C2_R_BIAS_UPDATE)-Rbias;
 		//   filter
@@ -355,7 +361,25 @@ void isr_qr_link(void)
 	//     calculate stabilization
 	    R_stabilize = R + DECREASE_SHIFT(0-Rangle,C2_R_BIAS_UPDATE - P1_roll)
 						- DECREASE_SHIFT(filtered_dR,C2_R_BIAS_UPDATE - P2_roll);
-	}
+	//}
+
+	/*// OLD ROLL_CALCULATIONS
+//     substract bias and scale R:
+    dR = bitshift_l(s3,C2_R_BIAS_UPDATE)-Rbias;
+//   filter
+    filtered_dR+= - bitshift_l(filtered_dR,-R_FILTER) + bitshift_l(dR,-R_FILTER);
+//     integrate for the angle and add something to react agianst
+//     rounding error
+    Rangle += bitshift_l(filtered_dR+bitshift_l(1,-C2_R_BIAS_UPDATE+R_ANGLE-1),-C2_R_BIAS_UPDATE+R_ANGLE);
+    // kalman
+	Rangle += - bitshift_l(Rangle-(s0-R_ACC_BIAS)*R_ACC_RATIO+bitshift_l(1,C1_R-1),-C1_R);
+//		update bias
+    Rbias += bitshift_l(Rangle-(s0-R_ACC_BIAS)*R_ACC_RATIO+ bitshift_l(1,C2_R_BIAS_UPDATE-1),-C2_R_BIAS_UPDATE);
+//     calculate stabilization
+    R_stabilize = R + bitshift_l(0-Rangle,-1*(C2_R_BIAS_UPDATE - P1_roll)) - bitshift_l(filtered_dR,-1*(C2_R_BIAS_UPDATE - P2_roll));*/
+
+
+	if(DEBUG) timeRoll = X32_us_clock;
 
 	switch(mode) {
 		case CALIBRATE:
@@ -400,6 +424,16 @@ void isr_qr_link(void)
 				set_mode(SAFE);
 			}
 			break;
+	}
+
+	if(DEBUG){
+		timeAct = X32_us_clock;
+		if(isr_counter++ ==99){
+			int timefinish = X32_us_clock;
+			isr_counter =0;
+			sprintf(message, "\ntimeoffset = %i, Read = %i,Log = %i, Yaw = %i, Roll = %i, Act = %i, total = %i",timeTime -timestart,timeRead-timeTime,timeLog-timeRead,timeYaw-timeLog, timeRoll-timeYaw,timeAct-timeRoll,timefinish-timestart);
+			send_term_message(message);
+		}
 	}
 }
 
@@ -530,22 +564,20 @@ Included: Timestamp mode sensors[6] motor offset and RPM, control and signal pro
 Author: Alessio*/
 void send_feedback()
 {
-	char fb_msg[300];
+	char fb_msg[250];
 	//Real Time Data: Timestamp mode sensors[6] ae[4] R&P&Ystabilization R&Pangle Joystick changes
   sprintf(message,"X32_ms_clock:%i M=%i Sensor bias = [%i,%i,%i,%i,%i,%i]\n",X32_ms_clock,mode,s_bias[0] >> SENSOR_PRECISION,s_bias[1] >> SENSOR_PRECISION,s_bias[2] >> SENSOR_PRECISION,s_bias[3] >> SENSOR_PRECISION,s_bias[4] >> SENSOR_PRECISION,s_bias[5] >> SENSOR_PRECISION);
-	//send_feedback_message(message);
 	strcat(fb_msg,message);
 
 	sprintf(message,"offset = [%i,%i,%i,%i] rpm = [%i,%i,%i,%i]\n",get_motor_offset(0),get_motor_offset(1),get_motor_offset(2),get_motor_offset(3),
 	get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
-	//send_feedback_message(message);
   strcat(fb_msg,message);
+
 	if(mode < YAW_CONTROL)
 	 send_feedback_message(fb_msg);
-
 	else
 	{
-		sprintf(message,"P:[r1=%i r2=%i,p=%i,y=%i] # R_stab=%i P_stab=%i Y_stab=%i # R_angle=%i P_angle=%i\n",P1_roll,P2_roll,P_pitch, P_yaw, R_stabilize,P_stabilize,Y_stabilize,Rangle,P_angle);
+		sprintf(message,"Control loop time(us) = %i P:[r1=%i r2=%i,p=%i,y=%i] # R_stab=%i P_stab=%i Y_stab=%i # R_angle=%i P_angle=%i\n",control_loop_time,P1_roll,P2_roll,P_pitch, P_yaw, R_stabilize,P_stabilize,Y_stabilize,Rangle,P_angle);
 		strcat(fb_msg,message);
 		send_feedback_message(fb_msg);
 	}
@@ -560,6 +592,7 @@ int32_t main(void)
 	while (1) {
 		// Pings from the PC
 	   	check_alive_connection();
+		isr_qr_link();
 
 		// Turn on the LED corresponding to the mode and don't change led 6 and 7
 		X32_leds = ((flicker_slow()?1:0) << mode) | (X32_leds & 0xC0);
@@ -569,8 +602,7 @@ int32_t main(void)
 		 check_for_new_packets(&pc_msg_q, &packet_received, &lost_packet);
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
 
-		if(X32_ms_clock %100 == 0)
-		send_feedback();
+		if(X32_ms_clock %100 == 0 && mode >= MANUAL) send_feedback();
 	}
 
 	quit();

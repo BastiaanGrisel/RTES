@@ -14,14 +14,13 @@ int charpos = 0;
 char fb_msg[QR_INPUT_BUFFERSIZE];
 int fb_ch =0; //feedback message char position
 int fb_msg_counter = 0;
-int TermMessageReceiveTimer = -1;
-int errorMessageTimer = -1;
+int timers[3] = {0};
 Fifo qr_msg_q;
 int packet_counter=0;
 
 int loopcount = 0; // to calculate the FPS
-int	ae[4];
-int offset[4];
+int RPM[4];
+Mode QRMode = -1;
 int ms_last_packet_sent;
 struct timeval keep_alive;
 
@@ -77,10 +76,17 @@ int main (int argc, char **argv)
 		/* Print the Joystick state */
 		printJSstate();
 
-		checkTimeMessages();
+		/* Print QR state */
+		//printQRstate();
 
-		/* Terminate program if user presses panic button or ESC */
-		if (button[0] || c ==27){
+		clearMessages();
+
+		/* send escape if user presses panic button or ESC */
+		if (button[0]){
+			pc_send_message(SPECIAL_REQUEST, ESCAPE);
+		}
+		if(c ==27){
+			pc_send_message(SPECIAL_REQUEST, ESCAPE);
 			break;
 		}
 	}
@@ -98,38 +104,55 @@ struct timeval updateFPS(struct timeval timeold){
 		loopcount=0;
 		gettimeofday(&timenew,NULL);
 		int frametime = (timenew.tv_usec+1000000*timenew.tv_sec-timeold.tv_usec-1000000*timeold.tv_sec)/100;
-		mvprintw(LINE_NR_FPS,0,"pc looptime: %i \tusec (%i \tHz) ",frametime,1000000/frametime);
+		mvprintw(LINE_NR_FPS,0,"pc looptime: %3i usec (%6i Hz)        \n",frametime,1000000/frametime);
 		return timenew;
 	} else {
 		return timeold;
 	}
 }
 
-void checkTimeMessages(void){
+/* Check the time that the terminal message is shown and
+ * delete the message if that time is too long
+ * Author: Henko Aantjes
+ */
+void clearMessages(void){
 	int i,j;
-	if(TermMessageReceiveTimer != -1){
-		if(TermMessageReceiveTimer++> MAX_MSG_TIME){
-			j = (TermMessageReceiveTimer-MAX_MSG_TIME)/1000;
+	if(timers[0] != -1){
+		if(timers[0]++> MAX_MSG_TIME){
+			j = (timers[0]-MAX_MSG_TIME)/1000;
 			move(LINE_NR_RECEIVED_MSG,0);
 			clrtoeol();
 			if(j>50){
 				printw("\n\n\n");
-				TermMessageReceiveTimer = -1;
+				timers[0] = -1;
 			}
 		}
 	}
-	if(errorMessageTimer != -1){
-		if(errorMessageTimer++>MAX_ERROR_MSG_TIME){
-			j = (errorMessageTimer-MAX_ERROR_MSG_TIME)/1000;
+	if(timers[1] != -1){
+		if(timers[1]++>MAX_ERROR_MSG_TIME){
+			j = (timers[1]-MAX_ERROR_MSG_TIME)/1000;
 			move(LINE_NR_ERROR_MSG,0);
 			clrtoeol();
 			if(j>50){
 				printw("\n");
-				errorMessageTimer = -1;
+				timers[1] = -1;
 			}
 		}
 	}
 
+	if(timers[2] != -1){
+		if(timers[2]++>MAX_ERROR_MSG_TIME){
+			j = (timers[2]-MAX_ERROR_MSG_TIME)/1000;
+			for(i=0; i < 7; i++) {
+			move(LINE_NR_QR_STATE+i,0);
+			clrtoeol();
+		}
+			if(j>50){
+				printw("\n");
+				timers[2] = -1;
+			}
+		}
+	}
 
 
 }
@@ -159,19 +182,60 @@ void save_JS_event(int type, int number,int value){
 void printJSstate(void){
 	int i;
 	move(LINE_NR_JS_STATE,0);
-	printw("Joystick axis: ");
+	col_on(6);
+	printw("+-------------------------------------------------------------+\n| ");
+	col_off(6);
+	printw(" Joystick axis: ");
 	col_on(2);
 	for (i = 0; i < 6; i++) {
 		printw("%6d ",axis[i]);
 	}
 	col_off(2);
-	printw("\nJoystick buttons: ");
+	printw(" ");
+	col_on(6); printw(" |\n| ");	col_off(6);
+
+	printw(" Joystick buttons: ");
 	col_on(2);
 	for (i = 0; i < 12; i++) {
 		printw("%d ",button[i]);
 	}
 	col_off(2);
+	printw("                ");
+	col_on(6);
+	printw(" |\n+-------------------------------------------------------------+");
+	col_off(6);
 }
+
+/* Print the most current received state of the QR
+ */
+/*void printQRstate(void){
+	col_on(4);
+	mvprintw(LINE_NR_QR_STATE,0,"Mode QR = ");
+	switch(QRMode){
+		case SAFE:
+			printw("SAFE");
+			break;
+		case PANIC:
+			printw("PANIC");
+			break;
+		case MANUAL:
+			printw("MANUAL");
+			break;
+		case CALIBRATE:
+			printw("CALIBRATE");
+			break;
+		case YAW_CONTROL:
+			printw("YAW_CONTROL");
+			break;
+		case FULL_CONTROL:
+			printw("FULL_CONTROL");
+			break;
+		default:
+			printw("UNDEFINED");
+	}
+	printw("\n");
+	col_off(4);
+} */
 
 /* Initialize the key input
  *
@@ -195,7 +259,11 @@ void init_keyboard(void){
 	init_pair(1, COLOR_RED, COLOR_BLACK);
 	init_pair(2, COLOR_GREEN, COLOR_BLACK);
 	init_pair(3, COLOR_BLUE, COLOR_BLACK);
-	init_pair(4, COLOR_YELLOW, COLOR_BLACK);
+	init_pair(4, COLOR_BLACK, COLOR_GREEN);
+	init_pair(5, COLOR_BLACK, COLOR_CYAN);
+	init_pair(6, COLOR_BLACK, COLOR_YELLOW);
+	init_pair(7, COLOR_YELLOW, COLOR_BLACK);
+	init_pair(8,COLOR_RED,COLOR_YELLOW);
 }
 
 /* Change color of terminal output */
@@ -432,11 +500,13 @@ void init_log(void){
 	}
 }
 
+/*Swap the endianess for 32 bits unsigned int.
+Author: Alessio*/
 uint32_t swap_endianess_32(uint32_t num){
-	return ((num>>24)&0xff) | // move byte 3 to byte 0
-                    ((num<<8)&0xff0000) | // move byte 1 to byte 2
-                    ((num>>8)&0xff00) | // move byte 2 to byte 1
-                    ((num<<24)&0xff000000); // byte 0 to byte 3
+	return ((num>>24)&0xFF) | // move byte 3 to byte 0
+          ((num>>8)&0xFF00) | // move byte 2 to byte 1
+						((num<<8)&0xFF0000) | // move byte 1 to byte 2
+              ((num<<24)&0xFF000000); // byte 0 to byte 3
 }
 
 /*Swap the endianess for 16bits unsigned int.
@@ -469,7 +539,7 @@ Author: Alessio */
 
 /* Parse the QR input (one char at the time)
  * Call parse message if a message is complete
- * Author: Henko Aantjes
+ * Originally created by: Henko Aantjes
  */
 void packet_received(char control, PacketData data){
 	// Change endianness
@@ -477,10 +547,9 @@ void packet_received(char control, PacketData data){
 	swapped = swap_byte_order(data);
 	gettimeofday(&keep_alive,NULL);
 
-
 	int i;
-	char value = swapped.as_bytes[1];
-	uint16_t val;
+	char valueChar = swapped.as_bytes[1];
+	uint16_t value = swapped.as_uint16_t;
 
 	switch(control){
 		case TERMINAL_MSG_START: // start new qr terminal message (not necessary)
@@ -488,26 +557,31 @@ void packet_received(char control, PacketData data){
 			break;
 		case TERMINAL_MSG_PART: // characters of the terminal message
 			if(charpos<QR_INPUT_BUFFERSIZE)
-				received_chars[charpos++]= value;
+				received_chars[charpos++]= valueChar;
 			break;
 		case TERMINAL_MSG_FINISH:
 			// print the terminal message
 			col_on(3);
 			mvprintw(LINE_NR_RECEIVED_MSG, 0, "received messages: (X32 -> pc) == {%.*s}         \n\n\n\n", charpos, received_chars);
-			TermMessageReceiveTimer = 0;
+			timers[0] = 0;
+			charpos = 0;
 			col_off(3);
 			break;
+		/*Cases to print QR state in real-time and logging data
+		Author: Alessio*/
 		case FB_MSG:
 		  if(fb_ch < QR_INPUT_BUFFERSIZE)
-			  fb_msg[fb_ch++] = value;
+			  fb_msg[fb_ch++] = valueChar;
 				break;
 		case FB_MSG_END:
 		  col_on(4);
-			mvprintw(LINE_RT_FEEDBACK-1,0,"<<QR Real-time data>>");
-	    mvprintw(LINE_RT_FEEDBACK,0,"%s",fb_msg);
-			if(keep_alive.tv_sec % 5 == 0) clrtoeol();
-	    fb_ch = 0;
+			mvprintw(LINE_NR_QR_STATE-1,0,"<<QR Real-time data>>");
 			col_off(4);
+			col_on(7);
+	    mvprintw(LINE_NR_QR_STATE,0,"%s",fb_msg);
+			col_off(7);
+		  timers[2] = 0;
+	    fb_ch = 0;
 			break;
 		case LOG_MSG_PART:
 	    		print_log_to_file(swapped);
@@ -517,8 +591,7 @@ void packet_received(char control, PacketData data){
 			fprintf(log_file,"\n");
 			break;
 		case ERROR_MSG:
-		 	val = data.as_uint16_t;
-		  	print_error_message(swapped.as_uint16_t);
+		  	print_error_message(value);
 			break;
 		default:
 			break;
@@ -530,7 +603,6 @@ Author: Alessio */
 print_error_message(Error err)
 {
 	char msg[100];
-	col_on(1);
 	switch(err) {
 		case LOG_ONLY_IN_SAFE_MODE:
 			sprintf(msg,"[QR]: Switch to SAFE before asking for the logging.");
@@ -563,10 +635,10 @@ print_error_message(Error err)
 		default:
 		 sprintf(msg, "[PC] Wrong! not recognized. Wrong error code.");
 	}
-
-	mvprintw (LINE_NR_ERROR_MSG,0,"%s \n\n",msg);
-	errorMessageTimer =0;
-	col_off(1);
+	col_on(8);
+	mvprintw (LINE_NR_ERROR_MSG,0," %s \n\n",msg);
+	timers[1] =0;
+	col_off(8);
 }
 
 
