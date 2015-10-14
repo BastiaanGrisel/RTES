@@ -16,7 +16,8 @@ char fb_msg[QR_INPUT_BUFFERSIZE];
 int fb_ch =0; //feedback message char position
 int fb_msg_counter = 0;
 Fifo qr_msg_q;
-int packet_counter=0;
+int in_packet_counter=0;
+int out_packet_counter=0;
 
 int sensors[6];
 int QR_r, QR_p = 0;
@@ -24,7 +25,9 @@ int QR_rs, QR_ps, QR_ys = 0;
 int loopcount = 0; // to calculate the FPS
 int RPM[4];
 Mode QRMode = -1;
+char terminal_message[QR_INPUT_BUFFERSIZE];
 int ms_last_packet_sent;
+char last_out_message[4];
 struct timeval keep_alive;
 
 
@@ -67,15 +70,31 @@ int main (int argc, char **argv)
 	drawBase();
 
 	while(1) {
-			
-		
+		// Transform all data
+		check_alive_connection();
+
+		/* Check keypress */
+		if ((c= getch()) != -1){
+			sendKeyData(c); // send a message if user gave input
+		}
+
+		/* Check QR to pc communication */
+		if(fd_RS232>0){
+			while ((rec_c = rs232_getchar_nb(fd_RS232))!= -1000){
+				fifo_put(&qr_msg_q, rec_c);
+				check_msg_q();
+			}
+		}
+
+		// Draw everything		
 		drawMode(QRMode);		
 		drawJS(axis[0],axis[1],axis[2],axis[3]);
 		drawSensors(sensors);
 		drawAngles(QR_r,QR_p);
 		drawControl(QR_rs,QR_ps,QR_ys);
-		drawCommunication(packet_counter);
-		
+		drawCommunication(in_packet_counter, out_packet_counter);
+		displayMessage(last_out_message);		
+
 		refresh();
 	}
 
@@ -103,7 +122,7 @@ int main (int argc, char **argv)
 			while ((rec_c = rs232_getchar_nb(fd_RS232))!= -1000){
 				fifo_put(&qr_msg_q, rec_c);
 				check_msg_q();
-				//mvprintw(LINE_NR_RECEIVED_MSG-1,0,"# packets: %i",packet_counter++);
+				//mvprintw(LINE_NR_RECEIVED_MSG-1,0,"# packets: %i",in_packet_counter++);
 			}
 		}
 
@@ -170,10 +189,13 @@ void drawBase() {
 
 	// Packet info
 	mvprintw(22,2,"Comm.");
-	mvprintw(22,16,"# = ");
+	mvprintw(22,13,"#out = ");
+	mvprintw(23,13,"#in  = ");
 
 	// Messages
-	mvprintw(24,2,"Messages");
+	mvprintw(25,2,"Messages");
+	mvprintw(25,14,"out = ");
+	mvprintw(26,14,"in  = ");
 
 	refresh();
 }
@@ -209,13 +231,13 @@ void drawControl(int R_s, int P_s, int Y_s) {
 	mvprintw(20,20,"%-16d",Y_s);
 }
 
-void drawCommunication(int packets) {
-	mvprintw(22,20,"%-32d",packets);
+void drawCommunication(int in_packets, int out_packets) {
+	mvprintw(22,20,"%-32d",out_packets);
+	mvprintw(23,20,"%-32d",in_packets);
 }
 
 void displayMessage(char* message) {
-	// clear message area
-	
+	mvprintw(25,20,"%s",message);
 }
 
 /*Draw a stilyzed QR in the window*/
@@ -491,6 +513,7 @@ void sendKeyData(int c){
 		if(fd_RS232>0){
 			if(axis[3]==0 || fd_js<0) {
 				pc_send_message(control, value);
+				sprintf(last_out_message, "%c%i (%i)", control, (int) value, checksum(control,ch2pd(value)));
 				//update the last packet timestamp
 				////mvprintw(1,0,"last mode message: %c%i{%i}\n",control, (int) value, checksum(control,ch2pd(value)));
 			} else {
@@ -692,18 +715,16 @@ void packet_received(char control, PacketData data){
 				received_chars[charpos++]= valueChar;
 			break;
 		case TERMINAL_MSG_FINISH:
-			// print the terminal message
-			col_on(3);
-			//mvprintw(LINE_NR_RECEIVED_MSG, 0, "received messages: (X32 -> pc) == {%.*s}         \n\n\n\n", charpos, received_chars);
+			// Terminal message
+			mvprintw(26,20,"%s",received_chars);
 			timers[0] = 0;
 			charpos = 0;
-			col_off(3);
 			break;
 		/*Cases to print QR state in real-time and logging data
 		Author: Alessio*/
-    case CURRENT_MODE:
-		    QRMode = value;
-				break;
+   		case CURRENT_MODE:
+			QRMode = value;
+			break;
 		case TIMESTAMP:
 		    //mvprintw(LINE_NR_QR_STATE,20,"TIMESTAMP: %4i",value);
 			break;

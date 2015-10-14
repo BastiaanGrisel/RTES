@@ -65,6 +65,7 @@ void drawMode(Mode m);
 void drawSensors(int sensors[6]);
 void drawAngles(int R, int P);
 void drawControl(int R_s, int P_s, int Y_s);
-void drawCommunication(int packets);
+void drawCommunication(int in_packets, int out_packets);
+void displayMessage(char* message);
 
 #endif
