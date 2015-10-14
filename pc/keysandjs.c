@@ -78,12 +78,30 @@ int main (int argc, char **argv)
 			sendKeyData(c); // send a message if user gave input
 		}
 
+		/* Check joystick */
+		if(fd_js>0){
+			while (read(fd_js, &js, sizeof(struct js_event)) ==
+				   			sizeof(struct js_event))  {
+				save_JS_event(js.type,js.number,js.value);
+			}
+			last_packet_time = sendJSData(last_packet_time);
+		}
+
 		/* Check QR to pc communication */
 		if(fd_RS232>0){
 			while ((rec_c = rs232_getchar_nb(fd_RS232))!= -1000){
 				fifo_put(&qr_msg_q, rec_c);
 				check_msg_q();
 			}
+		}
+
+		// Options to quit the program
+		if (button[0]){
+			pc_send_message(SPECIAL_REQUEST, ESCAPE);
+		}
+		if(c ==27){
+			pc_send_message(SPECIAL_REQUEST, ESCAPE);
+			break;
 		}
 
 		// Draw everything		
@@ -96,55 +114,6 @@ int main (int argc, char **argv)
 		displayMessage(last_out_message);		
 
 		refresh();
-	}
-
-	/* Main loop to process/send user input and to show QR input */
-	while (0) {
-		time = updateFPS(time);
-		/* Check keypress */
-		if ((c= getch()) != -1){
-			sendKeyData(c); // send a message if user gave input
-		}
-
-		/* Check joystick */
-		if(fd_js>0){
-			while (read(fd_js, &js, sizeof(struct js_event)) ==
-				   			sizeof(struct js_event))  {
-				save_JS_event(js.type,js.number,js.value);
-			}
-			last_packet_time = sendJSData(last_packet_time);
-		}
-
-   		check_alive_connection();
-
-		/* Check QR to pc communication */
-		if(fd_RS232>0){
-			while ((rec_c = rs232_getchar_nb(fd_RS232))!= -1000){
-				fifo_put(&qr_msg_q, rec_c);
-				check_msg_q();
-				//mvprintw(LINE_NR_RECEIVED_MSG-1,0,"# packets: %i",in_packet_counter++);
-			}
-		}
-
-		// Draw all info on the screen
-		//clear();
-
-		/* Print the Joystick state */
-		//printJSstate();
-
-		/* Print QR state */
-	//	printQRstate(); We'll do this in the cases
-
-		//clearMessages();
-
-		/* send escape if user presses panic button or ESC */
-		if (button[0]){
-			pc_send_message(SPECIAL_REQUEST, ESCAPE);
-		}
-		if(c ==27){
-			pc_send_message(SPECIAL_REQUEST, ESCAPE);
-			break;
-		}
 	}
 
 	exitmain();
@@ -195,7 +164,10 @@ void drawBase() {
 	// Messages
 	mvprintw(25,2,"Messages");
 	mvprintw(25,14,"out = ");
-	mvprintw(26,14,"in  = ");
+	mvprintw(26,14,"err = ");
+	mvprintw(27,14,"in  = ");
+	
+	
 
 	refresh();
 }
@@ -351,70 +323,6 @@ void printJSstate(void){
 	col_on(6);
 	printw(" |\n+-------------------------------------------------------------+");
 	col_off(6);
-}
-
-/* Print the most current received state of the QR
- */
-void printQRstate(void){
-	col_on(4);
-	////mvprintw(LINE_NR_QR_STATE-1,0,"Mode QR = ");
-	switch(QRMode){
-		case SAFE:
-			printw("SAFE");
-			break;
-		case PANIC:
-			printw("PANIC");
-			break;
-		case MANUAL:
-			printw("MANUAL");
-			break;
-		case CALIBRATE:
-			printw("CALIBRATE");
-			break;
-		case YAW_CONTROL:
-			printw("YAW_CONTROL");
-			break;
-		case FULL_CONTROL:
-			printw("FULL_CONTROL");
-			break;
-		default:
-			printw("UNDEFINED");
-	}
-	printw("\n");
-	col_off(4);
-}
-
-char * getEnum(Mode m,char *ret){
-
-	switch(m){
-		case SAFE:
-      sprintf(ret,"SAFE");
-			return ret;
-			break;
-		case PANIC:
-		sprintf(ret,"PANIC");
-		return ret;
-			break;
-		case MANUAL:
-		sprintf(ret,"MANUAL");
-		return ret;
-			break;
-		case CALIBRATE:
-		sprintf(ret,"CALIBRATE");
-		return ret;
-			break;
-		case YAW_CONTROL:
-		sprintf(ret,"YAW_CONTROL");
-		return ret;
-			break;
-		case FULL_CONTROL:
-		sprintf(ret,"FULL_CONTROL");
-		return ret;
-			break;
-		default:
-		sprintf(ret,"UNDEFINED");
-		return ret;
-	}
 }
 
 /* Initialize the key input
@@ -716,7 +624,7 @@ void packet_received(char control, PacketData data){
 			break;
 		case TERMINAL_MSG_FINISH:
 			// Terminal message
-			mvprintw(26,20,"%s",received_chars);
+			mvprintw(27,20,"%s",received_chars);
 			timers[0] = 0;
 			charpos = 0;
 			break;
@@ -838,12 +746,10 @@ print_error_message(Error err)
 		default:
 		 sprintf(msg, "[PC] Wrong! not recognized. Wrong error code.");
 	}
-	col_on(8);
-	move(LINE_NR_ERROR_MSG,25);
+
 	clrtoeol();
-	mvprintw (LINE_NR_ERROR_MSG,25,"%s",msg);
-	timers[1] =0;
-	col_off(8);
+	mvprintw(26,20,"%s",msg);
+	timers[1] = 0;
 }
 
 
