@@ -578,6 +578,8 @@ void print_log_to_file(PacketData data)
  * Originally created by: Henko Aantjes
  */
 void packet_received(char control, PacketData data){
+	in_packet_counter++;
+
 	// Change endianness
 	PacketData swapped;
 	swapped = swap_byte_order(data);

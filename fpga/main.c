@@ -147,8 +147,8 @@ bool set_mode(Mode new_mode) {
 	reset_motors();
 	mode = new_mode;
 	panic_start_time = X32_ms_clock;
-	
 
+	send_int_message(CURRENT_MODE,mode);
 	sprintf(message, "Succesfully changed to mode: >%i< ", new_mode);
 	send_term_message(message);
 	return true;
