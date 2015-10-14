@@ -25,6 +25,9 @@ int ms_last_packet_sent;
 struct timeval keep_alive;
 
 void init();
+void drawBase();
+void drawJS(int R, int P, int Y, int T);
+void drawMode(Mode m);
 
 //***********
 /* Main function that mainly consists of polling the different connections
@@ -38,13 +41,42 @@ int main (int argc, char **argv)
 	struct timeval time, last_packet_time;
 	int rec_c;
 
-  	init();
+	initscr();
+
+  	init_keyboard();
+	init_joystick();
+	rs232_open(fd_RS232);
+	init_log();
+
+
+	start_color();
+	init_pair(1, COLOR_RED, COLOR_BLACK);
+	init_pair(2, COLOR_GREEN, COLOR_BLACK);
+	init_pair(3, COLOR_BLUE, COLOR_BLACK);
+	init_pair(4, COLOR_BLACK, COLOR_GREEN);
+	init_pair(5, COLOR_BLACK, COLOR_CYAN);
+	init_pair(6, COLOR_BLACK, COLOR_YELLOW);
+	init_pair(7, COLOR_YELLOW, COLOR_BLACK);
+	init_pair(8, COLOR_RED,COLOR_YELLOW);
+	init_pair(9, COLOR_BLACK,COLOR_WHITE);
+
+  	timers[3] = 0;
+
 	gettimeofday(&time,NULL);
 	gettimeofday(&keep_alive,NULL);
 	gettimeofday(&last_packet_time,NULL);
 
+	drawBase();
+
+	while(1) {
+		drawMode(QRMode);		
+		drawJS(axis[0],axis[1],axis[2],axis[3]);
+		
+		refresh();
+	}
+
 	/* Main loop to process/send user input and to show QR input */
-	while (1) {
+	while (0) {
 		time = updateFPS(time);
 		/* Check keypress */
 		if ((c= getch()) != -1){
@@ -67,17 +99,20 @@ int main (int argc, char **argv)
 			while ((rec_c = rs232_getchar_nb(fd_RS232))!= -1000){
 				fifo_put(&qr_msg_q, rec_c);
 				check_msg_q();
-				mvprintw(LINE_NR_RECEIVED_MSG-1,0,"# packets: %i",packet_counter++);
+				//mvprintw(LINE_NR_RECEIVED_MSG-1,0,"# packets: %i",packet_counter++);
 			}
 		}
 
+		// Draw all info on the screen
+		//clear();
+
 		/* Print the Joystick state */
-		printJSstate();
+		//printJSstate();
 
 		/* Print QR state */
 	//	printQRstate(); We'll do this in the cases
 
-		clearMessages();
+		//clearMessages();
 
 		/* send escape if user presses panic button or ESC */
 		if (button[0]){
@@ -93,14 +128,37 @@ int main (int argc, char **argv)
 	return 0;
 }
 
-void init(void)
-{
-	init_keyboard();
-	init_joystick();
-	rs232_open(fd_RS232);
-	init_log();
+// Draw all info on the screen
+void drawBase() {
+	int margin = 2;
+	int tab_size = 20;
+	int y_spacing = 2;
 
-  timers[3] = 0;
+	// Mode
+	mvprintw(2,2,"Mode");
+
+	// Joystick
+	mvprintw(4,2,"Joystick");
+	mvprintw(4,16,"R = ");
+	mvprintw(5,16,"P = ");
+	mvprintw(6,16,"Y = ");
+	mvprintw(7,16,"L = ");
+
+	refresh();
+}
+
+void drawMode(Mode m) {
+	mvprintw(2,20,"%-20s",mode_to_string(m));
+}
+
+/* Print joystick state
+ * Author: Henko Aantjes
+ */
+void drawJS(int R, int P, int Y, int T) {
+	mvprintw(4,20,"%-3d",R);
+	mvprintw(5,20,"%-3d",P);
+	mvprintw(6,20,"%-3d",Y);
+	mvprintw(7,20,"%-3d",T);
 }
 
 /* Calculate the mean loop frequency (100 loopcount mean)
@@ -113,7 +171,7 @@ struct timeval updateFPS(struct timeval timeold){
 		gettimeofday(&timenew,NULL);
 		int frametime = (timenew.tv_usec+1000000*timenew.tv_sec-timeold.tv_usec-1000000*timeold.tv_sec)/100;
 		col_on(9);
-		mvprintw(LINE_NR_FPS,0,"    pc looptime: %3i usec (%6i Hz)                          \n",frametime,1000000/frametime);
+		////mvprintw(LINE_NR_FPS,0,"    pc looptime: %3i usec (%6i Hz)                          \n",frametime,1000000/frametime);
 		col_on(9);
 		return timenew;
 	} else {
@@ -175,9 +233,6 @@ void save_JS_event(int type, int number,int value){
 	}
 }
 
-/* Print joystick state
- * Author: Henko Aantjes
- */
 void printJSstate(void){
 	int i;
 	move(LINE_NR_JS_STATE,0);
@@ -209,7 +264,7 @@ void printJSstate(void){
  */
 void printQRstate(void){
 	col_on(4);
-	mvprintw(LINE_NR_QR_STATE-1,0,"Mode QR = ");
+	////mvprintw(LINE_NR_QR_STATE-1,0,"Mode QR = ");
 	switch(QRMode){
 		case SAFE:
 			printw("SAFE");
@@ -275,28 +330,10 @@ char * getEnum(Mode m,char *ret){
  */
 void init_keyboard(void){
 	setenv("ESCDELAY", "25", 0); // necessary to a fast detection of pressing esc (char == 27)
-	initscr();
-	keypad(stdscr, TRUE); // enable arrowkey-detection
+	keypad(stdscr, TRUE); // enable arrowkey-detection - This also makes ncurses full-screen for some reason
 	noecho(); // don't print what is typed
 	cbreak(); // don't wait for an enter
-
-	/* ******************************************************
-	 * make a choice between one of the following 2 lines:  *
-	 * halfdelay for demonstration pruposes or              *
-	 * nodelay for real time programs                       *
-	 ********************************************************/
-    //halfdelay(1); // don't wait long for user input, give error instead
 	nodelay(stdscr, TRUE); // don't wait for user input, give error instead
-	start_color();
-	init_pair(1, COLOR_RED, COLOR_BLACK);
-	init_pair(2, COLOR_GREEN, COLOR_BLACK);
-	init_pair(3, COLOR_BLUE, COLOR_BLACK);
-	init_pair(4, COLOR_BLACK, COLOR_GREEN);
-	init_pair(5, COLOR_BLACK, COLOR_CYAN);
-	init_pair(6, COLOR_BLACK, COLOR_YELLOW);
-	init_pair(7, COLOR_YELLOW, COLOR_BLACK);
-	init_pair(8, COLOR_RED,COLOR_YELLOW);
-	init_pair(9, COLOR_BLACK,COLOR_WHITE);
 }
 
 /* Change color of terminal output */
@@ -314,14 +351,12 @@ void col_off(int col){
 int init_joystick(void){
 	int i;
 	if ((fd_js = open(JS_DEV, O_RDONLY)) < 0) { // open connection
-		/*endwin();
-		perror("joystick /dev/input/js0 ");
-		exit(1);*/
-		printw("Joystick not found?! <<press a key to continue>>");
+		printw("Joystick not found. <<press a key to continue>>");
 		nodelay(stdscr, false);
 		getch();
 		nodelay(stdscr, true);
 		clear();
+		refresh();
 	} else {
 		fcntl(fd_js, F_SETFL, O_NONBLOCK); // set joystick reading non-blocking
 	}
@@ -340,6 +375,23 @@ int init_joystick(void){
 	return 0;
 }
 
+/* initialize the log file
+ * Author: Henko Aantjes
+ */
+void init_log(void){
+
+	log_file = fopen("flight_log2.txt", "w");
+
+	if (log_file == NULL)
+	{
+		printw("Error opening log file. <<press a key to continue>>");
+		nodelay(stdscr, false);
+		getch();
+		nodelay(stdscr, true);
+		clear();
+		refresh();
+	}
+}
 
 /* Checks if the PC has sent data in the last 200ms otherwise sends
 a packet to keep alive the connection.
@@ -369,13 +421,13 @@ void sendKeyData(int c){
 			if(axis[3]==0 || fd_js<0) {
 				pc_send_message(control, value);
 				//update the last packet timestamp
-				mvprintw(1,0,"last mode message: %c%i{%i}\n",control, (int) value, checksum(control,ch2pd(value)));
+				////mvprintw(1,0,"last mode message: %c%i{%i}\n",control, (int) value, checksum(control,ch2pd(value)));
 			} else {
 				print_error_message(JS_LIFT_NOT_ZERO);
 			}
 		}
 		else{
-			mvprintw(1,0,"NOT sending: %c%i   (RS232 = DISABLED)\n",control, (int) value);
+			////mvprintw(1,0,"NOT sending: %c%i   (RS232 = DISABLED)\n",control, (int) value);
 		}
 
 	} else {
@@ -463,10 +515,10 @@ void sendKeyData(int c){
 
 		if(fd_RS232>0 & value !=0){
 			pc_send_message(control, value);
-			mvprintw(1,0,"last key message: %c%c{%i}   \n",control, value, checksum(control,ch2pd(value)));
+			////mvprintw(1,0,"last key message: %c%c{%i}   \n",control, value, checksum(control,ch2pd(value)));
 		}
 		else{
-			mvprintw(1,0,"NOT sending: %c%c %s   \n",control, value,value==0?"key = not a control!":"(RS232 = DISABLED)");
+			////mvprintw(1,0,"NOT sending: %c%c %s   \n",control, value,value==0?"key = not a control!":"(RS232 = DISABLED)");
 		}
 	}
 }
@@ -501,35 +553,19 @@ struct timeval sendJSData(struct timeval last_packet_time){
 				gettimeofday(&timenew,NULL);
 				int timediff = timenew.tv_usec+1000000*timenew.tv_sec-last_packet_time.tv_usec-1000000*last_packet_time.tv_sec;
 				if(timediff<1000*10){
-					mvprintw(2,0,"timediff is too low: ", timediff);
+					////mvprintw(2,0,"timediff is too low: ", timediff);
 					return last_packet_time;
 				} else {
 					axisflags[number] = false;
 					pc_send_message(control, axis[number]);
-					mvprintw(1,0,"last JS message: %c  %i (%i/256)\n",control, axis[number], axis[number]*256);
+					////mvprintw(1,0,"last JS message: %c  %i (%i/256)\n",control, axis[number], axis[number]*256);
 					return timenew;
 				}
 			}
 			else{
-				mvprintw(1,0,"NOT sending: %c  %c   (RS232 = DISABLED)\n",control, value);
+				////mvprintw(1,0,"NOT sending: %c  %c   (RS232 = DISABLED)\n",control, value);
 			}
 		}
-	}
-}
-
-/* initialize the log file
- * Author: Henko Aantjes
- */
-void init_log(void){
-
-	log_file = fopen("flight_log2.txt", "w");
-
-	if (log_file == NULL)
-	{
-		printw("Error opening file!\n");
-		nodelay(stdscr, false);
-		getch();
-		nodelay(stdscr, true);
 	}
 }
 
@@ -565,13 +601,13 @@ void print_log_to_file(PacketData data)
 void draw_QR(int col,int line)
 {
 	int i;
-	mvprintw(line,col,"+");
+	//mvprintw(line,col,"+");
 	for(i=1; i < 3; i++)
 	{
-		mvprintw(line-i,col,"|"); //0
-		mvprintw(line,col+i,"-"); //1
-		mvprintw(line+i,col,"|"); //2
-		mvprintw(line,col-i,"-"); //3
+		//mvprintw(line-i,col,"|"); //0
+		//mvprintw(line,col+i,"-"); //1
+		//mvprintw(line+i,col,"|"); //2
+		//mvprintw(line,col-i,"-"); //3
 	}
 }
 
@@ -601,7 +637,7 @@ void packet_received(char control, PacketData data){
 		case TERMINAL_MSG_FINISH:
 			// print the terminal message
 			col_on(3);
-			mvprintw(LINE_NR_RECEIVED_MSG, 0, "received messages: (X32 -> pc) == {%.*s}         \n\n\n\n", charpos, received_chars);
+			//mvprintw(LINE_NR_RECEIVED_MSG, 0, "received messages: (X32 -> pc) == {%.*s}         \n\n\n\n", charpos, received_chars);
 			timers[0] = 0;
 			charpos = 0;
 			col_off(3);
@@ -611,60 +647,60 @@ void packet_received(char control, PacketData data){
     case CURRENT_MODE:
 		    ret = (char *) malloc(sizeof(char)*15);
 				col_on(4);
-				mvprintw(LINE_NR_QR_STATE,0,"Mode: %s",getEnum(value,ret));
+				//mvprintw(LINE_NR_QR_STATE,0,"Mode: %s",getEnum(value,ret));
 				col_off(4);
 				free(ret);
 				break;
 		case TIMESTAMP:
-		    mvprintw(LINE_NR_QR_STATE,20,"TIMESTAMP: %4i",value);
+		    //mvprintw(LINE_NR_QR_STATE,20,"TIMESTAMP: %4i",value);
 				break;
 		case SENS_0:
-		    mvprintw(LINE_NR_QR_STATE+1,0,"Sensors: [%4i,",value);
+		    //mvprintw(LINE_NR_QR_STATE+1,0,"Sensors: [%4i,",value);
 				break;
 		case SENS_1:
-		    mvprintw(LINE_NR_QR_STATE+1,16,"%4i,",value);
+		    //mvprintw(LINE_NR_QR_STATE+1,16,"%4i,",value);
 				break;
 		case SENS_2:
-		mvprintw(LINE_NR_QR_STATE+1,24,"%4i,",value);
+		//mvprintw(LINE_NR_QR_STATE+1,24,"%4i,",value);
 		break;
 		case SENS_3:
-		mvprintw(LINE_NR_QR_STATE+1,32,"%4i,",value);
+		//mvprintw(LINE_NR_QR_STATE+1,32,"%4i,",value);
 		break;
 		case SENS_4:
-		mvprintw(LINE_NR_QR_STATE+1,40,"%4i,",value);
+		//mvprintw(LINE_NR_QR_STATE+1,40,"%4i,",value);
 		break;
 		case SENS_5:
-		mvprintw(LINE_NR_QR_STATE+1,48,"%4i]",value);
+		//mvprintw(LINE_NR_QR_STATE+1,48,"%4i]",value);
 		break;
 		case RPM0:
 		  draw_QR(DRONE_COL,DRONE_LN);
-		  mvprintw(DRONE_LN-3,DRONE_COL-2,"%4i",value);
-			//mvprintw(LINE_NR_QR_STATE+2,0,"RPM [%4i",value);
+		  //mvprintw(DRONE_LN-3,DRONE_COL-2,"%4i",value);
+			////mvprintw(LINE_NR_QR_STATE+2,0,"RPM [%4i",value);
 			break;
 		case RPM1:
-		mvprintw(DRONE_LN,DRONE_COL+3,"%4i",value);
+		//mvprintw(DRONE_LN,DRONE_COL+3,"%4i",value);
 		break;
     case RPM2:
-		mvprintw(DRONE_LN+3,DRONE_COL-2,"%4i",value);
+		//mvprintw(DRONE_LN+3,DRONE_COL-2,"%4i",value);
 		break;
 		case RPM3:
-		mvprintw(DRONE_LN,DRONE_COL-(3+4),"%4i",value);
+		//mvprintw(DRONE_LN,DRONE_COL-(3+4),"%4i",value);
 		break;
 
 		case MY_STAB:
-	   mvprintw(LINE_NR_QR_STATE+2,0,"Y_stab=%4i",value);
+	   //mvprintw(LINE_NR_QR_STATE+2,0,"Y_stab=%4i",value);
 		 break;
 		case MP_STAB:
-		 mvprintw(LINE_NR_QR_STATE+2,13,"P_stab=%4i",value);
+		 //mvprintw(LINE_NR_QR_STATE+2,13,"P_stab=%4i",value);
      break;
 		case MR_STAB:
-		 mvprintw(LINE_NR_QR_STATE+2,26,"R_stab=%4i",value);
+		 //mvprintw(LINE_NR_QR_STATE+2,26,"R_stab=%4i",value);
      break;
 		case MP_ANGLE:
-		 mvprintw(LINE_NR_QR_STATE+2,39,"P_Angle=%4i",value);
+		 //mvprintw(LINE_NR_QR_STATE+2,39,"P_Angle=%4i",value);
      break;
 		case MR_ANGLE:
-		 mvprintw(LINE_NR_QR_STATE+2,55,"R_Angle=%4i",value);
+		 //mvprintw(LINE_NR_QR_STATE+2,55,"R_Angle=%4i",value);
      break;
 
 		case FB_MSG:
@@ -673,17 +709,17 @@ void packet_received(char control, PacketData data){
 				break;
 		case FB_MSG_END:
 		  col_on(4);
-			mvprintw(LINE_NR_QR_STATE-1,0,"<<QR Real-time data>>");
+			//mvprintw(LINE_NR_QR_STATE-1,0,"<<QR Real-time data>>");
 			col_off(4);
 			col_on(7);
-	    mvprintw(LINE_NR_QR_STATE,0,"%s",fb_msg);
+	    //mvprintw(LINE_NR_QR_STATE,0,"%s",fb_msg);
 			col_off(7);
 		  timers[2] = 0;
 	    fb_ch = 0;
 			break;
 		case LOG_MSG_PART:
 	    		print_log_to_file(swapped);
-			//mvprintw(25, 0, "LOG: %hu", swapped.as_uint16_t);
+			////mvprintw(25, 0, "LOG: %hu", swapped.as_uint16_t);
 			break;
 		case LOG_MSG_NEW_LINE:
 			fprintf(log_file,"\n");
@@ -734,7 +770,7 @@ print_error_message(Error err)
 		 sprintf(msg, "[PC] Wrong! not recognized. Wrong error code.");
 	}
 	col_on(8);
-	mvprintw (LINE_NR_ERROR_MSG,25," %s \n\n",msg);
+	//mvprintw (LINE_NR_ERROR_MSG,25," %s \n\n",msg);
 	timers[1] =0;
 	col_off(8);
 }

@@ -133,4 +133,11 @@ PacketData swap_byte_order(PacketData p) {
 	return p2;
 }
 
+char* mode_to_string(Mode m) {
+	if(!is_valid_mode(m)) return "N/A";
+
+	char *mode_names[] = { "Safe", "Panic", "Manual", "Calibration", "Yaw Control", "Full Control" };
+   	return mode_names[m];
+}
+
 #endif /* TYPES_H */

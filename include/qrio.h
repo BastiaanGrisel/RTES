@@ -39,7 +39,7 @@ void rs232_open()
 	{
         	fd_RS232 = open(USB_DEVICE0, O_RDWR | O_NOCTTY);
 			//printw("fd usb0 = %i\n",fd_RS232);
-		fprintf(stderr,"using /dev/ttyUSB0\n");
+		//fprintf(stderr,"Using /dev/ttyUSB0 <<>>\n");
 		if(fd_RS232<0){ // try other name
 			fd_RS232 = open(USB_DEVICE1, O_RDWR | O_NOCTTY);
 			//printw("fd usb1 = %i\n",fd_RS232);
@@ -48,12 +48,14 @@ void rs232_open()
 
   	if(isatty(fd_RS232)<0 | ttyname(fd_RS232) ==0| tcgetattr(fd_RS232, &tty)!=0){
 
-		printw("RS232 not found?!     <<press a key to continue>>\nfd = %i;isatty(fd_RS232)= %i;ttyname(fd_RS232) = %i; tcgetattr(fd_RS232, &tty) = %i",fd_RS232,isatty(fd_RS232),ttyname(fd_RS232),tcgetattr(fd_RS232, &tty));
+		printw("RS232 connection could not be openend. <<press a key to continue>>");		
+//printw("RS232 not found?!     <<press a key to continue>>\nfd = %i;isatty(fd_RS232)= %i;ttyname(fd_RS232) = %i; tcgetattr(fd_RS232, &tty) = %i",fd_RS232,isatty(fd_RS232),ttyname(fd_RS232),tcgetattr(fd_RS232, &tty));
 		fd_RS232 = -1;
 		nodelay(stdscr, false);
 		getch();
 		nodelay(stdscr, true);
 		clear();
+		refresh();
 	} else{
 		tty.c_iflag = IGNBRK; /* ignore break condition */
 		tty.c_oflag = 0;
