@@ -20,6 +20,7 @@ int packet_counter=0;
 
 int sensors[6];
 int QR_r, QR_p = 0;
+int QR_rs, QR_ps, QR_ys = 0;
 int loopcount = 0; // to calculate the FPS
 int RPM[4];
 Mode QRMode = -1;
@@ -32,6 +33,8 @@ void drawJS(int R, int P, int Y, int T);
 void drawMode(Mode m);
 void drawSensors(int sensors[6]);
 void drawAngles(int R, int P);
+void drawControl(int R_s, int P_s, int Y_s);
+void drawCommunication(int packets);
 
 //***********
 /* Main function that mainly consists of polling the different connections
@@ -73,10 +76,14 @@ int main (int argc, char **argv)
 	drawBase();
 
 	while(1) {
+			
+		
 		drawMode(QRMode);		
 		drawJS(axis[0],axis[1],axis[2],axis[3]);
 		drawSensors(sensors);
 		drawAngles(QR_r,QR_p);
+		drawControl(QR_rs,QR_ps,QR_ys);
+		drawCommunication(packet_counter);
 
 		refresh();
 	}
@@ -164,6 +171,19 @@ void drawBase() {
 	mvprintw(15,16,"R = ");
 	mvprintw(16,16,"P = ");
 
+	// Control values
+	mvprintw(18,2,"Control");
+	mvprintw(18,14,"R_s = ");
+	mvprintw(19,14,"P_s = ");
+	mvprintw(20,14,"Y_s = ");
+
+	// Packet info
+	mvprintw(22,2,"Comm.");
+	mvprintw(22,16,"# = ");
+
+	// Messages
+	mvprintw(24,2,"Messages");
+
 	refresh();
 }
 
@@ -190,6 +210,21 @@ void drawSensors(int sensors[6]) {
 void drawAngles(int R, int P) {
 	mvprintw(15,20,"%-16d",R);
 	mvprintw(16,20,"%-16d",P);
+}
+
+void drawControl(int R_s, int P_s, int Y_s) {
+	mvprintw(18,20,"%-16d",R_s);
+	mvprintw(19,20,"%-16d",P_s);
+	mvprintw(20,20,"%-16d",Y_s);
+}
+
+void drawCommunication(int packets) {
+	mvprintw(22,20,"%-32d",packets);
+}
+
+void displayMessage(char* message) {
+	// clear message area
+	
 }
 
 /* Calculate the mean loop frequency (100 loopcount mean)
@@ -719,14 +754,14 @@ void packet_received(char control, PacketData data){
 		break;
 
 		case MY_STAB:
-	   //mvprintw(LINE_NR_QR_STATE+2,0,"Y_stab=%4i",value);
-		 break;
+			QR_ys = value;
+			break;
 		case MP_STAB:
-		 //mvprintw(LINE_NR_QR_STATE+2,13,"P_stab=%4i",value);
-     break;
+			QR_ps = value;
+     			break;
 		case MR_STAB:
-		 //mvprintw(LINE_NR_QR_STATE+2,26,"R_stab=%4i",value);
-     break;
+			QR_rs = value;
+    			 break;
 		case MP_ANGLE:
 			QR_p = value;
      			break;

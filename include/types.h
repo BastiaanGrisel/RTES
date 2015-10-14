@@ -134,10 +134,15 @@ PacketData swap_byte_order(PacketData p) {
 }
 
 char* mode_to_string(Mode m) {
-	if(!is_valid_mode(m)) return "N/A";
-
-	char *mode_names[] = { "Safe", "Panic", "Manual", "Calibration", "Yaw Control", "Full Control" };
-   	return mode_names[m];
+	switch(m) {
+		case SAFE: return "Safe";
+		case PANIC: return "Panic";
+		case MANUAL: return "Manual";
+		case CALIBRATE: return "Calibration";
+		case YAW_CONTROL: return "Yaw Control";
+		case FULL_CONTROL: return "Full Control";
+		default: return "N/A";
+	}
 }
 
 #endif /* TYPES_H */
