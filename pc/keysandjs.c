@@ -100,7 +100,7 @@ int main (int argc, char **argv)
 		if (button[0]){
 			pc_send_message(SPECIAL_REQUEST, ESCAPE);
 		}
-		if(c ==27){
+		if(c == 27){
 			pc_send_message(SPECIAL_REQUEST, ESCAPE);
 			break;
 		}
@@ -397,7 +397,6 @@ void sendKeyData(int c){
 		if(fd_RS232>0){
 			if(axis[3]==0 || fd_js<0) {
 				pc_send_message(control, value);
-				sprintf(last_out_message, "%c%i (%i)", control, (int) value, checksum(control,ch2pd(value)));
 				//update the last packet timestamp
 				////mvprintw(1,0,"last mode message: %c%i{%i}\n",control, (int) value, checksum(control,ch2pd(value)));
 			} else {
