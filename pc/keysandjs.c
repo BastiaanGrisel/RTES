@@ -599,10 +599,8 @@ void packet_received(char control, PacketData data){
 				received_chars[charpos++]= valueChar;
 			break;
 		case TERMINAL_MSG_FINISH:
-			// Terminal message
-			sprintf(terminal_message, " ");
-			strncpy(terminal_message, received_chars, charpos);			
-			
+			sprintf(terminal_message, "%.*s", charpos, received_chars);
+
 			timers[0] = 0;
 			charpos = 0;
 			break;
