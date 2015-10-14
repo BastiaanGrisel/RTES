@@ -523,7 +523,7 @@ void send_feedback()		//TODO: make this function parametric in order to put it i
 		 send_int_message(MR_ANGLE,R_angle);
  	}
 	sprintf(message, "time it takes to send all this feedback: %6i us",X32_US_CLOCK - sendStart);
-	send_term_message(message);
+	if(DEBUG) send_term_message(message);
 }
 
 
