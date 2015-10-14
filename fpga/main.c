@@ -12,12 +12,15 @@
 #include "logging.h"
 #include "motors.h"
 #include "control.h"
+#include "filterYAW.h"
+#include "filterROLL.h"
+#include "filterPITCH.h"
 
 /* define some peripheral short hands
  */
 #define X32_leds		peripherals[PERIPHERAL_LEDS]
 #define X32_buttons		peripherals[PERIPHERAL_BUTTONS]
-#define X32_ms_clock		peripherals[PERIPHERAL_MS_CLOCK]
+#define X32_ms_clock	peripherals[PERIPHERAL_MS_CLOCK]
 #define X32_us_clock 	(X32_ms_clock *1000)
 
 #define X32_QR_s0 		peripherals[PERIPHERAL_XUFO_S0]
@@ -38,51 +41,21 @@
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
 #define PANIC_RPM 100
 
+#define DEBUG 0
+
 /* Define global variables
  */
-bool DEBUG = true;
+
 int32_t  X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to avoid going panic before receiving the first msg
 int32_t  time_at_last_led_switch = 0;
 int32_t  packet_counter = 0, packet_lost_counter = 0;
-int32_t  R=0, P=0, Y=0, T=0;
+int32_t  R=0, P=0, Y=0, T=0, Tmin=0;
 int missed_packet_counter;
 int32_t control_loop_time = 0;
 
 bool is_calibrated = false;
 
-/* filter parameters*/
-int		Ybias = 400;
-int 	filtered_dY = 0; //
-int 	Y_BIAS_UPDATE = 10; // update bias each sample with a fraction of 1/2^13
-int 	Y_FILTER = 3; // simple filter that updates 1/2^Y_filter
-int 	P_yaw=10; // P = 2^4     Y_TO_ENGINE_SCALE
-int 	Y_stabilize;
-int 	dY;
-
- /*Roll parameters*/
-int		R_FILTER = 3;
-int		C2_R_BIAS_UPDATE = 14; // if you change this, change also C2_rounding_error and R_integrate_rounding_error
-int		R_ANGLE = 5; // if you change this, change also R_integrate_rounding_error
-int		R_ACC_RATIO = 2000;
-int		R_ACC_BIAS = 0;  /*set this in CALIBRATION mode*/
-int		C1_R = 7;
-int 	C1_R_ROUNDING_ERROR = 1<<6; //INCREASE_SHIFT(1,C1_R-1);
-int		C2_R_ROUNDING_ERROR = 1<<14; //INCREASE_SHIFT(1,C2_R_BIAS_UPDATE-1);
-int		P1_roll = 6; // watch out! if P1_roll is higher then C2_R_BIAS_UPDATE then things will go wrong
-int		P2_roll = 8; // watch out! if P2_roll is higher then C2_R_BIAS_UPDATE then things will go wrong
-
-/*All the init should be done in a proper function*/
-int		dR = 0; // init (not very important)
-int		R_angle = 0; // init to zero
-int		Rbias = 0;// bitshift_l(calibratedRgyro,C2_R_BIAS_UPDATE);
-int 	R_INTEGRATE_ROUNDING_ERROR = 1<<8; //INCREASE_SHIFT(1,C2_R_BIAS_UPDATE-R_ANGLE+1);
-int		filtered_dR = 0;
-int		R_stabilize = 0;
-
-/*Pitch paramaters*/
-int P_stabilize = -2;
-int P_angle = -3;
-int P_pitch = -2;
+int 	Y_stabilize,R_stabilize,P_stabilize;
 
 int32_t	s0, s1, s2, s3, s4, s5;
 int32_t s_bias[6];
@@ -155,20 +128,26 @@ bool set_mode(Mode new_mode) {
 		}
 	}
 
-	if(new_mode == FULL_CONTROL) {
-		R_ACC_BIAS = DECREASE_SHIFT(s_bias[0]*R_ACC_RATIO,SENSOR_PRECISION);
-		Rbias = INCREASE_SHIFT(s_bias[3],C2_R_BIAS_UPDATE-SENSOR_PRECISION);
-	}
+
 
 	if((new_mode == FULL_CONTROL || new_mode == YAW_CONTROL) && !is_calibrated){
 		send_err_message(FIRST_CALIBRATE);
 		return false;
 	}
 
+	if(new_mode == FULL_CONTROL || new_mode == YAW_CONTROL) {
+		Ybias = s_bias[5] << (Y_BIAS_UPDATE-SENSOR_PRECISION);
+		R_ACC_BIAS = DECREASE_SHIFT(s_bias[1]*R_ACC_RATIO,SENSOR_PRECISION);
+		Rbias = INCREASE_SHIFT(s_bias[3],C2_R_BIAS_UPDATE-SENSOR_PRECISION);
+		P_ACC_BIAS = DECREASE_SHIFT(s_bias[0]*P_ACC_RATIO,SENSOR_PRECISION);
+		Pbias = INCREASE_SHIFT(s_bias[4],C2_P_BIAS_UPDATE-SENSOR_PRECISION);
+	}
+
 	// If everything is OK, change the mode
+	reset_motors();
 	mode = new_mode;
 	panic_start_time = X32_ms_clock;
-	reset_motors();
+	
 
 	sprintf(message, "Succesfully changed to mode: >%i< ", new_mode);
 	send_term_message(message);
@@ -206,10 +185,10 @@ void trim(char c){
 			add_motor_offset(+OFFSET_STEP, -OFFSET_STEP, +OFFSET_STEP, -OFFSET_STEP);
 			break;
 		case P_YAW_UP:
-			P_yaw++;
+			increase_P_yaw();
 			break;
 		case P_YAW_DOWN:
-			P_yaw--;
+			decrease_P_yaw();
 			break;
 		case P_ROLL_UP:
 			P1_roll++;
@@ -220,8 +199,12 @@ void trim(char c){
 			P2_roll--;
 			break;
 		case P_PITCH_UP:
+			P1_pitch++;
+			P2_pitch++;
 			break;
 		case P_PITCH_DOWN:
+			P1_pitch--;
+			P2_pitch--;
 			break;
 		default:
 			break;
@@ -244,11 +227,11 @@ void special_request(char request){
 			send_term_message(message);
 			break;
 		case ASK_FILTER_PARAM:
-			sprintf(message, "Y_stabilize = %i,  Ybias = %i, filtered_dY = %i\n R_stabilize = %i,", Y_stabilize, (Ybias >> Y_BIAS_UPDATE), (filtered_dY >> Y_BIAS_UPDATE), R_stabilize);
+			getYawParams(message);
 			send_term_message(message);
 			break;
 		case ASK_FULL_CONTROL_PARAM:
-			sprintf(message, "dR = %i,  Rangle = %i, Rbias = %i, filtered_dR = %i, R_stablize = %i", dR>>C2_R_BIAS_UPDATE, LSHIFT(R_angle,-C2_R_BIAS_UPDATE+R_ANGLE), Rbias, filtered_dR, R_stabilize);
+			sprintf(message, "dR = %i,  Rangle = %i, Rbias = %i, filtered_dR = %i, R_stablize = %i", dR>>C2_R_BIAS_UPDATE, DECREASE_SHIFT(R_angle,C2_R_BIAS_UPDATE-R_ANGLE), Rbias, filtered_dR, R_stabilize);
 			send_term_message(message);
 			break;
 		case RESET_SENSOR_LOG:
@@ -274,7 +257,7 @@ void special_request(char request){
 void isr_rs232_rx(void)
 {
 	char c;
-	X32_ms_last_packet= X32_ms_clock; //update the time the last packet was received
+	X32_ms_last_packet = X32_ms_clock; //update the time the last packet was received
 
 	packet_counter++;
 	update_nexys_display();
@@ -302,13 +285,9 @@ void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t 
 	s_bias[5]  -= DECREASE_SHIFT(s_bias[5],SENSOR_PRECISION) - s5;
 }
 
-int32_t min(int32_t one, int32_t two) {
-	return	 (one < two) ? one : two;
-}
+#define min(one, two) ((one < two) ? one : two)
 
-int32_t max(int32_t one, int32_t two) {
-	return (one > two) ? one : two;
-}
+#define max(one, two) ((one > two) ? one : two)
 
 /* ISR when new sensor readings are read from the QR
 */
@@ -325,53 +304,13 @@ void isr_qr_link(void)
 	// Add new sensor values to array
 	//log_sensors(sensor_log, X32_QR_timestamp/50, s0, s1, s2, s3, s4, s5,0,0,0,0); COMMENTED FOR TESTING THE LOGGING WITH ARBITRARY VALUES
 	if(DEBUG) timeLog = X32_US_CLOCK;
-	/*YAW_CALCULATIONS*/
-	//  scale dY up with Y_BIAS_UPDATE
-	dY 		= (s5 << Y_BIAS_UPDATE) - (s_bias[5] << (Y_BIAS_UPDATE-SENSOR_PRECISION));
+	Y_stabilize = yawControl(s5,Y);
 
-	// filter dY
-	filtered_dY 	+= - (filtered_dY >> Y_FILTER) + (dY >> Y_BIAS_UPDATE);
-	// calculate stabilisation value
-	if((Y_BIAS_UPDATE - P_yaw) >= 0) {
-		Y_stabilize 	= Y + (filtered_dY) >> (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
-	} else {
-		Y_stabilize 	= Y + (filtered_dY) << (-Y_BIAS_UPDATE + P_yaw); // calculate error of yaw rate
-	}
 	if(DEBUG) timeYaw = X32_US_CLOCK;
 	//QR THREE IS FLIPPED!!
 
-	/*ROLL_CALCULATIONS*/
-		//     substract bias and scale R:
-	    dR = INCREASE_SHIFT(s3,C2_R_BIAS_UPDATE)-Rbias;
-		//   filter
-	    filtered_dR+= - DECREASE_SHIFT(filtered_dR,R_FILTER) + DECREASE_SHIFT(dR,R_FILTER);
-		//     integrate for the angle and add something to react agianst
-		//     rounding error
-	    R_angle += DECREASE_SHIFT(filtered_dR+R_INTEGRATE_ROUNDING_ERROR,C2_R_BIAS_UPDATE-R_ANGLE);
-	    // kalman
-		R_angle -= DECREASE_SHIFT(R_angle-(s1*R_ACC_RATIO-R_ACC_BIAS)+C1_R_ROUNDING_ERROR,C1_R);
-		//		update bias
-	    Rbias += DECREASE_SHIFT(R_angle-(s1*R_ACC_RATIO-R_ACC_BIAS)+C2_R_ROUNDING_ERROR,C2_R_BIAS_UPDATE);
-	//     calculate stabilization
-	    R_stabilize = R + DECREASE_SHIFT(0-R_angle,C2_R_BIAS_UPDATE - P1_roll)
-						- DECREASE_SHIFT(filtered_dR,C2_R_BIAS_UPDATE - P2_roll);
-	//}
-
-	/*// OLD ROLL_CALCULATIONS
-//     substract bias and scale R:
-    dR = bitshift_l(s3,C2_R_BIAS_UPDATE)-Rbias;
-//   filter
-    filtered_dR+= - bitshift_l(filtered_dR,-R_FILTER) + bitshift_l(dR,-R_FILTER);
-//     integrate for the angle and add something to react agianst
-//     rounding error
-    R_angle += bitshift_l(filtered_dR+bitshift_l(1,-C2_R_BIAS_UPDATE+R_ANGLE-1),-C2_R_BIAS_UPDATE+R_ANGLE);
-    // kalman
-	R_angle += - bitshift_l(R_angle-(s0-R_ACC_BIAS)*R_ACC_RATIO+bitshift_l(1,C1_R-1),-C1_R);
-//		update bias
-    Rbias += bitshift_l(R_angle-(s0-R_ACC_BIAS)*R_ACC_RATIO+ bitshift_l(1,C2_R_BIAS_UPDATE-1),-C2_R_BIAS_UPDATE);
-//     calculate stabilization
-    R_stabilize = R + bitshift_l(0-R_angle,-1*(C2_R_BIAS_UPDATE - P1_roll)) - bitshift_l(filtered_dR,-1*(C2_R_BIAS_UPDATE - P2_roll));*/
-
+	R_stabilize = rollControl(s3,s1,R);
+	P_stabilize = pitchControl(s4,s0,P);
 
 	if(DEBUG) timeRoll = X32_US_CLOCK;
 
@@ -382,18 +321,18 @@ void isr_qr_link(void)
 		case MANUAL:
 			// Calculate motor RPM
 			set_motor_rpm(
-				max(T/4, get_motor_offset(0) + T  +P+Y),
-				max(T/4, get_motor_offset(1) + T-R  -Y),
-				max(T/4, get_motor_offset(2) + T  -P+Y),
-				max(T/4, get_motor_offset(3) + T+R  -Y));
+				max(T>>2, get_motor_offset(0) + T  +P+Y),
+				max(T>>2, get_motor_offset(1) + T-R  -Y),
+				max(T>>2, get_motor_offset(2) + T  -P+Y),
+				max(T>>2, get_motor_offset(3) + T+R  -Y));
 			break;
 		case YAW_CONTROL:
 			// Calculate motor RPM
 			set_motor_rpm(
-				max(T/4, get_motor_offset(0) + T  +P+Y_stabilize),
-				max(T/4, get_motor_offset(1) + T-R  -Y_stabilize),
-				max(T/4, get_motor_offset(2) + T  -P+Y_stabilize),
-				max(T/4, get_motor_offset(3) + T+R  -Y_stabilize));
+				max(T>>2, get_motor_offset(0) + T  +P+Y_stabilize),
+				max(T>>2, get_motor_offset(1) + T-R  -Y_stabilize),
+				max(T>>2, get_motor_offset(2) + T  -P+Y_stabilize),
+				max(T>>2, get_motor_offset(3) + T+R  -Y_stabilize));
 			break;
 		case FULL_CONTROL:
 			// Calculate motor RPM
@@ -411,7 +350,7 @@ void isr_qr_link(void)
 			}
 			else {
 				reset_motors();
-				R = P = Y = T = 0;
+				R = P = Y = T = Tmin = 0;
 				set_mode(SAFE);
 			}
 			break;
@@ -423,6 +362,8 @@ void isr_qr_link(void)
 			int timefinish = X32_US_CLOCK;
 			isr_counter =0;
 			sprintf(message, "\ntimeoffset = %4i, Read = %4i,Log = %4i, \nYaw = %4i, Roll = %4i, Act = %4i, total = %4i",timeTime -timestart,timeRead-timeTime,timeLog-timeRead,timeYaw-timeLog, timeRoll-timeYaw,timeAct-timeRoll,timefinish-timestart);
+			send_term_message(message);
+			sprintf(message,"sending a very long (for example: debug-) message = %4i", X32_US_CLOCK-timefinish);
 			send_term_message(message);
 		}
 	}
@@ -471,7 +412,7 @@ void packet_received(char control, PacketData data) {
 			break;
 		case JS_LIFT:
 			T = scale_throttle(data.as_int8_t);
-
+			Tmin = T>>2;
 			//sprintf(message, "Throttle: %i",T);
 			//send_term_message(message);
 			break;
@@ -558,6 +499,7 @@ Included: Timestamp mode sensors[6] RPM, control and signal proc chain values, t
 Author: Alessio*/
 void send_feedback()		//TODO: make this function parametric in order to put it in header file.
 {
+	int sendStart = X32_US_CLOCK;
 	send_int_message(TIMESTAMP,X32_ms_clock);
 	send_int_message(CURRENT_MODE,mode);
 
@@ -574,19 +516,22 @@ void send_feedback()		//TODO: make this function parametric in order to put it i
 	send_int_message(RPM3,get_motor_rpm(3));
 
 	if(mode >= YAW_CONTROL) {
-	 send_int_message(MR_STAB,R_stabilize);
-	 send_int_message(MP_STAB,P_stabilize);
-	 send_int_message(MY_STAB,Y_stabilize);
-	 send_int_message(MP_ANGLE,P_angle);
-	 send_int_message(MR_ANGLE,R_angle);
- }
+		 send_int_message(MR_STAB,R_stabilize);
+		 send_int_message(MP_STAB,P_stabilize);
+		 send_int_message(MY_STAB,Y_stabilize);
+		 send_int_message(MP_ANGLE,P_angle);
+		 send_int_message(MR_ANGLE,R_angle);
+ 	}
+	sprintf(message, "time it takes to send all this feedback: %6i us",X32_US_CLOCK - sendStart);
+	send_term_message(message);
 }
 
 
 int32_t main(void)
 {
-	setup();
+	int feedback_is_send=0;
 
+	setup();
 	// Main loop
 	while (1) {
 		// Pings from the PC
@@ -601,7 +546,13 @@ int32_t main(void)
 		 check_for_new_packets(&pc_msg_q, &packet_received, &lost_packet);
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
 
-		if(X32_ms_clock %100 == 0 && mode >= MANUAL) send_feedback();
+		if(X32_ms_clock %100 == 0 && mode >= MANUAL && !feedback_is_send) {
+			feedback_is_send = 1;
+			send_feedback();
+		}
+		if(X32_ms_clock %100 == 99){ // reset feedbacksend-parameter
+			feedback_is_send = 0;
+		}
 	}
 
 	quit();
