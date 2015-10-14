@@ -2,15 +2,16 @@
 #define	P_FILTER 3
 #define	C2_P_BIAS_UPDATE 14 /* if you change this, change also C2_rounding_error and P_integrate_rounding_error*/
 #define	P_ANGLE 5  /* if you change this, change also P_integrate_rounding_error*/
-#define	P_ACC_RATIO 2000
+#define	P_ACC_RATIO 2500
 #define	C1_P 7
 #define	C1_P_ROUNDING_ERROR  (1<<(C1_P-1)) //INCPEASE_SHIFT(1,C1_P-1);
 #define C2_P_ROUNDING_ERROR  (1<<(C2_P_BIAS_UPDATE-1)) /*INCPEASE_SHIFT(1,C2_P_BIAS_UPDATE-1);*/
 #define	P_INTEGRATE_ROUNDING_ERROR (1<<C2_P_BIAS_UPDATE-P_ANGLE-1) //INCPEASE_SHIFT(1,C2_P_BIAS_UPDATE-P_ANGLE+1);
+#define PJS_TO_ANGLE_RATIO 100
 
 int		P_ACC_BIAS = 0;  /*set this in CALIBPATION mode*/
-int		P1_pitch = 6; // watch out! if P1_roll is higher then C2_P_BIAS_UPDATE then things will go wrong
-int		P2_pitch = 10; // watch out! if P2_roll is higher then C2_P_BIAS_UPDATE then things will go wrong
+int		P1_pitch = 4; // watch out! if P1_roll is higher then C2_P_BIAS_UPDATE then things will go wrong
+int		P2_pitch = 6; // watch out! if P2_roll is higher then C2_P_BIAS_UPDATE then things will go wrong
 
 /*All the init should be done in a proper function*/
 int		dP = 0; // init (not very important what exact value)
@@ -35,7 +36,7 @@ int pitchControl(int pitchRate,int pitch_angle, int P_js){
 		//		update bias
 	    Pbias += DECREASE_SHIFT(P_angle-(pitch_angle*P_ACC_RATIO-P_ACC_BIAS)+C2_P_ROUNDING_ERROR,C2_P_BIAS_UPDATE);
 	//     calculate stabilization
-	    P_stabilize = P_js + DECREASE_SHIFT(0-P_angle,C2_P_BIAS_UPDATE - P1_pitch)
+	    P_stabilize = DECREASE_SHIFT(P_js*PJS_TO_ANGLE_RATIO-P_angle,C2_P_BIAS_UPDATE - P1_pitch)
 						- DECREASE_SHIFT(filtered_dP,C2_P_BIAS_UPDATE - P2_pitch);
 		return P_stabilize;
 }
