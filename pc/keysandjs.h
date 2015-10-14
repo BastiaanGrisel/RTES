@@ -42,7 +42,6 @@
 #define DRONE_LN 12
 
 
-void init(void);
 void init_keyboard(void);
 struct timeval updateFPS(struct timeval oldtime);
 int joystickInit(void);
@@ -59,5 +58,13 @@ void col_on(int col);
 void col_off(int col);
 void exitmain(void);
 void check_alive_connection();
+
+void drawBase();
+void drawJS(int R, int P, int Y, int T);
+void drawMode(Mode m);
+void drawSensors(int sensors[6]);
+void drawAngles(int R, int P);
+void drawControl(int R_s, int P_s, int Y_s);
+void drawCommunication(int packets);
 
 #endif

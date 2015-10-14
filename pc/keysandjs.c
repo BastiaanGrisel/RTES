@@ -27,14 +27,7 @@ Mode QRMode = -1;
 int ms_last_packet_sent;
 struct timeval keep_alive;
 
-void init();
-void drawBase();
-void drawJS(int R, int P, int Y, int T);
-void drawMode(Mode m);
-void drawSensors(int sensors[6]);
-void drawAngles(int R, int P);
-void drawControl(int R_s, int P_s, int Y_s);
-void drawCommunication(int packets);
+
 
 //***********
 /* Main function that mainly consists of polling the different connections
@@ -67,8 +60,6 @@ int main (int argc, char **argv)
 	init_pair(8, COLOR_RED,COLOR_YELLOW);
 	init_pair(9, COLOR_BLACK,COLOR_WHITE);
 
-  	timers[3] = 0;
-
 	gettimeofday(&time,NULL);
 	gettimeofday(&keep_alive,NULL);
 	gettimeofday(&last_packet_time,NULL);
@@ -84,7 +75,7 @@ int main (int argc, char **argv)
 		drawAngles(QR_r,QR_p);
 		drawControl(QR_rs,QR_ps,QR_ys);
 		drawCommunication(packet_counter);
-
+		
 		refresh();
 	}
 
@@ -225,6 +216,20 @@ void drawCommunication(int packets) {
 void displayMessage(char* message) {
 	// clear message area
 	
+}
+
+/*Draw a stilyzed QR in the window*/
+void draw_QR(int col,int line)
+{
+	int i;
+	//mvprintw(line,col,"+");
+	for(i=1; i < 3; i++)
+	{
+		//mvprintw(line-i,col,"|"); //0
+		//mvprintw(line,col+i,"-"); //1
+		//mvprintw(line+i,col,"|"); //2
+		//mvprintw(line,col-i,"-"); //3
+	}
 }
 
 /* Calculate the mean loop frequency (100 loopcount mean)
@@ -663,20 +668,6 @@ void print_log_to_file(PacketData data)
 	fprintf(log_file, "%hu ", data.as_uint16_t);
 }
 
-/*Draw a stilyzed QR in the window*/
-void draw_QR(int col,int line)
-{
-	int i;
-	//mvprintw(line,col,"+");
-	for(i=1; i < 3; i++)
-	{
-		//mvprintw(line-i,col,"|"); //0
-		//mvprintw(line,col+i,"-"); //1
-		//mvprintw(line+i,col,"|"); //2
-		//mvprintw(line,col-i,"-"); //3
-	}
-}
-
 
 /* Parse the QR input (one char at the time)
  * Call parse message if a message is complete
@@ -711,11 +702,7 @@ void packet_received(char control, PacketData data){
 		/*Cases to print QR state in real-time and logging data
 		Author: Alessio*/
     case CURRENT_MODE:
-		    ret = (char *) malloc(sizeof(char)*15);
-				col_on(4);
-				//mvprintw(LINE_NR_QR_STATE,0,"Mode: %s",getEnum(value,ret));
-				col_off(4);
-				free(ret);
+		    QRMode = value;
 				break;
 		case TIMESTAMP:
 		    //mvprintw(LINE_NR_QR_STATE,20,"TIMESTAMP: %4i",value);
@@ -739,20 +726,17 @@ void packet_received(char control, PacketData data){
 			sensors[5] = value;
 			break;
 		case RPM0:
-		  draw_QR(DRONE_COL,DRONE_LN);
-		  //mvprintw(DRONE_LN-3,DRONE_COL-2,"%4i",value);
-			////mvprintw(LINE_NR_QR_STATE+2,0,"RPM [%4i",value);
+			RPM[0] = value;
 			break;
 		case RPM1:
-		//mvprintw(DRONE_LN,DRONE_COL+3,"%4i",value);
+			RPM[1] = value;
 		break;
-    case RPM2:
-		//mvprintw(DRONE_LN+3,DRONE_COL-2,"%4i",value);
+    	case RPM2:
+			RPM[2] = value;
 		break;
 		case RPM3:
-		//mvprintw(DRONE_LN,DRONE_COL-(3+4),"%4i",value);
+			RPM[3] = value;
 		break;
-
 		case MY_STAB:
 			QR_ys = value;
 			break;
@@ -784,7 +768,6 @@ void packet_received(char control, PacketData data){
 			break;
 		case LOG_MSG_PART:
 	    		print_log_to_file(swapped);
-			////mvprintw(25, 0, "LOG: %hu", swapped.as_uint16_t);
 			break;
 		case LOG_MSG_NEW_LINE:
 			fprintf(log_file,"\n");
@@ -835,7 +818,9 @@ print_error_message(Error err)
 		 sprintf(msg, "[PC] Wrong! not recognized. Wrong error code.");
 	}
 	col_on(8);
-	//mvprintw (LINE_NR_ERROR_MSG,25," %s \n\n",msg);
+	move(LINE_NR_ERROR_MSG,25);
+	clrtoeol();
+	mvprintw (LINE_NR_ERROR_MSG,25,"%s",msg);
 	timers[1] =0;
 	col_off(8);
 }
