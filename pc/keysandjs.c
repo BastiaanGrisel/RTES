@@ -18,6 +18,8 @@ int fb_msg_counter = 0;
 Fifo qr_msg_q;
 int packet_counter=0;
 
+int sensors[6];
+int QR_r, QR_p = 0;
 int loopcount = 0; // to calculate the FPS
 int RPM[4];
 Mode QRMode = -1;
@@ -28,6 +30,8 @@ void init();
 void drawBase();
 void drawJS(int R, int P, int Y, int T);
 void drawMode(Mode m);
+void drawSensors(int sensors[6]);
+void drawAngles(int R, int P);
 
 //***********
 /* Main function that mainly consists of polling the different connections
@@ -71,7 +75,9 @@ int main (int argc, char **argv)
 	while(1) {
 		drawMode(QRMode);		
 		drawJS(axis[0],axis[1],axis[2],axis[3]);
-		
+		drawSensors(sensors);
+		drawAngles(QR_r,QR_p);
+
 		refresh();
 	}
 
@@ -135,30 +141,55 @@ void drawBase() {
 	int y_spacing = 2;
 
 	// Mode
-	mvprintw(2,2,"Mode");
+	mvprintw(1,2,"Mode");
 
 	// Joystick
-	mvprintw(4,2,"Joystick");
-	mvprintw(4,16,"R = ");
-	mvprintw(5,16,"P = ");
-	mvprintw(6,16,"Y = ");
-	mvprintw(7,16,"L = ");
+	mvprintw(3,2,"Joystick");
+	mvprintw(3,16,"R = ");
+	mvprintw(4,16,"P = ");
+	mvprintw(5,16,"Y = ");
+	mvprintw(6,16,"L = ");
+
+	// Sensors
+	mvprintw(8,2,"Sensors");
+	mvprintw(8,15,"s0 = ");
+	mvprintw(9,15,"s1 = ");
+	mvprintw(10,15,"s2 = ");
+	mvprintw(11,15,"s3 = ");
+	mvprintw(12,15,"s4 = ");
+	mvprintw(13,15,"s5 = ");
+
+	// Angles
+	mvprintw(15,2,"Angles");
+	mvprintw(15,16,"R = ");
+	mvprintw(16,16,"P = ");
 
 	refresh();
 }
 
 void drawMode(Mode m) {
-	mvprintw(2,20,"%-20s",mode_to_string(m));
+	mvprintw(1,20,"%-20s",mode_to_string(m));
 }
 
-/* Print joystick state
- * Author: Henko Aantjes
- */
 void drawJS(int R, int P, int Y, int T) {
-	mvprintw(4,20,"%-3d",R);
-	mvprintw(5,20,"%-3d",P);
-	mvprintw(6,20,"%-3d",Y);
-	mvprintw(7,20,"%-3d",T);
+	mvprintw(3,20,"%-3d",R);
+	mvprintw(4,20,"%-3d",P);
+	mvprintw(5,20,"%-3d",Y);
+	mvprintw(6,20,"%-3d",T);
+}
+
+void drawSensors(int sensors[6]) {
+	mvprintw(8,20,"%-16d",sensors[0]);
+	mvprintw(9,20,"%-16d",sensors[1]);
+	mvprintw(10,20,"%-16d",sensors[2]);
+	mvprintw(11,20,"%-16d",sensors[3]);
+	mvprintw(12,20,"%-16d",sensors[4]);
+	mvprintw(13,20,"%-16d",sensors[5]);
+}
+
+void drawAngles(int R, int P) {
+	mvprintw(15,20,"%-16d",R);
+	mvprintw(16,20,"%-16d",P);
 }
 
 /* Calculate the mean loop frequency (100 loopcount mean)
@@ -653,25 +684,25 @@ void packet_received(char control, PacketData data){
 				break;
 		case TIMESTAMP:
 		    //mvprintw(LINE_NR_QR_STATE,20,"TIMESTAMP: %4i",value);
-				break;
+			break;
 		case SENS_0:
-		    //mvprintw(LINE_NR_QR_STATE+1,0,"Sensors: [%4i,",value);
-				break;
+			sensors[0] = value;
+			break;
 		case SENS_1:
-		    //mvprintw(LINE_NR_QR_STATE+1,16,"%4i,",value);
-				break;
+			sensors[1] = value;
+			break;
 		case SENS_2:
-		//mvprintw(LINE_NR_QR_STATE+1,24,"%4i,",value);
-		break;
+			sensors[2] = value;
+			break;
 		case SENS_3:
-		//mvprintw(LINE_NR_QR_STATE+1,32,"%4i,",value);
-		break;
+			sensors[3] = value;
+			break;
 		case SENS_4:
-		//mvprintw(LINE_NR_QR_STATE+1,40,"%4i,",value);
-		break;
+			sensors[4] = value;
+			break;
 		case SENS_5:
-		//mvprintw(LINE_NR_QR_STATE+1,48,"%4i]",value);
-		break;
+			sensors[5] = value;
+			break;
 		case RPM0:
 		  draw_QR(DRONE_COL,DRONE_LN);
 		  //mvprintw(DRONE_LN-3,DRONE_COL-2,"%4i",value);
@@ -697,12 +728,11 @@ void packet_received(char control, PacketData data){
 		 //mvprintw(LINE_NR_QR_STATE+2,26,"R_stab=%4i",value);
      break;
 		case MP_ANGLE:
-		 //mvprintw(LINE_NR_QR_STATE+2,39,"P_Angle=%4i",value);
-     break;
+			QR_p = value;
+     			break;
 		case MR_ANGLE:
-		 //mvprintw(LINE_NR_QR_STATE+2,55,"R_Angle=%4i",value);
-     break;
-
+			QR_r = value;
+     			break;
 		case FB_MSG:
 		  if(fb_ch < QR_INPUT_BUFFERSIZE)
 			  fb_msg[fb_ch++] = valueChar;
