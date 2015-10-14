@@ -45,6 +45,7 @@ int main (int argc, char **argv)
 	struct timeval time, last_packet_time;
 	int rec_c;
 
+	setenv("ESCDELAY", "25", 0); // necessary to a fast detection of pressing esc (char == 27)
 	initscr();
 
   	init_keyboard();
@@ -304,7 +305,6 @@ void save_JS_event(int type, int number,int value){
  * Henko Aantjes
  */
 void init_keyboard(void){
-	setenv("ESCDELAY", "25", 0); // necessary to a fast detection of pressing esc (char == 27)
 	keypad(stdscr, TRUE); // enable arrowkey-detection - This also makes ncurses full-screen for some reason
 	noecho(); // don't print what is typed
 	cbreak(); // don't wait for an enter
