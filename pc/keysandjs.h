@@ -66,6 +66,8 @@ void drawSensors(int sensors[6]);
 void drawAngles(int R, int P);
 void drawControl(int R_s, int P_s, int Y_s);
 void drawCommunication(int in_packets, int out_packets);
-void displayMessage(char* message);
+void displayMessage(char* message, char* error, char* terminal_message);
+void drawQR(int col,int line);
+void drawRPM(int m0, int m1, int m2, int m3);
 
 #endif

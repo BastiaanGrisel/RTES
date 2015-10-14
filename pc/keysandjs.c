@@ -11,6 +11,7 @@ FILE *log_file;
 FILE *terminal_log_file;
 int timers[3];
 char received_chars[QR_INPUT_BUFFERSIZE];
+char terminal_message[QR_INPUT_BUFFERSIZE];
 int charpos = 0;
 char fb_msg[QR_INPUT_BUFFERSIZE];
 int fb_ch =0; //feedback message char position
@@ -29,7 +30,7 @@ char terminal_message[QR_INPUT_BUFFERSIZE];
 int ms_last_packet_sent;
 char last_out_message[4];
 struct timeval keep_alive;
-
+char error_message[100];
 
 
 //***********
@@ -104,14 +105,17 @@ int main (int argc, char **argv)
 			break;
 		}
 
-		// Draw everything		
+		// Draw everything
+		clearMessages();
+		
 		drawMode(QRMode);		
 		drawJS(axis[0],axis[1],axis[2],axis[3]);
 		drawSensors(sensors);
 		drawAngles(QR_r,QR_p);
 		drawControl(QR_rs,QR_ps,QR_ys);
 		drawCommunication(in_packet_counter, out_packet_counter);
-		displayMessage(last_out_message);		
+		displayMessage(last_out_message, error_message, terminal_message);		
+		drawRPM(RPM[0],RPM[1],RPM[2],RPM[3]);		
 
 		refresh();
 	}
@@ -167,7 +171,12 @@ void drawBase() {
 	mvprintw(26,14,"err = ");
 	mvprintw(27,14,"in  = ");
 	
-	
+	// QR
+	mvprintw(3,55,"|");
+	mvprintw(4,55,"|");
+	mvprintw(5,50,"---- + ----");
+	mvprintw(6,55,"|");
+	mvprintw(7,55,"|");
 
 	refresh();
 }
@@ -208,23 +217,21 @@ void drawCommunication(int in_packets, int out_packets) {
 	mvprintw(23,20,"%-32d",in_packets);
 }
 
-void displayMessage(char* message) {
+void displayMessage(char* message, char* error, char* terminal_message) {
+	move(25,20); clrtoeol();
 	mvprintw(25,20,"%s",message);
+	move(26,20); clrtoeol();
+	mvprintw(26,20,"%s",error);
+	move(27,20); clrtoeol();
+	mvprintw(27,20,"%s",terminal_message);
 }
 
-/*Draw a stilyzed QR in the window*/
-void draw_QR(int col,int line)
-{
-	int i;
-	//mvprintw(line,col,"+");
-	for(i=1; i < 3; i++)
-	{
-		//mvprintw(line-i,col,"|"); //0
-		//mvprintw(line,col+i,"-"); //1
-		//mvprintw(line+i,col,"|"); //2
-		//mvprintw(line,col-i,"-"); //3
-	}
-}
+void drawRPM(int m0, int m1, int m2, int m3) {
+	mvprintw(5,45,"%4d", m3);
+	mvprintw(5,62,"%-4d", m1);
+	mvprintw(2,55,"%-4d", m0);
+	mvprintw(8,55,"%-4d", m2);
+}	
 
 /* Calculate the mean loop frequency (100 loopcount mean)
  * Author: Henko Aantjes
@@ -252,22 +259,18 @@ void clearMessages(void){
 	int i,j;
 	if(timers[0] != -1){
 		if(timers[0]++> MAX_MSG_TIME){
-			j = (timers[0]-MAX_MSG_TIME)/1000;
-			move(LINE_NR_RECEIVED_MSG,0);
-			clrtoeol();
+			sprintf(terminal_message," ");
 			timers[0] = -1;
 		}
 	}
 	if(timers[1] != -1){
 		if(timers[1]++>MAX_ERROR_MSG_TIME){
-			j = (timers[1]-MAX_ERROR_MSG_TIME)/1000;
-			move(LINE_NR_ERROR_MSG,0);
-			clrtoeol();
+			sprintf(error_message," ");
 			timers[1] = -1;
 		}
 	}
 
-	if(timers[2] != -1){
+	/*if(timers[2] != -1){
 		if(timers[2]++>MAX_ERROR_MSG_TIME){
 			j = (timers[2]-MAX_ERROR_MSG_TIME)/1000;
 			for(i=0; i < 7; i++) {
@@ -276,7 +279,7 @@ void clearMessages(void){
 			}
 			timers[2] = -1;
 		}
-	}
+	}*/
 }
 
 /* Process a joystick event
@@ -296,33 +299,6 @@ void save_JS_event(int type, int number,int value){
 			axisflags[number] = true;
 			break;
 	}
-}
-
-void printJSstate(void){
-	int i;
-	move(LINE_NR_JS_STATE,0);
-	col_on(6);
-	printw("+-------------------------------------------------------------+\n| ");
-	col_off(6);
-	printw(" Joystick axis: ");
-	col_on(2);
-	for (i = 0; i < 6; i++) {
-		printw("%6d ",axis[i]);
-	}
-	col_off(2);
-	printw(" ");
-	col_on(6); printw(" |\n| ");	col_off(6);
-
-	printw(" Joystick buttons: ");
-	col_on(2);
-	for (i = 0; i < 12; i++) {
-		printw("%d ",button[i]);
-	}
-	col_off(2);
-	printw("                ");
-	col_on(6);
-	printw(" |\n+-------------------------------------------------------------+");
-	col_off(6);
 }
 
 /* Initialize the key input
@@ -624,7 +600,9 @@ void packet_received(char control, PacketData data){
 			break;
 		case TERMINAL_MSG_FINISH:
 			// Terminal message
-			mvprintw(27,20,"%s",received_chars);
+			sprintf(terminal_message, " ");
+			strncpy(terminal_message, received_chars, charpos);			
+			
 			timers[0] = 0;
 			charpos = 0;
 			break;
@@ -713,42 +691,39 @@ void packet_received(char control, PacketData data){
 Author: Alessio */
 print_error_message(Error err)
 {
-	char msg[100];
 	switch(err) {
 		case LOG_ONLY_IN_SAFE_MODE:
-			sprintf(msg,"[QR]: Switch to SAFE before asking for the logging.");
+			sprintf(error_message,"[QR]: Switch to SAFE before asking for the logging.");
 			break;
 		case MODE_ILLIGAL:
-		  sprintf(msg,"[QR]: Invalid or illigal mode.]");
+			sprintf(error_message,"[QR]: Invalid or illigal mode.]");
 			break;
-	  case MODE_CHANGE_ONLY_VIA_SAFE:
-		  sprintf(msg, "[QR]: Mode can be changed only from SAFE mode.");
+	 	case MODE_CHANGE_ONLY_VIA_SAFE:
+			sprintf(error_message, "[QR]: Mode can be changed only from SAFE mode.");
 			break;
 		case MODE_CHANGE_ONLY_IF_ZERO_RPM:
-			sprintf(msg, "[QR]: Cannot change mode. RPM are not zero.");
-			pc_send_message(SPECIAL_REQUEST,ASK_MOTOR_RPM); //when RPM will be visualized in real-time, this won't be needed
+			sprintf(error_message, "[QR]: Cannot change mode. RPM are not zero.");
+			//pc_send_message(SPECIAL_REQUEST,ASK_MOTOR_RPM); //when RPM will be visualized in real-time, this won't be needed
 			break;
 		case MODE_ALREADY_SET:
-			sprintf(msg, "[QR]: Mode already changed.");
+			sprintf(error_message, "[QR]: Mode already changed.");
 			break;
 		case CONTROL_DISABLED_IN_THIS_MODE:
-			sprintf(msg, "[QR]: Manual control disabled in this mode. ");
+			sprintf(error_message, "[QR]: Manual control disabled in this mode. ");
 			break;
 		case JS_LIFT_NOT_ZERO:
-			sprintf(msg, "[PC]: Make sure JS- lift is zero. ");
+			sprintf(error_message, "[PC]: Make sure JS- lift is zero. ");
 			break;
 		case SENSOR_LOG_FULL:
-			sprintf(msg, "[QR]: Sensor log is full. ");
+			sprintf(error_message, "[QR]: Sensor log is full. ");
 			break;
 		case FIRST_CALIBRATE:
-			sprintf(msg, "[QR]: You first need to calibrate! ");
+			sprintf(error_message, "[QR]: You first need to calibrate! ");
 			break;
 		default:
-		 sprintf(msg, "[PC] Wrong! not recognized. Wrong error code.");
+			sprintf(error_message, "[PC] Wrong! not recognized. Wrong error code.");
 	}
 
-	clrtoeol();
-	mvprintw(26,20,"%s",msg);
 	timers[1] = 0;
 }
 
