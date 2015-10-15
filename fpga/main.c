@@ -234,7 +234,7 @@ void special_request(char request){
 			send_term_message(message);
 			break;
 		case ASK_FULL_CONTROL_PARAM:
-			sprintf(message, "dR = %i,  Rangle = %i, Rbias = %i, filtered_dR = %i, R_stablize = %i", dR>>C2_R_BIAS_UPDATE, DECREASE_SHIFT(R_angle,C2_R_BIAS_UPDATE-R_ANGLE), Rbias, filtered_dR, R_stabilize);
+			sprintf(message, "dR = %i,  Rangle = %i, Rbias = %i, filtered_dR = %i, R_stabilize = %i", dR>>C2_R_BIAS_UPDATE, DECREASE_SHIFT(R_angle,C2_R_BIAS_UPDATE-R_ANGLE), Rbias, filtered_dR, R_stabilize);
 			send_term_message(message);
 			break;
 		case RESET_SENSOR_LOG:
@@ -304,10 +304,7 @@ void isr_qr_link(void)
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
 	if(DEBUG) timeRead = X32_US_CLOCK;
-	// Add new sensor values to array
-  //log_tm(tm_log, X32_ms_clock,mode)
-	//log_sensors(sensor_log, X32_QR_timestamp/50, s0, s1, s2, s3, s4, s5,0,0,0,0); COMMENTED FOR TESTING THE LOGGING WITH ARBITRARY VALUES
-	//log_control(mode, control_log, s_bias,R_stablize,P_stabilize,Y_stabilize,R_angle,P_angle)
+
 	if(DEBUG) timeLog = X32_US_CLOCK;
 	Y_stabilize = yawControl(s5,Y);
 
@@ -361,6 +358,11 @@ void isr_qr_link(void)
 			break;
 	}
 
+	// Add new sensor values to array
+	log_tm(tm_log, X32_QR_timestamp,mode);
+	log_sensors(sensor_log, s0, s1, s2, s3, s4, s5,0,0,0,0);// COMMENTED FOR TESTING THE LOGGING WITH ARBITRARY VALUES
+	log_control(mode, control_log, s_bias,R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); //logging control
+
 	if(DEBUG){
 		timeAct = X32_US_CLOCK;
 		if(isr_counter++ ==99){
@@ -402,7 +404,7 @@ void packet_received(char control, PacketData data) {
 		return;
 	}
 
-  log_event(event_array,X32_QR_timestamp,control,data.as_int8_t); //logging all the events
+  log_event(event_array,X32_US_CLOCK,control,data.as_int8_t); //logging all the events
 
 	switch(control){
 		case MODE_CHANGE:

@@ -7,7 +7,7 @@
 #include "control.h"
 
 
-#define LOG_SIZE 100
+#define LOG_SIZE 10000
 #define EVENT_SIZE 1000
 extern Loglevel log_level = SENSORS;
 int log_counter = 0;
@@ -30,7 +30,7 @@ void init_log_arrays(int16_t tm_log[][3], int16_t sensor_log[][10],int16_t contr
   memset(tm_log,0,sizeof(tm_log[0][0]) *LOG_SIZE * 3); //memset functions is inlined by the compiler, so it's faster
   memset(sensor_log,0,sizeof(sensor_log[0][0]) *LOG_SIZE * 10);
   memset(control_log,0,sizeof(control_log[0][0]) *LOG_SIZE * 11);
-  memset(event_array,0,sizeof(event_array[0][0]) *LOG_SIZE * 8);
+  memset(event_array,0,sizeof(event_array[0][0]) *EVENT_SIZE * 4);
 }
 
 /*Just for testing*/
@@ -62,8 +62,8 @@ void init_array_test(int16_t tm_log[][3],int16_t sensor_log[][10])
 void log_tm(int16_t tm_log[][3], int16_t timestamp, int16_t mode)
 {
   if(log_counter < LOG_SIZE) {
-     tm_log[log_counter][0] = timestamp & 0x0000FFFF;
-     tm_log[log_counter][1] = timestamp >> 16;
+     tm_log[log_counter][0] = timestamp >> 16;
+     tm_log[log_counter][1] = timestamp & 0x0000FFFF;
      tm_log[log_counter][2] = mode;
   }
 
@@ -74,8 +74,8 @@ void log_tm(int16_t tm_log[][3], int16_t timestamp, int16_t mode)
 
 
 //5sensors bias - RPYstablize -RP Also once: the bias, which are available after calibration
-void log_control(Mode mode, int16_t control_log[][11],int16_t s_bias[], int16_t R_stablize,
-  int16_t P_stabilize, int16_t Y_stabilize,int16_t R_angle, int16_t P_angle) {
+void log_control(Mode mode, int16_t control_log[][11],int32_t s_bias[], int32_t R_stablize,
+  int32_t P_stabilize, int32_t Y_stabilize,int32_t R_angle, int32_t P_angle) {
     if(log_counter < LOG_SIZE) {
       if(mode >= CALIBRATE) // better == ?
       {
@@ -87,9 +87,9 @@ void log_control(Mode mode, int16_t control_log[][11],int16_t s_bias[], int16_t 
        control_log[log_counter][5] = s_bias[5];
 
        //downcasting control values, right shift to keep the significant bits
-       control_log[log_counter][8] = RSHIFT(Y_stabilize,4);
-       control_log[log_counter][6] = RSHIFT(R_stablize,4);
-       control_log[log_counter][7] = RSHIFT(P_stabilize,4);
+       control_log[log_counter][8] = Y_stabilize;
+       control_log[log_counter][6] = R_stablize;
+       control_log[log_counter][7] = P_stabilize;
        control_log[log_counter][9] = RSHIFT(R_angle,4);
        control_log[log_counter][10] = RSHIFT(P_angle,4);
       }
@@ -99,7 +99,7 @@ void log_control(Mode mode, int16_t control_log[][11],int16_t s_bias[], int16_t 
 
 
 //sensors and rpm
-void log_sensors(int16_t sensor_log[][10], int16_t timestamp, int32_t s0, int32_t s1, int32_t s2, int32_t s3, int32_t s4, int32_t s5,
+void log_sensors(int16_t sensor_log[][10], int32_t s0, int32_t s1, int32_t s2, int32_t s3, int32_t s4, int32_t s5,
   int16_t rpm0, int16_t rpm1, int16_t rpm2, int16_t rpm3) {
 
 	//if(log_counter < LOG_SIZE) {} else {log_counter--;}
@@ -121,8 +121,8 @@ void log_sensors(int16_t sensor_log[][10], int16_t timestamp, int32_t s0, int32_
 void log_event(int16_t event_array[][4],int32_t timestamp, char control, int16_t value)
 {
 
-     event_array[event_counter][0] = timestamp & 0x0000FFFF; //low
-     event_array[event_counter][1] = timestamp >> 16; //high
+     event_array[event_counter][0] = timestamp >> 15; //high
+     event_array[event_counter][1] = timestamp & 0x00007FFF; //low
      event_array[event_counter][2] = control;
      event_array[event_counter][3] = value;
 
@@ -183,7 +183,7 @@ void send_logs_event(int16_t event_array[][4])
 
    for(i=0; i < EVENT_SIZE; i++)
    {
-      for(j=0; j < 3; j++){
+      for(j=0; j < 4; j++){
          p.as_uint16_t = event_array[i][j];
          send_message(LOG_EVENT, p);
        }
