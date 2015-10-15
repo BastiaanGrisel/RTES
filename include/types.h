@@ -16,7 +16,6 @@ typedef unsigned short int    uint16_t;
 typedef unsigned int      uint32_t;
 
 typedef union {
-  uint32_t as_uint32_t;
   uint16_t as_uint16_t;
 	int16_t as_int16_t;
 	int8_t as_int8_t;
