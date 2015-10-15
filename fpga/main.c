@@ -51,11 +51,10 @@ int32_t  time_at_last_led_switch = 0;
 int32_t  packet_counter = 0, packet_lost_counter = 0;
 int32_t  R=0, P=0, Y=0, T=0, Tmin=0;
 int missed_packet_counter;
-int32_t control_loop_time = 0;
 
 bool is_calibrated = false;
 
-int 	Y_stabilize,R_stabilize,P_stabilize;
+int32_t 	isr_qr_counter = 0;
 
 int32_t	s0, s1, s2, s3, s4, s5 = 0;
 int32_t s_bias[6] = {0};
@@ -296,7 +295,6 @@ void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t 
 */
 void isr_qr_link(void)
 {
-  int32_t control_loop_time = X32_US_CLOCK;
 	int timeTime, timeRead, timeLog, timeYaw, timeRoll,timeAct, timestart = X32_US_CLOCK;
 
 	if(DEBUG) timeTime = X32_US_CLOCK;
@@ -311,8 +309,11 @@ void isr_qr_link(void)
 	if(DEBUG) timeYaw = X32_US_CLOCK;
 	//QR THREE IS FLIPPED!!
 
-	R_stabilize = rollControl(s3,s1,R);
-	P_stabilize = pitchControl(s4,s0,P);
+	if(isr_qr_counter++ == 1) {
+		isr_qr_counter = 0;
+		R_stabilize = rollControl(s3,s1,R);
+		P_stabilize = pitchControl(s4,s0,P);
+	}
 
 	if(DEBUG) timeRoll = X32_US_CLOCK;
 
