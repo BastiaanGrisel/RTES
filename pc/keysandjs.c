@@ -13,7 +13,7 @@ bool 	axisflags[6];
 int	button[12];
 
 FILE 	*log_file;
-FILE 	*terminal_log_file;
+FILE 	*log_file_event;
 int 	timers[2];
 
 char 	error_message[100];
@@ -221,9 +221,10 @@ int init_joystick(void){
  */
 void init_log(void){
 
-	log_file = fopen("flight_log2.txt", "w");
+	log_file = fopen("flight_log.txt", "w");
+	log_file_event = fopen("flight_log_event.txt", "w");
 
-	if (log_file == NULL)
+	if (log_file == NULL || log_file_event == NULL)
 	{
 		printw("Error opening log file. <<press a key to continue>>");
 		nodelay(stdscr, false);
@@ -403,8 +404,6 @@ struct timeval sendJSData(struct timeval last_packet_time){
 Author: Alessio */
 void print_log_to_file(PacketData data)
 {
-	//uint16_t val = data.as_uint16_t;
-	//val = swap_endianess_16(val);
 	fprintf(log_file, "%hu ", data.as_uint16_t);
 }
 
@@ -493,10 +492,16 @@ void packet_received(char control, PacketData data){
 			QR_r = value;
      			break;
 		case LOG_MSG_PART:
-	    		print_log_to_file(swapped);
+	    		fprintf(log_file, "%i ", swapped.as_int16_t);
 			break;
 		case LOG_MSG_NEW_LINE:
 			fprintf(log_file,"\n");
+			break;
+		case LOG_EVENT:
+	    		fprintf(log_file_event, "%i ", swapped.as_int16_t);
+			break;
+		case LOG_EV_NEW_LINE:
+			fprintf(log_file_event,"\n");
 			break;
 		case ERROR_MSG:
 		  	print_error_message(value);
@@ -585,4 +590,5 @@ void exitmain(void){
 	}
 	endwin();
 	fclose(log_file);
+	fclose(log_file_event);
 }
