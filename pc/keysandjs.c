@@ -447,22 +447,22 @@ void packet_received(char control, PacketData data){
 		    //ptb(LINE_NR_QR_STATE,20,"TIMESTAMP: %4i",value);
 			break;
 		case SENS_0:
-			sensors[0] = value;
+			sensors[0] = swapped.as_int16_t;
 			break;
 		case SENS_1:
-			sensors[1] = value;
+			sensors[1] = swapped.as_int16_t;
 			break;
 		case SENS_2:
-			sensors[2] = value;
+			sensors[2] = swapped.as_int16_t;
 			break;
 		case SENS_3:
-			sensors[3] = value;
+			sensors[3] = swapped.as_int16_t;
 			break;
 		case SENS_4:
-			sensors[4] = value;
+			sensors[4] = swapped.as_int16_t;
 			break;
 		case SENS_5:
-			sensors[5] = value;
+			sensors[5] = swapped.as_int16_t;
 			break;
 		case RPM0:
 			RPM[0] = swapped.as_int16_t;

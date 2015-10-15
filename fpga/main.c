@@ -138,6 +138,7 @@ bool set_mode(Mode new_mode) {
 
 	if(new_mode == FULL_CONTROL || new_mode == YAW_CONTROL) {
 		//maybe we can make this a function call
+		R_angle = P_angle = 0;
 		Ybias = s_bias[5] << (Y_BIAS_UPDATE-SENSOR_PRECISION);
 		R_ACC_BIAS = DECREASE_SHIFT(s_bias[1]*R_ACC_RATIO,SENSOR_PRECISION);
 		Rbias = INCREASE_SHIFT(s_bias[3],C2_R_BIAS_UPDATE-SENSOR_PRECISION);
@@ -320,6 +321,7 @@ void isr_qr_link(void)
 	switch(mode) {
 		case CALIBRATE:
 			record_bias(s_bias, s0, s1, s2, s3, s4, s5);
+			R_angle = P_angle = 0;
 			break;
 		case MANUAL:
 			// Calculate motor RPM
@@ -525,12 +527,13 @@ void send_feedback()		//TODO: make this function parametric in order to put it i
 	send_int_message(RPM2,get_motor_rpm(2));
 	send_int_message(RPM3,get_motor_rpm(3));
 
+	send_int_message(MP_ANGLE,DECREASE_SHIFT(P_angle,C2_P_BIAS_UPDATE-P_ANGLE));
+	send_int_message(MR_ANGLE,DECREASE_SHIFT(R_angle,C2_R_BIAS_UPDATE-R_ANGLE));
+
 	if(mode >= YAW_CONTROL) {
 		 send_int_message(MR_STAB,R_stabilize);
 		 send_int_message(MP_STAB,P_stabilize);
 		 send_int_message(MY_STAB,Y_stabilize);
-		 send_int_message(MP_ANGLE,P_angle);
-		 send_int_message(MR_ANGLE,R_angle);
  	}
 	sprintf(message, "time it takes to send all this feedback: %6i us",X32_US_CLOCK - sendStart);
 	if(DEBUG) send_term_message(message);
@@ -546,7 +549,7 @@ int32_t main(void)
 	while (1) {
 		// Pings from the PC
 	  check_alive_connection();
-		isr_qr_link();
+		//isr_qr_link();
 
 		// Turn on the LED corresponding to the mode and don't change led 6 and 7
 		X32_leds = ((flicker_slow()?1:0) << mode) | (X32_leds & 0xC0);
