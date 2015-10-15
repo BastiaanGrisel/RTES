@@ -8,11 +8,11 @@ int 	filtered_dY = 0; //
 int 	P_yaw=10; // P = 2^4     Y_TO_ENGINE_SCALE
 int 	dY;
 int 	Y_stabilize;
-#define YJS_TO_ANGLE_RATIO 100
+#define YJS_TO_ANGLE_RATIO 1
 
 #define increase_P_yaw() P_yaw++
 
-#define decrease_P_yaw() P_yaw-- 
+#define decrease_P_yaw() P_yaw--
 
 void setYbias(int newYbias){
 	Ybias = newYbias;
@@ -37,7 +37,3 @@ int yawControl(int yawRate, int Y_js){
 void getYawParams(char *message){
 	sprintf(message, "Y_stabilize = %i,  Ybias = %i, filtered_dY = %i\n", Y_stabilize, (Ybias >> Y_BIAS_UPDATE), (filtered_dY >> Y_BIAS_UPDATE));
 }
-
-
-
-

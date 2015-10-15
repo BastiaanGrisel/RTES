@@ -11,6 +11,7 @@
 
 int32_t offset[4] = {0};
 int32_t rpm[4] = {0};
+extern int32_t R,P,Y,T;
 
 void add_motor_offset(int32_t motor0, int32_t motor1, int32_t motor2, int32_t motor3) {
 	offset[0] += motor0;
@@ -50,15 +51,16 @@ void set_motor_rpm(int32_t motor0, int32_t motor1, int32_t motor2, int32_t motor
 		rpm[i] = rpm[i]>0x3ff?0x3ff:rpm[i];
 	}
 
-	X32_QR_a0 = rpm[0];
+/*	X32_QR_a0 = rpm[0];
 	X32_QR_a1 = rpm[1];
 	X32_QR_a2 = rpm[2];
-	X32_QR_a3 = rpm[3];
+	X32_QR_a3 = rpm[3];*/
 }
 
 void reset_motors() {
 	offset[0] = offset[1] = offset[2] = offset[3] = 0;
 	set_motor_rpm(0,0,0,0);
+	R=P=Y=T=0;
 }
 
 int32_t get_motor_rpm(int32_t i) {

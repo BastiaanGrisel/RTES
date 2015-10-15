@@ -67,7 +67,7 @@ int main (int argc, char **argv)
 	while(1) {
 		// Transform all data
 		check_alive_connection();
-		
+
 		/* Check keypress */
 		if ((c= getch()) != -1){
 			sendKeyData(c); // send a message if user gave input
@@ -101,15 +101,15 @@ int main (int argc, char **argv)
 
 		// Draw everything
 		clearMessages();
-		
-		drawMode(QRMode);		
+
+		drawMode(QRMode);
 		drawJS(axis[0],axis[1],axis[2],axis[3]);
 		drawSensors(sensors);
 		drawAngles(QR_r,QR_p);
 		drawControl(QR_rs,QR_ps,QR_ys);
 		drawCommunication(in_packet_counter, out_packet_counter);
-		displayMessage(last_out_message, error_message, terminal_message);		
-		drawRPM(RPM[0],RPM[1],RPM[2],RPM[3]);		
+		displayMessage(last_out_message, error_message, terminal_message);
+		drawRPM(RPM[0],RPM[1],RPM[2],RPM[3]);
 
 		refresh();
 	}
@@ -263,7 +263,7 @@ void sendKeyData(int c){
 		control = 'M';
 
 		// Extra check that not sends mode changes if the joystick values are not all zero
-		if((axis[0]==0 && axis[1]==0 && axis[2]==0 && axis[3]==0) || fd_js<0)
+		if((axis[0]==0 && axis[1]==0 && axis[2]==0 && axis[3]==0) || fd_js<0 || value == SAFE || value == PANIC)
 			pc_send_message(control, value);
 		else
 			print_error_message(JS_LIFT_NOT_ZERO);
@@ -388,7 +388,7 @@ struct timeval sendJSData(struct timeval last_packet_time){
 
 			gettimeofday(&timenew,NULL);
 			int timediff = timenew.tv_usec+1000000*timenew.tv_sec-last_packet_time.tv_usec-1000000*last_packet_time.tv_sec;
-			
+
 			if(timediff < 1000 * 10){
 				return last_packet_time;
 			} else {
@@ -465,31 +465,31 @@ void packet_received(char control, PacketData data){
 			sensors[5] = value;
 			break;
 		case RPM0:
-			RPM[0] = value;
+			RPM[0] = swapped.as_int16_t;
 			break;
 		case RPM1:
-			RPM[1] = value;
+			RPM[1] = swapped.as_int16_t;
 			break;
     		case RPM2:
-			RPM[2] = value;
+			RPM[2] = swapped.as_int16_t;
 			break;
 		case RPM3:
-			RPM[3] = value;
+			RPM[3] = swapped.as_int16_t;
 			break;
 		case MY_STAB:
-			QR_ys = value;
+			QR_ys = swapped.as_int16_t;
 			break;
 		case MP_STAB:
-			QR_ps = value;
+			QR_ps = swapped.as_int16_t;
      			break;
 		case MR_STAB:
-			QR_rs = value;
+			QR_rs = swapped.as_int16_t;
     			 break;
 		case MP_ANGLE:
-			QR_p = value;
+			QR_p = swapped.as_int16_t;
      			break;
 		case MR_ANGLE:
-			QR_r = value;
+			QR_r = swapped.as_int16_t;
      			break;
 		case LOG_MSG_PART:
 	    		fprintf(log_file, "%i ", swapped.as_int16_t);

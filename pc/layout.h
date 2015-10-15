@@ -122,10 +122,10 @@ void drawMode(Mode m) {
 }
 
 void drawJS(int R, int P, int Y, int T) {
-	ptbc(3,20,2,"%-3d",R);
-	ptbc(4,20,2,"%-3d",P);
-	ptbc(5,20,2,"%-3d",Y);
-	ptbc(6,20,2,"%-3d",T);
+	ptbc(3,20,2,"%-4d",R);
+	ptbc(4,20,2,"%-4d",P);
+	ptbc(5,20,2,"%-4d",Y);
+	ptbc(6,20,2,"%-4d",T);
 }
 
 void drawSensors(int sensors[6]) {

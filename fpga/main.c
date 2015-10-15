@@ -339,11 +339,11 @@ void isr_qr_link(void)
 			break;
 		case FULL_CONTROL:
 			// Calculate motor RPM
-			/*set_motor_rpm(
-				get_motor_offset(0) + T  +P+Y_stabilize,
-				get_motor_offset(1) + T-R_stabilize  -Y_stabilize,
-				get_motor_offset(2) + T  -P+Y_stabilize,
-				get_motor_offset(3) + T+R_stabilize  -Y_stabilize);*/
+			set_motor_rpm(
+				max(T>>2, get_motor_offset(0) + T   +P_stabilize	+Y_stabilize),
+				max(T>>2, get_motor_offset(1) + T		-R_stabilize  -Y_stabilize),
+				max(T>>2, get_motor_offset(2) + T   -P_stabilize	+Y_stabilize),
+				max(T>>2, get_motor_offset(3) + T	  +R_stabilize  -Y_stabilize));
 			break;
 		case PANIC:
 			nexys_display = 0xc1a0;
