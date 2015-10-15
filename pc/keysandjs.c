@@ -463,61 +463,61 @@ void sendKeyData(int c){
 			case KEY_DOWN:
 				value = PITCH_UP;
 				break;
-			case 'a':
+			case LIFT_UP:
 				value = LIFT_UP;
 				break;
-			case 'z':
+			case LIFT_DOWN:
 				value = LIFT_DOWN;
 				break;
-			case 'q':
+			case YAW_LEFT:
 				value = YAW_LEFT;
 				break;
-			case 'w':
+			case YAW_RIGHT:
 				value = YAW_RIGHT;
 				break;
-			case 'u':
+			case P_YAW_UP:
 				value = P_YAW_UP;
 				break;
-			case 'j':
+			case P_YAW_DOWN:
 				value = P_YAW_DOWN;
 				break;
-			case 'i':
+			case P_ROLL_UP:
 				value = P_ROLL_UP;
 				break;
-			case 'k':
+			case P_ROLL_DOWN:
 				value = P_ROLL_DOWN;
 				break;
-			case 'o':
+			case P_PITCH_UP:
 				value = P_PITCH_UP;
 				break;
-			case 'l':
+			case P_PITCH_DOWN:
 				value = P_PITCH_DOWN;
 				break;
-			case 'm':
+			case ASK_MOTOR_RPM:
 				control = SPECIAL_REQUEST;
 				value = ASK_MOTOR_RPM;
 				break;
-			case 'f':
+			case ASK_FILTER_PARAM:
 				control = SPECIAL_REQUEST;
 				value = ASK_FILTER_PARAM;
 				break;
-			case 'g':
+			case ASK_FULL_CONTROL_PARAM:
 				control = SPECIAL_REQUEST;
 				value = ASK_FULL_CONTROL_PARAM;
 				break;
-			case 'r':
+			case RESET_MOTORS:
 				control = SPECIAL_REQUEST;
 				value = RESET_MOTORS;
 				break;
-			case 's':
+			case RESET_SENSOR_LOG:
 				control = SPECIAL_REQUEST;
 				value = RESET_SENSOR_LOG;
 				break;
-			case 'x':
-			  control = SPECIAL_REQUEST;
+			case ASK_SENSOR_LOG:
+			  	control = SPECIAL_REQUEST;
 				value = ASK_SENSOR_LOG;
 				break;
-			case 'b':
+			case ASK_SENSOR_BIAS:
 				control = SPECIAL_REQUEST;
 				value = ASK_SENSOR_BIAS;
 				break;
