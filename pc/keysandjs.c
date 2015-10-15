@@ -430,23 +430,18 @@ void check_alive_connection()
  * Author: Henko Aantjes
  */
 void sendKeyData(int c){
-	char control, value =0; // the control and value to send
-	if(c >= '0' && c<='5'){ //TODO mode change allowed?
+	if(fd_RS232 <= 0) return;
+	char control, value = 0; // the control and value to send
+
+	if(c >= '0' && c <= '5') { // if c is a mode change
 		value = (char) c-'0';
 		control = 'M';
-		if(fd_RS232>0){
-			if(axis[3]==0 || fd_js<0) {
-				pc_send_message(control, value);
-				//update the last packet timestamp
-				////ptb(1,0,"last mode message: %c%i{%i}\n",control, (int) value, checksum(control,ch2pd(value)));
-			} else {
-				print_error_message(JS_LIFT_NOT_ZERO);
-			}
-		}
-		else{
-			////ptb(1,0,"NOT sending: %c%i   (RS232 = DISABLED)\n",control, (int) value);
-		}
 
+		// Extra check that not sends mode changes if the joystick values are not all zero
+		if((axis[0]==0 && axis[1]==0 && axis[2]==0 && axis[3]==0) || fd_js<0)
+			pc_send_message(control, value);
+		else
+			print_error_message(JS_LIFT_NOT_ZERO);
 	} else {
 		control = 'A'; // A == Adjust trimming
 
@@ -530,13 +525,8 @@ void sendKeyData(int c){
 				break;
 		}
 
-		if(fd_RS232>0 & value !=0){
+		if(value != 0)
 			pc_send_message(control, value);
-			////ptb(1,0,"last key message: %c%c{%i}   \n",control, value, checksum(control,ch2pd(value)));
-		}
-		else{
-			////ptb(1,0,"NOT sending: %c%c %s   \n",control, value,value==0?"key = not a control!":"(RS232 = DISABLED)");
-		}
 	}
 }
 
