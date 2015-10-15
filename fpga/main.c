@@ -194,19 +194,19 @@ void trim(char c){
 			break;
 		case P_ROLL_UP:
 			P1_roll++;
-			P2_roll++;
+			//P2_roll++;
 			break;
 		case P_ROLL_DOWN:
 			P1_roll--;
-			P2_roll--;
+			//P2_roll--;
 			break;
 		case P_PITCH_UP:
 			P1_pitch++;
-			P2_pitch++;
+			//P2_pitch++;
 			break;
 		case P_PITCH_DOWN:
 			P1_pitch--;
-			P2_pitch--;
+			//P2_pitch--;
 			break;
 		default:
 			break;
