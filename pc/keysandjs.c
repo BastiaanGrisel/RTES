@@ -575,22 +575,6 @@ struct timeval sendJSData(struct timeval last_packet_time){
 	}
 }
 
-/*Swap the endianess for 32 bits unsigned int.
-Author: Alessio*/
-uint32_t swap_endianess_32(uint32_t num){
-	return ((num>>24)&0xFF) | // move byte 3 to byte 0
-          ((num>>8)&0xFF00) | // move byte 2 to byte 1
-						((num<<8)&0xFF0000) | // move byte 1 to byte 2
-              ((num<<24)&0xFF000000); // byte 0 to byte 3
-}
-
-/*Swap the endianess for 16bits unsigned int.
-Author: Alessio*/
-uint16_t swap_endianess_16(uint16_t val)
-{
-	return (val >> 8) | (val << 8 );
-}
-
 /*Print log values to file, taking in account the endianess
 Author: Alessio */
 void print_log_to_file(PacketData data)
@@ -662,13 +646,13 @@ void packet_received(char control, PacketData data){
 			break;
 		case RPM1:
 			RPM[1] = value;
-		break;
-    	case RPM2:
+			break;
+    		case RPM2:
 			RPM[2] = value;
-		break;
+			break;
 		case RPM3:
 			RPM[3] = value;
-		break;
+			break;
 		case MY_STAB:
 			QR_ys = value;
 			break;
@@ -684,7 +668,7 @@ void packet_received(char control, PacketData data){
 		case MR_ANGLE:
 			QR_r = value;
      			break;
-		case FB_MSG:
+		/*case FB_MSG:
 		  if(fb_ch < QR_INPUT_BUFFERSIZE)
 			  fb_msg[fb_ch++] = valueChar;
 				break;
@@ -697,7 +681,7 @@ void packet_received(char control, PacketData data){
 			col_off(7);
 		  timers[2] = 0;
 	    fb_ch = 0;
-			break;
+			break;*/
 		case LOG_MSG_PART:
 	    		print_log_to_file(swapped);
 			break;
@@ -728,7 +712,6 @@ print_error_message(Error err)
 			break;
 		case MODE_CHANGE_ONLY_IF_ZERO_RPM:
 			sprintf(error_message, "[QR]: Cannot change mode. RPM are not zero.");
-			//pc_send_message(SPECIAL_REQUEST,ASK_MOTOR_RPM); //when RPM will be visualized in real-time, this won't be needed
 			break;
 		case MODE_ALREADY_SET:
 			sprintf(error_message, "[QR]: Mode already changed.");
@@ -751,7 +734,6 @@ print_error_message(Error err)
 
 	timers[1] = 0;
 }
-
 
 void check_msg_q(){
 	while(fifo_size(&qr_msg_q) >= 4) { // Check if there are one or more packets in the queue
@@ -782,8 +764,6 @@ void check_msg_q(){
 		}
 	}
 }
-
-
 
 /* Exit routine
  * Author: Henko Aantjes
