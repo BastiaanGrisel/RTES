@@ -24,7 +24,7 @@ void send_highlow(int32_t val32)
 
 
 /*Zeroing all the log arrays. */
-void init_log_arrays(int32_t tm_log[][3], int32_t sensor_log[][10],int32_t control_log[][11],int16_t keyjs_log[]) {
+void init_log_arrays(int32_t tm_log[][3], int32_t sensor_log[][10],int32_t control_log[][11],int16_t keyjs_log[][8]) {
   memset(tm_log,0,sizeof(tm_log[0][0]) *LOG_SIZE * 3); //memset functions is inlined by the compiler, so it's faster
   memset(sensor_log,0,sizeof(sensor_log[0][0]) *LOG_SIZE * 10);
   memset(control_log,0,sizeof(control_log[0][0]) *LOG_SIZE * 10);
@@ -129,7 +129,7 @@ void log_sensors(int32_t sensor_log[][10], int32_t timestamp, int32_t s0, int32_
 	}
 }
 
-void log_keyjs(int16_t keyjs_log[],int16_t current_values[])
+void log_keyjs(int16_t keyjs_log[][8],int16_t current_values[])
 {
   int i;
   if(log_counter < LOG_SIZE) {
@@ -155,7 +155,7 @@ case FULL: log all the full chain
 default: in every other mode logs only sensors and rpm.
 In order to do this we need a variable that keeps trace of which was the mode in the moment of acquiring the logs
  */
-void send_logs(int32_t tm_log[][3], int32_t sensor_log[][10], int32_t control_log[][11], int16_t keyjs_log[]) {
+void send_logs(int32_t tm_log[][3], int32_t sensor_log[][10], int32_t control_log[][11], int16_t keyjs_log[][8]) {
 	int i;
 	int j;
 	PacketData p;
