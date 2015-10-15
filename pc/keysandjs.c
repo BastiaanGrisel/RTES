@@ -535,8 +535,10 @@ void sendKeyData(int c){
  * Author: Henko Aantjes
  */
 struct timeval sendJSData(struct timeval last_packet_time){
+	if(fd_RS232 <= 0) return;
 	struct timeval timenew;
 	int number, control, value;
+
 	for(number=0;number<4;number++){
 		if(axisflags[number]){
 			switch(number){
@@ -556,21 +558,18 @@ struct timeval sendJSData(struct timeval last_packet_time){
 					control = 0;
 					break;
 			}
-			if(fd_RS232>0 & control !=0){
-				gettimeofday(&timenew,NULL);
-				int timediff = timenew.tv_usec+1000000*timenew.tv_sec-last_packet_time.tv_usec-1000000*last_packet_time.tv_sec;
-				if(timediff<1000*10){
-					////ptb(2,0,"timediff is too low: ", timediff);
-					return last_packet_time;
-				} else {
-					axisflags[number] = false;
-					pc_send_message(control, axis[number]);
-					////ptb(1,0,"last JS message: %c  %i (%i/256)\n",control, axis[number], axis[number]*256);
-					return timenew;
-				}
-			}
-			else{
-				////ptb(1,0,"NOT sending: %c  %c   (RS232 = DISABLED)\n",control, value);
+
+			if(control == 0) return;
+
+			gettimeofday(&timenew,NULL);
+			int timediff = timenew.tv_usec+1000000*timenew.tv_sec-last_packet_time.tv_usec-1000000*last_packet_time.tv_sec;
+			
+			if(timediff < 1000 * 10){
+				return last_packet_time;
+			} else {
+				axisflags[number] = false;
+				pc_send_message(control, axis[number]);
+				return timenew;
 			}
 		}
 	}
