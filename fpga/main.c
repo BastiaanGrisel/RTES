@@ -68,10 +68,10 @@ int32_t panic_start_time = 0;
 //Loglevel log_level = SENSORS;
 
 //LOGGING ARRAYS
-int32_t tm_log[LOG_SIZE][3];       //Timestamp and Mode
-int32_t sensor_log[LOG_SIZE][10];  //sensors + actuators
-int32_t control_log[LOG_SIZE][11]; //control chain
-int16_t keyjs_log[LOG_SIZE][8];    //Keys + JS
+int16_t tm_log[LOG_SIZE][3];       //Timestamp and Mode
+int16_t sensor_log[LOG_SIZE][10];  //sensors + actuators
+int16_t control_log[LOG_SIZE][11]; //control chain
+int16_t event_array[LOG_EVENT][4]; //events: change mode, keys and js
 
 
 void update_nexys_display(){
@@ -243,7 +243,7 @@ void special_request(char request){
 			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
 			break;
 		case ASK_SENSOR_LOG:
-			if(mode==SAFE) send_logs(tm_log,sensor_log,control_log,keyjs_log);
+			if(mode==SAFE) send_logs(tm_log,sensor_log,control_log), send_logs_event(event_array);
 		   	else send_err_message(LOG_ONLY_IN_SAFE_MODE);
 
 			break;
@@ -402,12 +402,14 @@ void packet_received(char control, PacketData data) {
 		return;
 	}
 
+  log_event(event_array,X32_QR_timestamp,control,data.as_int8_t); //logging all the events
+
 	switch(control){
 		case MODE_CHANGE:
 			set_mode(data.as_char);
 			break;
 		case JS_ROLL:
-			R = data.as_int8_t; 
+			R = data.as_int8_t;
 			break;
 		case JS_PITCH:
 			P = data.as_int8_t;
@@ -440,7 +442,7 @@ void setup()
 	/* Initialize Variables */
 	nexys_display = 0x00;
   missed_packet_counter = 0;
-	init_log_arrays(tm_log,sensor_log,control_log,keyjs_log);
+	init_log_arrays(tm_log,sensor_log,control_log,event_array);
 
 
 	fifo_init(&pc_msg_q);

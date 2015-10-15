@@ -118,8 +118,8 @@ shouldn't be cardinal ordered? Like A,B,C,ecc */
 #define SENS_4 'N'
 #define SENS_5 'O'
 
-#define LOG_JS 'P'
-#define LOG_JS_NEW_LINE 'Q'
+#define LOG_EVENT 'P'
+#define LOG_EV_NEW_LINE 'Q'
 
 
 /* Util functions */
