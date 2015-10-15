@@ -6,34 +6,35 @@ int fd_RS232, fd_js;
 
 /* current axis and button readings
  */
+
+// Joystick
 int	axis[6];
-bool axisflags[6];
+bool 	axisflags[6];
 int	button[12];
-FILE *log_file;
-FILE *terminal_log_file;
-int timers[3];
-char received_chars[QR_INPUT_BUFFERSIZE];
-char terminal_message[QR_INPUT_BUFFERSIZE];
-int charpos = 0;
-char fb_msg[QR_INPUT_BUFFERSIZE];
-int fb_ch =0; //feedback message char position
-int fb_msg_counter = 0;
-Fifo qr_msg_q;
-int in_packet_counter=0;
-int out_packet_counter=0;
 
-int sensors[6];
-int QR_r, QR_p = 0;
-int QR_rs, QR_ps, QR_ys = 0;
-int loopcount = 0; // to calculate the FPS
-int RPM[4];
-Mode QRMode = SAFE;
-char terminal_message[QR_INPUT_BUFFERSIZE];
-int ms_last_packet_sent;
-char last_out_message[4];
-struct timeval keep_alive;
-char error_message[100];
+FILE 	*log_file;
+FILE 	*terminal_log_file;
+int 	timers[2];
 
+char 	error_message[100];
+char 	received_chars[QR_INPUT_BUFFERSIZE];
+char 	terminal_message[QR_INPUT_BUFFERSIZE];
+int 	charpos = 0;
+
+Fifo	qr_msg_q;
+int 	in_packet_counter=0;
+int 	out_packet_counter=0;
+int 	ms_last_packet_sent;
+char 	last_out_message[4];
+struct 	timeval keep_alive;
+
+
+int 	sensors[6];
+int 	QR_r, QR_p = 0;
+int 	QR_rs, QR_ps, QR_ys = 0;
+int 	RPM[4];
+Mode 	QRMode = SAFE;
+int 	loopcount = 0; // to calculate the FPS
 
 //***********
 /* Main function that mainly consists of polling the different connections
