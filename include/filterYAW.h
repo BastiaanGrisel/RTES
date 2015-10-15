@@ -27,9 +27,9 @@ int yawControl(int yawRate, int Y_js){
 	filtered_dY 	+= - (filtered_dY >> Y_FILTER) + (dY >> Y_BIAS_UPDATE);
 	// calculate stabilisation value
 	if((Y_BIAS_UPDATE - P_yaw) >= 0) {
-		Y_stabilize 	= (Y_js*YJS_TO_ANGLE_RATIO+ filtered_dY) >> (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
+		Y_stabilize 	= (-Y_js*YJS_TO_ANGLE_RATIO- filtered_dY) >> (Y_BIAS_UPDATE - P_yaw); // calculate error of yaw rate
 	} else {
-		Y_stabilize 	=(Y_js*YJS_TO_ANGLE_RATIO + filtered_dY) << (-Y_BIAS_UPDATE + P_yaw); // calculate error of yaw rate
+		Y_stabilize 	=(-Y_js*YJS_TO_ANGLE_RATIO - filtered_dY) << (-Y_BIAS_UPDATE + P_yaw); // calculate error of yaw rate
 	}
 	return Y_stabilize;
 }
