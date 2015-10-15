@@ -54,7 +54,7 @@ int missed_packet_counter;
 
 bool is_calibrated = false;
 
-int 	isr_qr_counter = 0;
+int32_t 	isr_qr_counter = 0;
 
 int32_t	s0, s1, s2, s3, s4, s5 = 0;
 int32_t s_bias[6] = {0};
