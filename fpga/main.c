@@ -201,12 +201,12 @@ void trim(char c){
 			P2_roll--;
 			break;
 		case P_PITCH_UP:
-			P1_pitch++;
-			//P2_pitch++;
+			//P1_pitch++;
+			P2_pitch++;
 			break;
 		case P_PITCH_DOWN:
-			P1_pitch--;
-			//P2_pitch--;
+			//P1_pitch--;
+			P2_pitch--;
 			break;
 		default:
 			break;
@@ -383,10 +383,10 @@ void isr_qr_link(void)
  * 64-255 = 600-800
  */
 int16_t scale_throttle(uint8_t throttle) {
-	if(throttle < 40) {
+	if(throttle < 45) {
 		return throttle * 10;
 	} else {
-				return throttle - 40 + 400;
+				return throttle - 45 + 450;
 	}
 }
 

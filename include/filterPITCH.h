@@ -1,5 +1,5 @@
 /*Pitch parameters*/
-#define	P_FILTER 3
+#define	P_FILTER 1
 #define	C2_P_BIAS_UPDATE 14 /* if you change this, change also C2_rounding_error and P_integrate_rounding_error*/
 #define	P_ANGLE 5  /* if you change this, change also P_integrate_rounding_error*/
 #define	P_ACC_RATIO 2500
@@ -10,8 +10,8 @@
 #define PJS_TO_ANGLE_RATIO 300
 
 int		P_ACC_BIAS = 0;  /*set this in CALIBPATION mode*/
-int		P1_pitch = 5; // watch out! if P1_roll is higher then C2_P_BIAS_UPDATE then things will go wrong
-int		P2_pitch = 5; // watch out! if P2_roll is higher then C2_P_BIAS_UPDATE then things will go wrong
+int		P1_pitch = -100; // watch out! if P1_roll is higher then C2_P_BIAS_UPDATE then things will go wrong 5
+int		P2_pitch = 6; // watch out! if P2_roll is higher then C2_P_BIAS_UPDATE then things will go wrong 5
 
 /*All the init should be done in a proper function*/
 int		dP = 0; // init (not very important what exact value)
