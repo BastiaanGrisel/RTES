@@ -555,9 +555,6 @@ void print_log_to_file(PacketData data)
 {
 	//uint16_t val = data.as_uint16_t;
 	//val = swap_endianess_16(val);
-	//uint32_t val = data.as_uint32_t;
-  //val = swap_endianess_32(val);
-
 	fprintf(log_file, "%hu ", data.as_uint16_t);
 }
 

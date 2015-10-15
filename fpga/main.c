@@ -41,7 +41,7 @@
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
 #define PANIC_RPM 100
 
-#define DEBUG 0
+#define DEBUG 1
 
 /* Define global variables
  */
@@ -67,9 +67,11 @@ Mode mode = SAFE;
 int32_t panic_start_time = 0;
 //Loglevel log_level = SENSORS;
 
-//Timestamp mode sensors[6] ae[4] R&P&Ystabilization R&Pangle Joystick changes
-unsigned int tm_log[LOG_SIZE][3];
-unsigned int sensor_log[LOG_SIZE][10]; //sensors + actuators
+//LOGGING ARRAYS
+int32_t tm_log[LOG_SIZE][3];       //Timestamp and Mode
+int32_t sensor_log[LOG_SIZE][10];  //sensors + actuators
+int32_t control_log[LOG_SIZE][11]; //control chain
+int16_t keyjs_log[LOG_SIZE][8];    //Keys + JS
 
 
 void update_nexys_display(){
@@ -136,6 +138,7 @@ bool set_mode(Mode new_mode) {
 	}
 
 	if(new_mode == FULL_CONTROL || new_mode == YAW_CONTROL) {
+		//maybe we can make this a function call
 		Ybias = s_bias[5] << (Y_BIAS_UPDATE-SENSOR_PRECISION);
 		R_ACC_BIAS = DECREASE_SHIFT(s_bias[1]*R_ACC_RATIO,SENSOR_PRECISION);
 		Rbias = INCREASE_SHIFT(s_bias[3],C2_R_BIAS_UPDATE-SENSOR_PRECISION);
@@ -147,7 +150,7 @@ bool set_mode(Mode new_mode) {
 	reset_motors();
 	mode = new_mode;
 	panic_start_time = X32_ms_clock;
-	
+
 
 	sprintf(message, "Succesfully changed to mode: >%i< ", new_mode);
 	send_term_message(message);
@@ -240,7 +243,7 @@ void special_request(char request){
 			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
 			break;
 		case ASK_SENSOR_LOG:
-			if(mode==SAFE) send_logs(sensor_log);
+			if(mode==SAFE) send_logs(tm_log,sensor_log,control_log);
 		   	else send_err_message(LOG_ONLY_IN_SAFE_MODE);
 
 			break;
@@ -302,7 +305,9 @@ void isr_qr_link(void)
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
 	if(DEBUG) timeRead = X32_US_CLOCK;
 	// Add new sensor values to array
+  //log_tm(tm_log, X32_ms_clock,mode)
 	//log_sensors(sensor_log, X32_QR_timestamp/50, s0, s1, s2, s3, s4, s5,0,0,0,0); COMMENTED FOR TESTING THE LOGGING WITH ARBITRARY VALUES
+	//log_control(mode, control_log, s_bias,R_stablize,P_stabilize,Y_stabilize,R_angle,P_angle)
 	if(DEBUG) timeLog = X32_US_CLOCK;
 	Y_stabilize = yawControl(s5,Y);
 
@@ -435,12 +440,12 @@ void setup()
 	/* Initialize Variables */
 	nexys_display = 0x00;
   missed_packet_counter = 0;
-	init_log_arrays(tm_log,sensor_log);
+	init_log_arrays(tm_log,sensor_log,control_log);
 
 
 	fifo_init(&pc_msg_q);
 
-  	if(DEBUG) init_array_test(sensor_log);
+  	if(DEBUG) init_array_test(tm_log,sensor_log);
 
 	/* Prepare Interrupts */
 
@@ -535,7 +540,7 @@ int32_t main(void)
 	// Main loop
 	while (1) {
 		// Pings from the PC
-	   	check_alive_connection();
+	  check_alive_connection();
 		isr_qr_link();
 
 		// Turn on the LED corresponding to the mode and don't change led 6 and 7
