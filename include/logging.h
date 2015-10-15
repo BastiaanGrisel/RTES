@@ -102,32 +102,34 @@ void log_control(Mode mode, int16_t control_log[][11],int32_t s_bias[], int32_t 
 void log_sensors(int16_t sensor_log[][10], int32_t s0, int32_t s1, int32_t s2, int32_t s3, int32_t s4, int32_t s5,
   int16_t rpm0, int16_t rpm1, int16_t rpm2, int16_t rpm3) {
 
-	//if(log_counter < LOG_SIZE) {} else {log_counter--;}
-	sensor_log[log_counter][0] = s0;
-	sensor_log[log_counter][1] = s1;
-	sensor_log[log_counter][2] = s2;
-	sensor_log[log_counter][3] = s3;
-	sensor_log[log_counter][4] = s4;
-	sensor_log[log_counter][5] = s5;
+	if(log_counter < LOG_SIZE) {
+    	sensor_log[log_counter][0] = s0;
+    	sensor_log[log_counter][1] = s1;
+    	sensor_log[log_counter][2] = s2;
+    	sensor_log[log_counter][3] = s3;
+    	sensor_log[log_counter][4] = s4;
+    	sensor_log[log_counter][5] = s5;
 
-  sensor_log[log_counter][6] = rpm0;
-  sensor_log[log_counter][7] = rpm1;
-  sensor_log[log_counter][8] = rpm2;
-  sensor_log[log_counter][9] = rpm3;
+      sensor_log[log_counter][6] = rpm0;
+      sensor_log[log_counter][7] = rpm1;
+      sensor_log[log_counter][8] = rpm2;
+      sensor_log[log_counter][9] = rpm3;
+  }
 
 }
 
 
 void log_event(int16_t event_array[][4],int32_t timestamp, char control, int16_t value)
 {
+     if(event_counter< EVENT_SIZE){
+         event_array[event_counter][0] = timestamp >> 15; //high
+         event_array[event_counter][1] = timestamp & 0x00007FFF; //low
+         event_array[event_counter][2] = control;
+         event_array[event_counter][3] = value;
 
-     event_array[event_counter][0] = timestamp >> 15; //high
-     event_array[event_counter][1] = timestamp & 0x00007FFF; //low
-     event_array[event_counter][2] = control;
-     event_array[event_counter][3] = value;
-
-  if(event_counter++ == LOG_EVENT){
-    send_err_message(SENSOR_LOG_FULL);
+          if(event_counter++ == EVENT_SIZE){
+              send_err_message(SENSOR_LOG_FULL);
+          }
   }
 }
 
