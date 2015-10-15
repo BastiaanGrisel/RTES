@@ -138,7 +138,6 @@ bool set_mode(Mode new_mode) {
 
 	if(new_mode == FULL_CONTROL || new_mode == YAW_CONTROL) {
 		//maybe we can make this a function call
-		R_angle = P_angle = 0;
 		Ybias = s_bias[5] << (Y_BIAS_UPDATE-SENSOR_PRECISION);
 		R_ACC_BIAS = DECREASE_SHIFT(s_bias[1]*R_ACC_RATIO,SENSOR_PRECISION);
 		Rbias = INCREASE_SHIFT(s_bias[3],C2_R_BIAS_UPDATE-SENSOR_PRECISION);
@@ -321,7 +320,7 @@ void isr_qr_link(void)
 	switch(mode) {
 		case CALIBRATE:
 			record_bias(s_bias, s0, s1, s2, s3, s4, s5);
-			R_angle = P_angle = 0;
+			//R_angle = P_angle = 0;
 			break;
 		case MANUAL:
 			// Calculate motor RPM
@@ -447,6 +446,8 @@ void setup()
 	/* Initialize Variables */
 	nexys_display = 0x00;
   missed_packet_counter = 0;
+	R_angle = 0;
+	P_angle = 0;
 	init_log_arrays(tm_log,sensor_log,control_log,event_array);
 
 

@@ -7,7 +7,7 @@
 #define	C1_R_ROUNDING_ERROR  (1<<(C1_R-1)) //INCREASE_SHIFT(1,C1_R-1);
 #define C2_R_ROUNDING_ERROR  (1<<(C2_R_BIAS_UPDATE-1)) /*INCREASE_SHIFT(1,C2_R_BIAS_UPDATE-1);*/
 #define	R_INTEGRATE_ROUNDING_ERROR (1<<C2_R_BIAS_UPDATE-R_ANGLE-1) //INCREASE_SHIFT(1,C2_R_BIAS_UPDATE-R_ANGLE+1);
-#define RJS_TO_ANGLE_RATIO 100
+#define RJS_TO_ANGLE_RATIO 10000
 
 
 int		R_ACC_BIAS = 0;  /*set this in CALIBRATION mode*/
@@ -37,7 +37,7 @@ int rollControl(int rollRate,int roll_angle, int R_js){
 		//		update bias
 	    Rbias += DECREASE_SHIFT(R_angle-(roll_angle*R_ACC_RATIO-R_ACC_BIAS)+C2_R_ROUNDING_ERROR,C2_R_BIAS_UPDATE);
 	//     calculate stabilization
-	    R_stabilize = DECREASE_SHIFT(R_js*RJS_TO_ANGLE_RATIO-R_angle,C2_R_BIAS_UPDATE - P1_roll)
-						- DECREASE_SHIFT(filtered_dR,C2_R_BIAS_UPDATE - P2_roll);
+	    R_stabilize = DECREASE_SHIFT(R_js*RJS_TO_ANGLE_RATIO+R_angle,C2_R_BIAS_UPDATE - P1_roll)
+						+ DECREASE_SHIFT(filtered_dR,C2_R_BIAS_UPDATE - P2_roll);
 		return R_stabilize;
 }
