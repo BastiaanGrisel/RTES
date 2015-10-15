@@ -407,7 +407,7 @@ void packet_received(char control, PacketData data) {
 			set_mode(data.as_char);
 			break;
 		case JS_ROLL:
-			R = data.as_int8_t;
+			R = data.as_int8_t; 
 			break;
 		case JS_PITCH:
 			P = data.as_int8_t;

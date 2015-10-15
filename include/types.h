@@ -79,7 +79,7 @@ PacketData ch2pd(char in) {
 #define ASK_FILTER_PARAM 'f'
 #define ASK_FULL_CONTROL_PARAM 'g'
 #define RESET_SENSOR_LOG 's'
-#define ASK_SENSOR_LOG 'L'
+#define ASK_SENSOR_LOG 'x'
 #define ASK_SENSOR_BIAS 'b'
 
 /************
@@ -118,6 +118,8 @@ shouldn't be cardinal ordered? Like A,B,C,ecc */
 #define SENS_4 'N'
 #define SENS_5 'O'
 
+#define LOG_JS 'P'
+#define LOG_JS_NEW_LINE 'Q'
 
 
 /* Util functions */
