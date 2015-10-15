@@ -1,4 +1,5 @@
 #include "keysandjs.h"
+#include <stdarg.h>
 
 int fd_RS232, fd_js;
 
@@ -25,7 +26,7 @@ int QR_r, QR_p = 0;
 int QR_rs, QR_ps, QR_ys = 0;
 int loopcount = 0; // to calculate the FPS
 int RPM[4];
-Mode QRMode = -1;
+Mode QRMode = SAFE;
 char terminal_message[QR_INPUT_BUFFERSIZE];
 int ms_last_packet_sent;
 char last_out_message[4];
@@ -48,12 +49,6 @@ int main (int argc, char **argv)
 	setenv("ESCDELAY", "25", 0); // necessary to a fast detection of pressing esc (char == 27)
 	initscr();
 
-  	init_keyboard();
-	init_joystick();
-	rs232_open(fd_RS232);
-	init_log();
-
-
 	start_color();
 	init_pair(0, COLOR_WHITE, COLOR_BLACK);
 	init_pair(1, COLOR_RED, COLOR_BLACK);
@@ -62,6 +57,11 @@ int main (int argc, char **argv)
 	init_pair(4, COLOR_BLUE, COLOR_BLACK);
 	init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
 	init_pair(6, COLOR_CYAN, COLOR_BLACK);
+
+  	init_keyboard();
+	init_joystick();
+	rs232_open(fd_RS232);
+	init_log();
 
 	gettimeofday(&time,NULL);
 	gettimeofday(&keep_alive,NULL);
@@ -123,6 +123,46 @@ int main (int argc, char **argv)
 	return 0;
 }
 
+void pt(int y, int x, char* format, ...) {
+	va_list args;
+	va_start( args, format );
+	move(y,x);
+	vwprintw(stdscr, format, args);
+	va_end( args );
+}
+
+void ptb(int y, int x, char* format, ...) {
+	attron(A_BOLD);		
+	va_list args;
+	va_start( args, format );
+	move(y,x);
+	vwprintw(stdscr, format, args);
+	va_end( args );
+	attroff(A_BOLD);		
+}
+
+void ptc(int y, int x, int c, char* format, ...) {
+	col_on(c);	
+	va_list args;
+	va_start( args, format );
+	move(y,x);
+	vwprintw(stdscr, format, args);
+	va_end( args );
+	col_off(c);		
+}
+
+void ptbc(int y, int x, int c, char* format, ...) {
+	col_on(c);
+	attron(A_BOLD);		
+	va_list args;
+	va_start( args, format );
+	move(y,x);
+	vwprintw(stdscr, format, args);
+	va_end( args );
+	attroff(A_BOLD);
+	col_off(c);		
+}
+
 // Draw all info on the screen
 void drawBase() {
 	int margin = 2;
@@ -130,106 +170,108 @@ void drawBase() {
 	int y_spacing = 2;
 
 	// Mode
-	mvprintw(1,2,"Mode");
+	ptb(1,2,"Mode");
 
 	// Joystick
-	mvprintw(3,2,"Joystick");
-	mvprintw(3,16,"R = ");
-	mvprintw(4,16,"P = ");
-	mvprintw(5,16,"Y = ");
-	mvprintw(6,16,"L = ");
+	ptbc(3,2,2,"Joystick");		
+	ptbc(3,16,2,"R = ");
+	ptbc(4,16,2,"P = ");
+	ptbc(5,16,2,"Y = ");
+	ptbc(6,16,2,"L = ");
 
 	// Sensors
-	mvprintw(8,2,"Sensors");
-	mvprintw(8,15,"s0 = ");
-	mvprintw(9,15,"s1 = ");
-	mvprintw(10,15,"s2 = ");
-	mvprintw(11,15,"s3 = ");
-	mvprintw(12,15,"s4 = ");
-	mvprintw(13,15,"s5 = ");
+	ptbc(8,2,3,"Sensors");
+	ptbc(8,15,3,"s0 = ");
+	ptbc(9,15,3,"s1 = ");
+	ptbc(10,15,3,"s2 = ");
+	ptbc(11,15,3,"s3 = ");
+	ptbc(12,15,3,"s4 = ");
+	ptbc(13,15,3,"s5 = ");
 
 	// Angles
-	mvprintw(15,2,"Angles");
-	mvprintw(15,16,"R = ");
-	mvprintw(16,16,"P = ");
+	ptbc(15,2,4,"Angles");
+	ptbc(15,16,4,"R = ");
+	ptbc(16,16,4,"P = ");
 
 	// Control values
-	mvprintw(18,2,"Control");
-	mvprintw(18,14,"R_s = ");
-	mvprintw(19,14,"P_s = ");
-	mvprintw(20,14,"Y_s = ");
+	ptbc(18,2,5,"Control");
+	ptbc(18,14,5,"R_s = ");
+	ptbc(19,14,5,"P_s = ");
+	ptbc(20,14,5,"Y_s = ");
 
 	// Packet info
-	mvprintw(22,2,"Comm.");
-	mvprintw(22,13,"#out = ");
-	mvprintw(23,13,"#in  = ");
+	ptbc(22,2,6,"Comm.");
+	ptbc(22,13,6,"#out = ");
+	ptbc(23,13,6,"#in  = ");
 
 	// Messages
-	mvprintw(25,2,"Messages");
-	mvprintw(25,14,"out = ");
-	mvprintw(26,14,"err = ");
-	mvprintw(27,14,"in  = ");
+	ptb(25,2,"Messages");
+	ptb(25,14,"out = ");
+	ptbc(26,14,1,"err = ");
+	ptb(27,14,"in  = ");
 	
 	// QR
-	mvprintw(3,55,"|");
-	mvprintw(4,55,"|");
-	mvprintw(5,50,"---- + ----");
-	mvprintw(6,55,"|");
-	mvprintw(7,55,"|");
+	ptb(3,55,"|");
+	ptb(4,55,"|");
+	ptb(5,50,"---- + ----");
+	ptb(6,55,"|");
+	ptb(7,55,"|");
 
 	refresh();
 }
 
 void drawMode(Mode m) {
-	mvprintw(1,20,"%-20s",mode_to_string(m));
+	ptb(1,20,"%-20s",mode_to_string(m));
 }
 
 void drawJS(int R, int P, int Y, int T) {
-	mvprintw(3,20,"%-3d",R);
-	mvprintw(4,20,"%-3d",P);
-	mvprintw(5,20,"%-3d",Y);
-	mvprintw(6,20,"%-3d",T);
+	ptbc(3,20,2,"%-3d",R);
+	ptbc(4,20,2,"%-3d",P);
+	ptbc(5,20,2,"%-3d",Y);
+	ptbc(6,20,2,"%-3d",T);
 }
 
 void drawSensors(int sensors[6]) {
-	mvprintw(8,20,"%-16d",sensors[0]);
-	mvprintw(9,20,"%-16d",sensors[1]);
-	mvprintw(10,20,"%-16d",sensors[2]);
-	mvprintw(11,20,"%-16d",sensors[3]);
-	mvprintw(12,20,"%-16d",sensors[4]);
-	mvprintw(13,20,"%-16d",sensors[5]);
+	ptbc(8,20,3,"%-16d",sensors[0]);
+	ptbc(9,20,3,"%-16d",sensors[1]);
+	ptbc(10,20,3,"%-16d",sensors[2]);
+	ptbc(11,20,3,"%-16d",sensors[3]);
+	ptbc(12,20,3,"%-16d",sensors[4]);
+	ptbc(13,20,3,"%-16d",sensors[5]);
 }
 
 void drawAngles(int R, int P) {
-	mvprintw(15,20,"%-16d",R);
-	mvprintw(16,20,"%-16d",P);
+	ptbc(15,20,4,"%-16d",R);
+	ptbc(16,20,4,"%-16d",P);
 }
 
 void drawControl(int R_s, int P_s, int Y_s) {
-	mvprintw(18,20,"%-16d",R_s);
-	mvprintw(19,20,"%-16d",P_s);
-	mvprintw(20,20,"%-16d",Y_s);
+	ptbc(18,20,5,"%-16d",R_s);
+	ptbc(19,20,5,"%-16d",P_s);
+	ptbc(20,20,5,"%-16d",Y_s);
 }
 
 void drawCommunication(int in_packets, int out_packets) {
-	mvprintw(22,20,"%-32d",out_packets);
-	mvprintw(23,20,"%-32d",in_packets);
+	ptbc(22,20,6,"%-32d",out_packets);
+	ptbc(23,20,6,"%-32d",in_packets);
 }
 
 void displayMessage(char* message, char* error, char* terminal_message) {
 	move(25,20); clrtoeol();
-	mvprintw(25,20,"%s",message);
+	ptb(25,20,"%s",message);
 	move(26,20); clrtoeol();
-	mvprintw(26,20,"%s",error);
+	attron(A_UNDERLINE);
+	ptbc(26,20,1,"%s",error);
+	attroff(A_UNDERLINE);
 	move(27,20); clrtoeol();
-	mvprintw(27,20,"%s",terminal_message);
+	ptb(27,20,"%s",terminal_message);
 }
 
 void drawRPM(int m0, int m1, int m2, int m3) {
-	mvprintw(5,45,"%4d", m3);
-	mvprintw(5,62,"%-4d", m1);
-	mvprintw(2,55,"%-4d", m0);
-	mvprintw(8,55,"%-4d", m2);
+	ptb(5,45,"%4d", m3);
+	ptb(5,62,"%-4d", m1);
+	ptb(2,55,"%-4d", m0);
+	ptb(8,55,"%-4d", m2);
 }	
 
 /* Calculate the mean loop frequency (100 loopcount mean)
@@ -242,7 +284,7 @@ struct timeval updateFPS(struct timeval timeold){
 		gettimeofday(&timenew,NULL);
 		int frametime = (timenew.tv_usec+1000000*timenew.tv_sec-timeold.tv_usec-1000000*timeold.tv_sec)/100;
 		col_on(9);
-		////mvprintw(LINE_NR_FPS,0,"    pc looptime: %3i usec (%6i Hz)                          \n",frametime,1000000/frametime);
+		////ptb(LINE_NR_FPS,0,"    pc looptime: %3i usec (%6i Hz)                          \n",frametime,1000000/frametime);
 		col_on(9);
 		return timenew;
 	} else {
@@ -396,13 +438,13 @@ void sendKeyData(int c){
 			if(axis[3]==0 || fd_js<0) {
 				pc_send_message(control, value);
 				//update the last packet timestamp
-				////mvprintw(1,0,"last mode message: %c%i{%i}\n",control, (int) value, checksum(control,ch2pd(value)));
+				////ptb(1,0,"last mode message: %c%i{%i}\n",control, (int) value, checksum(control,ch2pd(value)));
 			} else {
 				print_error_message(JS_LIFT_NOT_ZERO);
 			}
 		}
 		else{
-			////mvprintw(1,0,"NOT sending: %c%i   (RS232 = DISABLED)\n",control, (int) value);
+			////ptb(1,0,"NOT sending: %c%i   (RS232 = DISABLED)\n",control, (int) value);
 		}
 
 	} else {
@@ -490,10 +532,10 @@ void sendKeyData(int c){
 
 		if(fd_RS232>0 & value !=0){
 			pc_send_message(control, value);
-			////mvprintw(1,0,"last key message: %c%c{%i}   \n",control, value, checksum(control,ch2pd(value)));
+			////ptb(1,0,"last key message: %c%c{%i}   \n",control, value, checksum(control,ch2pd(value)));
 		}
 		else{
-			////mvprintw(1,0,"NOT sending: %c%c %s   \n",control, value,value==0?"key = not a control!":"(RS232 = DISABLED)");
+			////ptb(1,0,"NOT sending: %c%c %s   \n",control, value,value==0?"key = not a control!":"(RS232 = DISABLED)");
 		}
 	}
 }
@@ -528,17 +570,17 @@ struct timeval sendJSData(struct timeval last_packet_time){
 				gettimeofday(&timenew,NULL);
 				int timediff = timenew.tv_usec+1000000*timenew.tv_sec-last_packet_time.tv_usec-1000000*last_packet_time.tv_sec;
 				if(timediff<1000*10){
-					////mvprintw(2,0,"timediff is too low: ", timediff);
+					////ptb(2,0,"timediff is too low: ", timediff);
 					return last_packet_time;
 				} else {
 					axisflags[number] = false;
 					pc_send_message(control, axis[number]);
-					////mvprintw(1,0,"last JS message: %c  %i (%i/256)\n",control, axis[number], axis[number]*256);
+					////ptb(1,0,"last JS message: %c  %i (%i/256)\n",control, axis[number], axis[number]*256);
 					return timenew;
 				}
 			}
 			else{
-				////mvprintw(1,0,"NOT sending: %c  %c   (RS232 = DISABLED)\n",control, value);
+				////ptb(1,0,"NOT sending: %c  %c   (RS232 = DISABLED)\n",control, value);
 			}
 		}
 	}
@@ -606,7 +648,7 @@ void packet_received(char control, PacketData data){
 			QRMode = value;
 			break;
 		case TIMESTAMP:
-		    //mvprintw(LINE_NR_QR_STATE,20,"TIMESTAMP: %4i",value);
+		    //ptb(LINE_NR_QR_STATE,20,"TIMESTAMP: %4i",value);
 			break;
 		case SENS_0:
 			sensors[0] = value;
@@ -659,10 +701,10 @@ void packet_received(char control, PacketData data){
 				break;
 		case FB_MSG_END:
 		  col_on(4);
-			//mvprintw(LINE_NR_QR_STATE-1,0,"<<QR Real-time data>>");
+			//ptb(LINE_NR_QR_STATE-1,0,"<<QR Real-time data>>");
 			col_off(4);
 			col_on(7);
-	    //mvprintw(LINE_NR_QR_STATE,0,"%s",fb_msg);
+	    //ptb(LINE_NR_QR_STATE,0,"%s",fb_msg);
 			col_off(7);
 		  timers[2] = 0;
 	    fb_ch = 0;
