@@ -552,13 +552,8 @@ int32_t main(void)
 		check_for_new_packets(&pc_msg_q, &packet_received, &lost_packet);
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
 
-		if(X32_ms_clock %100 == 0 && mode >= MANUAL && !feedback_is_send) {
-			feedback_is_send = 1;
+		if(X32_ms_clock %100 == 0)
 			send_feedback();
-		}
-		if(X32_ms_clock %100 == 99){ // reset feedbacksend-parameter
-			feedback_is_send = 0;
-		}
 	}
 
 	quit();
