@@ -243,7 +243,7 @@ void special_request(char request){
 			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
 			break;
 		case ASK_SENSOR_LOG:
-			if(mode==SAFE) send_logs(tm_log,sensor_log,control_log);
+			if(mode==SAFE) send_logs(tm_log,sensor_log,control_log,keyjs_log);
 		   	else send_err_message(LOG_ONLY_IN_SAFE_MODE);
 
 			break;
@@ -440,7 +440,7 @@ void setup()
 	/* Initialize Variables */
 	nexys_display = 0x00;
   missed_packet_counter = 0;
-	init_log_arrays(tm_log,sensor_log,control_log);
+	init_log_arrays(tm_log,sensor_log,control_log,keyjs_log);
 
 
 	fifo_init(&pc_msg_q);
