@@ -46,4 +46,4 @@
 *.pdf
 
 # log files
-*log.txt
+*log*.txt
