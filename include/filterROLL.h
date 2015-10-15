@@ -12,7 +12,7 @@
 
 int		R_ACC_BIAS = 0;  /*set this in CALIBRATION mode*/
 int		P1_roll = 5; // watch out! if P1_roll is higher then C2_R_BIAS_UPDATE then things will go wrong
-int		P2_roll = 5; // watch out! if P2_roll is higher then C2_R_BIAS_UPDATE then things will go wrong
+int		P2_roll = 4; // watch out! if P2_roll is higher then C2_R_BIAS_UPDATE then things will go wrong
 
 /*All the init should be done in a proper function*/
 int		dR = 0; // init (not very important what exact value)
