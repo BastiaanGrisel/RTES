@@ -37,7 +37,7 @@
 #define X32_rs232_char		(X32_rs232_stat & 0x02)
 #define X32_rs232_write		(X32_rs232_stat & 0x01)
 
-#define OFFSET_STEP 10
+#define OFFSET_STEP 5
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
 #define PANIC_RPM 100
 

@@ -8,7 +8,7 @@ int 	filtered_dY = 0; //
 int 	P_yaw=10; // P = 2^4     Y_TO_ENGINE_SCALE
 int 	dY;
 int 	Y_stabilize;
-#define YJS_TO_ANGLE_RATIO 1
+#define YJS_TO_ANGLE_RATIO 2
 
 #define increase_P_yaw() P_yaw++
 
