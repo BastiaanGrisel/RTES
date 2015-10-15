@@ -41,7 +41,7 @@
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
 #define PANIC_RPM 100
 
-#define DEBUG 1
+#define DEBUG 0
 
 /* Define global variables
  */
@@ -57,8 +57,8 @@ bool is_calibrated = false;
 
 int 	Y_stabilize,R_stabilize,P_stabilize;
 
-int32_t	s0, s1, s2, s3, s4, s5;
-int32_t s_bias[6];
+int32_t	s0, s1, s2, s3, s4, s5 = 0;
+int32_t s_bias[6] = {0};
 int32_t isr_counter = 0;
 
 Fifo	pc_msg_q;
@@ -508,12 +508,12 @@ void send_feedback()		//TODO: make this function parametric in order to put it i
 	send_int_message(TIMESTAMP,X32_ms_clock);
 	send_int_message(CURRENT_MODE,mode);
 
-	send_int_message(SENS_0,s_bias[0] >> SENSOR_PRECISION);
-	send_int_message(SENS_1,s_bias[1] >> SENSOR_PRECISION);
-	send_int_message(SENS_2,s_bias[2] >> SENSOR_PRECISION);
-	send_int_message(SENS_3,s_bias[3] >> SENSOR_PRECISION);
-	send_int_message(SENS_4,s_bias[4] >> SENSOR_PRECISION);
-	send_int_message(SENS_5,s_bias[5] >> SENSOR_PRECISION);
+	send_int_message(SENS_0,s0 - (s_bias[0] >> SENSOR_PRECISION));
+	send_int_message(SENS_1,s1 - (s_bias[1] >> SENSOR_PRECISION));
+	send_int_message(SENS_2,s2 - (s_bias[2] >> SENSOR_PRECISION));
+	send_int_message(SENS_3,s3 - (s_bias[3] >> SENSOR_PRECISION));
+	send_int_message(SENS_4,s4 - (s_bias[4] >> SENSOR_PRECISION));
+	send_int_message(SENS_5,s5 - (s_bias[5] >> SENSOR_PRECISION));
 
 	send_int_message(RPM0,get_motor_rpm(0));
 	send_int_message(RPM1,get_motor_rpm(1));
@@ -547,8 +547,8 @@ int32_t main(void)
 		X32_leds = ((flicker_slow()?1:0) << mode) | (X32_leds & 0xC0);
 
 		// Process messages
-    DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
-		 check_for_new_packets(&pc_msg_q, &packet_received, &lost_packet);
+    		DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
+		check_for_new_packets(&pc_msg_q, &packet_received, &lost_packet);
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
 
 		if(X32_ms_clock %100 == 0 && mode >= MANUAL && !feedback_is_send) {
