@@ -6,7 +6,7 @@
 #include "QRmessage.h"
 
 
-#define LOG_SIZE 20
+#define LOG_SIZE 100
 extern Loglevel log_level = SENSORS;
 log_counter = 0;
 
@@ -18,7 +18,6 @@ void send_highlow(int32_t val32)
   PacketData p1,p2;
   p1.as_uint16_t = val32 & 0x0000FFFF; //low
   p2.as_uint16_t = val32 >> 16; //high
-
   send_message(LOG_MSG_PART,p1), send_message(LOG_MSG_PART,p2);
 }
 
@@ -27,8 +26,8 @@ void send_highlow(int32_t val32)
 void init_log_arrays(int32_t tm_log[][3], int32_t sensor_log[][10],int32_t control_log[][11],int16_t keyjs_log[][8]) {
   memset(tm_log,0,sizeof(tm_log[0][0]) *LOG_SIZE * 3); //memset functions is inlined by the compiler, so it's faster
   memset(sensor_log,0,sizeof(sensor_log[0][0]) *LOG_SIZE * 10);
-  memset(control_log,0,sizeof(control_log[0][0]) *LOG_SIZE * 10);
-  memset(keyjs_log,0,sizeof(keyjs_log[0][0]) *LOG_SIZE * 10);
+  memset(control_log,0,sizeof(control_log[0][0]) *LOG_SIZE * 11);
+  memset(keyjs_log,0,sizeof(keyjs_log[0][0]) *LOG_SIZE * 8);
 }
 
 /*Just for testing*/
@@ -84,17 +83,17 @@ void log_control(Mode mode, int32_t control_log[][11],int32_t s_bias[], int32_t 
        control_log[log_counter][4] = s_bias[4];
        control_log[log_counter][5] = s_bias[5];
 
-       if(mode >= YAW_CONTROL)
-         {
-           control_log[log_counter][8] = Y_stabilize;
-              if(mode == FULL_CONTROL)
-              {
-                control_log[log_counter][6] = R_stablize;
-                control_log[log_counter][7] = P_stabilize;
-                control_log[log_counter][9] = R_angle;
-                control_log[log_counter][10] = P_angle;
-              }
-         }
+      
+         
+       control_log[log_counter][8] = Y_stabilize;
+             
+              
+       control_log[log_counter][6] = R_stablize;
+       control_log[log_counter][7] = P_stabilize;
+       control_log[log_counter][9] = R_angle;
+       control_log[log_counter][10] = P_angle;
+              
+         
       }
 
   }
