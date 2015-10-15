@@ -38,8 +38,8 @@
 #define LINE_NR_RECEIVED_MSG 10
 #define LINE_NR_ERROR_MSG 14
 #define LINE_NR_QR_STATE 16
-#define DRONE_COL 70
-#define DRONE_LN 12
+#define DRONE_COL 90
+#define DRONE_LN 16
 
 
 void init(void);
