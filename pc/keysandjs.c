@@ -47,10 +47,11 @@ int main (int argc, char **argv)
 	int c, last_c;
 	struct timeval time, last_packet_time;
 	int rec_c;
+	MEVENT event;
 
 	setenv("ESCDELAY", "25", 0); // necessary to a fast detection of pressing esc (char == 27)
 	initscr();
-
+	mousemask(BUTTON1_CLICKED, NULL);
 	init_colors();
   	init_keyboard();
 	init_joystick();
@@ -71,6 +72,9 @@ int main (int argc, char **argv)
 		/* Check keypress */
 		if ((c= getch()) != -1){
 			sendKeyData(c); // send a message if user gave input
+			if(c == KEY_MOUSE)
+				if(getmouse(&event) == OK)
+					processMouse(event.bstate,event.y,event.x);
 		}
 
 		/* Check joystick */
@@ -92,10 +96,13 @@ int main (int argc, char **argv)
 
 		// Options to quit the program
 		if (button[0]){
-			pc_send_message(SPECIAL_REQUEST, ESCAPE);
+			if(fd_RS232 > 0)
+				pc_send_message(SPECIAL_REQUEST, ESCAPE);
 		}
 		if(c == 27){
-			pc_send_message(SPECIAL_REQUEST, ESCAPE);
+			if(fd_RS232 > 0) {
+				pc_send_message(SPECIAL_REQUEST, ESCAPE);
+			}
 			break;
 		}
 
@@ -249,13 +256,37 @@ void check_alive_connection()
 	return;
 }
 
+void processMouse(int button, int line, int x){
+	if(button ==BUTTON1_CLICKED){
+		//mvprintw(line,x, ".");
+		switch(line){
+			case(18):
+				if(x==55)
+					pc_send_message('A',P_YAW_DOWN);
+				if(x==62)
+					pc_send_message('A',P_YAW_UP);
+			break;
+			case(19):
+				if(x==55)
+					pc_send_message('A',P1_DOWN);
+				if(x==62)
+					pc_send_message('A',P1_UP);
+			break;
+			case(20):
+				if(x==55)
+					pc_send_message('A',P2_DOWN);
+				if(x==62)
+					pc_send_message('A',P2_UP);
+			break;
+		}
+	}
+}
 
 /* Send the user keyboard input
  * First construct the message and call the send function
  * Author: Henko Aantjes
  */
 void sendKeyData(int c){
-	if(fd_RS232 <= 0) return;
 	char control, value = 0; // the control and value to send
 
 	if(c >= '0' && c <= '5') { // if c is a mode change
@@ -301,17 +332,17 @@ void sendKeyData(int c){
 			case P_YAW_DOWN:
 				value = P_YAW_DOWN;
 				break;
-			case P_ROLL_UP:
-				value = P_ROLL_UP;
+			case P1_UP:
+				value = P1_UP;
 				break;
-			case P_ROLL_DOWN:
-				value = P_ROLL_DOWN;
+			case P1_DOWN:
+				value = P1_DOWN;
 				break;
-			case P_PITCH_UP:
-				value = P_PITCH_UP;
+			case P2_UP:
+				value = P2_UP;
 				break;
-			case P_PITCH_DOWN:
-				value = P_PITCH_DOWN;
+			case P2_DOWN:
+				value = P2_DOWN;
 				break;
 			case ASK_MOTOR_RPM:
 				control = SPECIAL_REQUEST;
@@ -360,7 +391,6 @@ void sendKeyData(int c){
  * Author: Henko Aantjes
  */
 struct timeval sendJSData(struct timeval last_packet_time){
-	if(fd_RS232 <= 0) return;
 	struct timeval timenew;
 	int number, control, value;
 
@@ -584,8 +614,9 @@ void check_msg_q(){
  * Author: Henko Aantjes
  */
 void exitmain(void){
-	sendKeyData(ESCAPE);
+	
 	if(fd_RS232>0){
+		sendKeyData(ESCAPE);
   		close(fd_RS232);
 	}
 	endwin();

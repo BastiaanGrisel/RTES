@@ -136,7 +136,7 @@ bool set_mode(Mode new_mode) {
 		return false;
 	}
 
-	if(new_mode == FULL_CONTROL || new_mode == YAW_CONTROL) {
+	if(mode == CALIBRATE) {
 		//maybe we can make this a function call
 		Ybias = s_bias[5] << (Y_BIAS_UPDATE-SENSOR_PRECISION);
 		R_ACC_BIAS = DECREASE_SHIFT(s_bias[1]*R_ACC_RATIO,SENSOR_PRECISION);
@@ -192,21 +192,21 @@ void trim(char c){
 		case P_YAW_DOWN:
 			decrease_P_yaw();
 			break;
-		case P_ROLL_UP:
+		case P1_UP:
 			P1_roll++;
-			//P2_roll++;
-			break;
-		case P_ROLL_DOWN:
-			P1_roll--;
-			//P2_roll--;
-			break;
-		case P_PITCH_UP:
 			P1_pitch++;
-			//P2_pitch++;
 			break;
-		case P_PITCH_DOWN:
+		case P1_DOWN:
+			P1_roll--;
 			P1_pitch--;
-			//P2_pitch--;
+			break;
+		case P2_UP:
+			P2_roll++;
+			P2_pitch++;
+			break;
+		case P2_DOWN:
+			P2_roll--;
+			P2_pitch--;
 			break;
 		default:
 			break;
