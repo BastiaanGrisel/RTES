@@ -268,15 +268,21 @@ void processMouse(int button, int line, int x){
 			break;
 			case(19):
 				if(x==55)
-					pc_send_message('A',P1_DOWN);
+					pc_send_message('A',P1_ROLL_DOWN);
 				if(x==62)
-					pc_send_message('A',P1_UP);
+					pc_send_message('A',P1_ROLL_UP);
 			break;
 			case(20):
 				if(x==55)
-					pc_send_message('A',P2_DOWN);
+					pc_send_message('A',P2_ROLL_DOWN);
 				if(x==62)
-					pc_send_message('A',P2_UP);
+					pc_send_message('A',P2_ROLL_UP);
+			//@Bastiaan: change it accordingly
+			/*case(21):
+			 if(x ==55)
+			   pc_send_message('A',Y_FILTER_UP);
+			if(x==62)
+			    pc_send_message('A',Y_FILTER_DOWN);*/
 			break;
 		}
 	}

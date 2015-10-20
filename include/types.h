@@ -72,11 +72,20 @@ PacketData ch2pd(char in) {
 // control parameters
 #define P_YAW_UP 	'u'
 #define P_YAW_DOWN 	'j'
-#define P1_UP 	'i'
-#define P1_DOWN 'k'
-#define P2_UP 	'o'
-#define P2_DOWN 'l'
-
+#define P1_ROLL_UP 	'i'
+#define P1_ROLL_DOWN 'k'
+#define P2_ROLL_UP 	'o'
+#define P2_ROLL_DOWN 'l'
+#define P1_PITCH_UP 	'0'
+#define P1_PITCH_DOWN '1'
+#define P2_PITCH_UP 	'2'
+#define P2_PITCH_DOWN '3'
+#define Y_FILTER_UP '4'
+#define Y_FILTER_DOWN '5'
+#define R_FILTER_UP '6'
+#define R_FILTER_DOWN '7'
+#define P_FILTER_UP '8'
+#define P_FILTER_DOWN '9'
 
 /* SPECIAL REQUESTS */
 #define SPECIAL_REQUEST 'S'  //= control value
