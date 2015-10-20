@@ -8,12 +8,14 @@
 
 extern int out_packet_counter;
 extern char last_out_message[4];
+extern int fd_RS232;
 
 /**************** PC -> QR ********************/
 /* send a complete message PC -> QR
  * Author: Henko Aantjes
  */
 void pc_send_message(char control, char value){
+	if(fd_RS232 <= 0) return;
 	PacketData p;
 	p.as_char = value;
 

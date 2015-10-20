@@ -39,7 +39,7 @@
 
 #define OFFSET_STEP 5
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
-#define PANIC_RPM 100
+#define PANIC_RPM 400
 
 #define DEBUG 1
 
@@ -137,7 +137,7 @@ bool set_mode(Mode new_mode) {
 		return false;
 	}
 
-	if(new_mode == FULL_CONTROL || new_mode == YAW_CONTROL) {
+	if(mode == CALIBRATE) {
 		//maybe we can make this a function call
 		Ybias = s_bias[5] << (Y_BIAS_UPDATE-SENSOR_PRECISION);
 		R_ACC_BIAS = DECREASE_SHIFT(s_bias[1]*R_ACC_RATIO,SENSOR_PRECISION);
@@ -149,7 +149,6 @@ bool set_mode(Mode new_mode) {
 	// If everything is OK, change the mode
 	reset_motors();
 	mode = new_mode;
-
 	mode_start_time = X32_ms_clock;
 
 	send_int_message(CURRENT_MODE,mode);
@@ -194,21 +193,21 @@ void trim(char c){
 		case P_YAW_DOWN:
 			decrease_P_yaw();
 			break;
-		case P_ROLL_UP:
+		case P1_UP:
 			P1_roll++;
-			//P2_roll++;
-			break;
-		case P_ROLL_DOWN:
-			P1_roll--;
-			//P2_roll--;
-			break;
-		case P_PITCH_UP:
 			P1_pitch++;
-			//P2_pitch++;
 			break;
-		case P_PITCH_DOWN:
+		case P1_DOWN:
+			P1_roll--;
 			P1_pitch--;
-			//P2_pitch--;
+			break;
+		case P2_UP:
+			P2_roll++;
+			P2_pitch++;
+			break;
+		case P2_DOWN:
+			P2_roll--;
+			P2_pitch--;
 			break;
 		default:
 			break;
@@ -327,45 +326,50 @@ void isr_qr_link(void)
 		case MANUAL:
 			// Calculate motor RPM
 			set_motor_rpm(
-				max(T>>2, get_motor_offset(0) + T  +P+Y),
-				max(T>>2, get_motor_offset(1) + T-R  -Y),
-				max(T>>2, get_motor_offset(2) + T  -P+Y),
-				max(T>>2, get_motor_offset(3) + T+R  -Y));
+				max(Tmin, get_motor_offset(0) + T  +P+Y),
+				max(Tmin, get_motor_offset(1) + T-R  -Y),
+				max(Tmin, get_motor_offset(2) + T  -P+Y),
+				max(Tmin, get_motor_offset(3) + T+R  -Y));
 			break;
 		case YAW_CONTROL:
 			// Calculate motor RPM
 			set_motor_rpm(
-				max(T>>2, get_motor_offset(0) + T  +P+Y_stabilize),
-				max(T>>2, get_motor_offset(1) + T-R  -Y_stabilize),
-				max(T>>2, get_motor_offset(2) + T  -P+Y_stabilize),
-				max(T>>2, get_motor_offset(3) + T+R  -Y_stabilize));
+				max(Tmin, get_motor_offset(0) + T  +P+Y_stabilize),
+				max(Tmin, get_motor_offset(1) + T-R  -Y_stabilize),
+				max(Tmin, get_motor_offset(2) + T  -P+Y_stabilize),
+				max(Tmin, get_motor_offset(3) + T+R  -Y_stabilize));
 			break;
 		case FULL_CONTROL:
 			// Calculate motor RPM
 			set_motor_rpm(
-				max(T>>2, get_motor_offset(0) + T   +P_stabilize	+Y_stabilize),
-				max(T>>2, get_motor_offset(1) + T		-R_stabilize  -Y_stabilize),
-				max(T>>2, get_motor_offset(2) + T   -P_stabilize	+Y_stabilize),
-				max(T>>2, get_motor_offset(3) + T	  +R_stabilize  -Y_stabilize));
+				max(Tmin, get_motor_offset(0) + T   +P_stabilize	+Y_stabilize),
+				max(Tmin, get_motor_offset(1) + T		-R_stabilize  -Y_stabilize),
+				max(Tmin, get_motor_offset(2) + T   -P_stabilize	+Y_stabilize),
+				max(Tmin, get_motor_offset(3) + T	  +R_stabilize  -Y_stabilize));
 			break;
 		case PANIC:
 			nexys_display = 0xc1a0;
 
 			if(X32_ms_clock - mode_start_time < 2000) {
-				set_motor_rpm(PANIC_RPM,PANIC_RPM,PANIC_RPM,PANIC_RPM);
-			}
-			else {
+				set_motor_rpm(
+						min(PANIC_RPM, get_motor_rpm(0)),
+						min(PANIC_RPM, get_motor_rpm(1)),
+						min(PANIC_RPM, get_motor_rpm(2)),
+						min(PANIC_RPM, get_motor_rpm(3)));
+			} else {
 				reset_motors();
-				R = P = Y = T = Tmin = 0;
 				set_mode(SAFE);
 			}
 			break;
 	}
 
-	// Add new sensor values to array
+	// Logging timestamp and mode
 	log_tm(tm_array, X32_QR_timestamp,mode);
+	//logging s_bias only in calibration mode
 	if(mode == CALIBRATE) log_sbias(sbias_array,s_bias);
+	//in case of debug will log arbitrary values, so this function isn't called
 	if(!DEBUG) log_sensors(sensor_array, s0, s1, s2, s3, s4, s5,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
+	//logging control parameters
 	log_control(mode, control_array, R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); //logging control
 
 	if(DEBUG){
@@ -382,8 +386,8 @@ void isr_qr_link(void)
 }
 
 /* Make the throttle scale non-linear
- * 0-63   = 0-600
- * 64-255 = 600-800
+ * 0-45   = 0-450
+ * 46-255 = 450-660
  */
 int16_t scale_throttle(uint8_t throttle) {
 	if(throttle < 45) {
