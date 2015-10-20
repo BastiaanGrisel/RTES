@@ -39,7 +39,7 @@
 
 #define OFFSET_STEP 5
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
-#define PANIC_RPM 100
+#define PANIC_RPM 400
 
 #define DEBUG 0
 
@@ -350,9 +350,12 @@ void isr_qr_link(void)
 			nexys_display = 0xc1a0;
 
 			if(X32_ms_clock - panic_start_time < 2000) {
-				set_motor_rpm(PANIC_RPM,PANIC_RPM,PANIC_RPM,PANIC_RPM);
-			}
-			else {
+				set_motor_rpm(
+						min(PANIC_RPM, get_motor_rpm(0)),
+						min(PANIC_RPM, get_motor_rpm(1)),
+						min(PANIC_RPM, get_motor_rpm(2)),
+						min(PANIC_RPM, get_motor_rpm(3)));
+			} else {
 				reset_motors();
 				R = P = Y = T = Tmin = 0;
 				set_mode(SAFE);
@@ -383,8 +386,8 @@ void isr_qr_link(void)
 }
 
 /* Make the throttle scale non-linear
- * 0-63   = 0-600
- * 64-255 = 600-800
+ * 0-45   = 0-450
+ * 46-255 = 450-660
  */
 int16_t scale_throttle(uint8_t throttle) {
 	if(throttle < 45) {
