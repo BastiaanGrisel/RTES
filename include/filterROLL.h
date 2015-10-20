@@ -2,11 +2,11 @@
 #define	R_FILTER 1
 #define	C2_R_BIAS_UPDATE 14 /* if you change this, change also C2_rounding_error and R_integrate_rounding_error*/
 #define	R_ANGLE 5  /* if you change this, change also R_integrate_rounding_error*/
-#define	R_ACC_RATIO 2500
+#define	R_ACC_RATIO 2500 //roll acceleration ratio
 #define	C1_R 6
 #define	C1_R_ROUNDING_ERROR  (1<<(C1_R-1)) //INCREASE_SHIFT(1,C1_R-1);
 #define C2_R_ROUNDING_ERROR  (1<<(C2_R_BIAS_UPDATE-1)) /*INCREASE_SHIFT(1,C2_R_BIAS_UPDATE-1);*/
-#define	R_INTEGRATE_ROUNDING_ERROR (1<<C2_R_BIAS_UPDATE-R_ANGLE-1) //INCREASE_SHIFT(1,C2_R_BIAS_UPDATE-R_ANGLE+1);
+#define	R_INTEGRATE_ROUNDING_ERROR (1 << C2_R_BIAS_UPDATE-R_ANGLE-1) //INCREASE_SHIFT(1,C2_R_BIAS_UPDATE-R_ANGLE+1);
 #define RJS_TO_ANGLE_RATIO 300
 
 
@@ -31,13 +31,13 @@ int rollControl(int rollRate,int roll_angle, int R_js){
 	    filtered_dR+= - DECREASE_SHIFT(filtered_dR,R_FILTER) + DECREASE_SHIFT(dR,R_FILTER);
 		//     integrate for the angle and add something to react agianst
 		//     rounding error
-	    R_angle += DECREASE_SHIFT(filtered_dR+R_INTEGRATE_ROUNDING_ERROR,C2_R_BIAS_UPDATE-R_ANGLE);
+	    R_angle += DECREASE_SHIFT(filtered_dR+R_INTEGRATE_ROUNDING_ERROR,  C2_R_BIAS_UPDATE-R_ANGLE);
 	    // kalman
-		R_angle -= DECREASE_SHIFT(R_angle-(roll_angle*R_ACC_RATIO-R_ACC_BIAS)+C1_R_ROUNDING_ERROR,C1_R);
+		R_angle -= DECREASE_SHIFT(R_angle-(roll_angle*R_ACC_RATIO-R_ACC_BIAS)+C1_R_ROUNDING_ERROR,  C1_R);
 		//		update bias
-	    Rbias += DECREASE_SHIFT(R_angle-(roll_angle*R_ACC_RATIO-R_ACC_BIAS)+C2_R_ROUNDING_ERROR,C2_R_BIAS_UPDATE);
+	    Rbias += DECREASE_SHIFT(R_angle-(roll_angle*R_ACC_RATIO-R_ACC_BIAS)+C2_R_ROUNDING_ERROR,  C2_R_BIAS_UPDATE);
 	//     calculate stabilization
-	    R_stabilize = DECREASE_SHIFT(R_js*RJS_TO_ANGLE_RATIO+R_angle,C2_R_BIAS_UPDATE - P1_roll)
-						+ DECREASE_SHIFT(filtered_dR,C2_R_BIAS_UPDATE - P2_roll);
+	    R_stabilize = DECREASE_SHIFT(R_js*RJS_TO_ANGLE_RATIO+R_angle,  C2_R_BIAS_UPDATE - P1_roll)
+						+ DECREASE_SHIFT(filtered_dR,  C2_R_BIAS_UPDATE - P2_roll);
 		return R_stabilize;
 }
