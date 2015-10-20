@@ -12,15 +12,16 @@
 int		P_ACC_BIAS = 0;  /*set this in CALIBPATION mode*/
 int		P1_pitch = 7; // watch out! if P1_roll is higher then C2_P_BIAS_UPDATE then things will go wrong 5
 int		P2_pitch = 6; // watch out! if P2_roll is higher then C2_P_BIAS_UPDATE then things will go wrong 5
+int P1_pitch_minor = 0;
+int P2_pitch_minor = 0;
 
 /*All the init should be done in a proper function*/
 int		dP = 0; // init (not very important what exact value)
 int		P_angle = 0; // init to zero
 int		Pbias = 0;// bitshift_l(calibratedPgyro,C2_P_BIAS_UPDATE);
 int		filtered_dP = 0;
+int 	P_stab1 =0, P_stab2=0;
 int		P_stabilize = 0;
-
-
 
 /*PITCH_CALCULATIONS*/
 int pitchControl(int pitchRate,int pitch_angle, int P_js){
@@ -36,7 +37,8 @@ int pitchControl(int pitchRate,int pitch_angle, int P_js){
 		//		update bias
 	    Pbias += DECREASE_SHIFT(P_angle-(pitch_angle*P_ACC_RATIO-P_ACC_BIAS)+C2_P_ROUNDING_ERROR, C2_P_BIAS_UPDATE);
 	//     calculate stabilization
-	    P_stabilize = DECREASE_SHIFT(P_js*PJS_TO_ANGLE_RATIO-P_angle,C2_P_BIAS_UPDATE - P1_pitch)
-				+ DECREASE_SHIFT(filtered_dP,C2_P_BIAS_UPDATE - P2_pitch);
+	    P_stab1 = DECREASE_SHIFT(P_js*PJS_TO_ANGLE_RATIO-P_angle,C2_P_BIAS_UPDATE - P1_pitch);
+		P_stab2	= DECREASE_SHIFT(filtered_dP,C2_P_BIAS_UPDATE - P2_pitch);
+		P_stabilize = P_stab1+P_stab2 + (P_stab1>>2)*P1_pitch_minor+(R_stab2>>2)*P2_pitch_minor;
 		return P_stabilize;
 }
