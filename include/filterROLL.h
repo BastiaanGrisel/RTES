@@ -13,12 +13,16 @@
 int		R_ACC_BIAS = 0;  /*set this in CALIBRATION mode*/
 int		P1_roll = 7; // watch out! if P1_roll is higher then C2_R_BIAS_UPDATE then things will go wrong 5
 int		P2_roll = 5; // watch out! if P2_roll is higher then C2_R_BIAS_UPDATE then things will go wrong 4
+int P1_roll_minor = 0;
+int P2_roll_minor = 0;
+
 
 /*All the init should be done in a proper function*/
 int		dR = 0; // init (not very important what exact value)
 int		R_angle = 0; // init to zero
 int		Rbias = 0;// bitshift_l(calibratedRgyro,C2_R_BIAS_UPDATE);
 int		filtered_dR = 0;
+int 	R_stab1 =0, R_stab2=0;
 int		R_stabilize = 0;
 
 
@@ -37,7 +41,8 @@ int rollControl(int rollRate,int roll_angle, int R_js){
 		//		update bias
 	    Rbias += DECREASE_SHIFT(R_angle-(roll_angle*R_ACC_RATIO-R_ACC_BIAS)+C2_R_ROUNDING_ERROR,  C2_R_BIAS_UPDATE);
 	//     calculate stabilization
-	    R_stabilize = DECREASE_SHIFT(R_js*RJS_TO_ANGLE_RATIO+R_angle,  C2_R_BIAS_UPDATE - P1_roll)
-						+ DECREASE_SHIFT(filtered_dR,  C2_R_BIAS_UPDATE - P2_roll);
+	    R_stab1 = DECREASE_SHIFT(R_js*RJS_TO_ANGLE_RATIO+R_angle,  C2_R_BIAS_UPDATE - P1_roll);
+		R_stab2 = DECREASE_SHIFT(filtered_dR,  C2_R_BIAS_UPDATE - P2_roll);
+		R_stabilize = R_stab1+R_stab2 + (R_stab1>>2)*P1_roll_minor+(R_stab2>>2)*P2_roll_minor;
 		return R_stabilize;
 }
