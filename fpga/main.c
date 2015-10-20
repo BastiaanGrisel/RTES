@@ -47,7 +47,7 @@
  */
 
 int32_t  X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to avoid going panic before receiving the first msg
-int32_t  time_at_last_led_switch = 0;
+int32_t  time_last_sensor_input = 0xEFFFFFFF;
 int32_t  packet_counter = 0, packet_lost_counter = 0;
 int32_t  R=0, P=0, Y=0, T=0, Tmin=0;
 int missed_packet_counter;
@@ -296,7 +296,7 @@ void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t 
 void isr_qr_link(void)
 {
 	int timeTime, timeRead, timeLog, timeYaw, timeRoll,timeAct, timestart = X32_US_CLOCK;
-
+	time_last_sensor_input = X32_ms_clock;
 	if(DEBUG) timeTime = X32_US_CLOCK;
 /* get sensor and timestamp values */
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
@@ -494,15 +494,19 @@ bool flicker_fast() { return (X32_ms_clock % 100 < 20); }
  * otherwise panic() is called.
  * Author: Alessio
  */
-void check_alive_connection() {
-	if(X32_ms_last_packet == -1) return; //does not perform the check untill a new message arrives
+int check_alive_connection() {
+	if(X32_ms_last_packet == -1) return 0; //does not perform the check untill a new message arrives
 
 	// If a packet has not been received within the TIMEOUT interval, go to panic mode
-	if((X32_ms_clock - X32_ms_last_packet > TIMEOUT) && mode >= MANUAL) {
-		set_mode(PANIC);
-		sprintf(message, "X32_ms_clock:%i, X32_ms_last_packet:%i, diff:%i, TIMEOUT:%i!\n", X32_ms_clock, X32_ms_last_packet, X32_ms_clock - X32_ms_last_packet, TIMEOUT);
-		send_term_message(message);
+	if((X32_ms_clock - X32_ms_last_packet > TIMEOUT)){
+		if(mode >= MANUAL) {
+			set_mode(PANIC);
+			sprintf(message, "X32_ms_clock:%i, X32_ms_last_packet:%i, diff:%i, TIMEOUT:%i!\n", X32_ms_clock, X32_ms_last_packet, X32_ms_clock - X32_ms_last_packet, TIMEOUT);
+			send_term_message(message);
+		}
+		return 0;
 	}
+	return 1;
 }
 
 
@@ -544,16 +548,16 @@ void send_feedback()		//TODO: make this function parametric in order to put it i
 int32_t main(void)
 {
 	int feedback_is_send=0;
-
+	int PClinkisOK =0;
 	setup();
 	// Main loop
 	while (1) {
 		// Pings from the PC
-	  check_alive_connection();
+	  PClinkisOK = check_alive_connection();
 		//isr_qr_link();
 
-		// Turn on the LED corresponding to the mode and don't change led 6 and 7
-		X32_leds = ((flicker_slow()?1:0) << mode) | (X32_leds & 0xC0);
+		// Turn on the LED corresponding to the assignment
+		X32_leds = (flicker_slow()?1:0) | (PClinkisOK*2) | ((time_last_sensor_input-X32_ms_clock<100)?4:0);
 
 		// Process messages
     		DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
