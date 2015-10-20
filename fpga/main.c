@@ -148,7 +148,7 @@ bool set_mode(Mode new_mode) {
 	// If everything is OK, change the mode
 	reset_motors();
 	mode = new_mode;
-	panic_start_time = X32_ms_clock;
+	panic_start_time = X32_ms_clock; //why?
 
 	send_int_message(CURRENT_MODE,mode);
 	sprintf(message, "Succesfully changed to mode: >%i< ", new_mode);
@@ -360,10 +360,14 @@ void isr_qr_link(void)
 			break;
 	}
 
-	// Add new sensor values to array
+	//Logging timestamp and mode
 	log_tm(tm_log, X32_QR_timestamp,mode);
-	log_sensors(sensor_log, s0, s1, s2, s3, s4, s5,0,0,0,0);// COMMENTED FOR TESTING THE LOGGING WITH ARBITRARY VALUES
-	log_control(mode, control_log, s_bias,R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); //logging control
+	//logging sensors and RPM
+	if(!DEBUG) //in case of debug will log arbitrary values, so this function isn't called
+	log_sensors(sensor_log, s0, s1, s2, s3, s4, s5,
+		get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
+	//logging control parameters
+	log_control(mode, control_log, s_bias,R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle);
 
 	if(DEBUG){
 		timeAct = X32_US_CLOCK;
