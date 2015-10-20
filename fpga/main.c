@@ -325,11 +325,12 @@ void isr_qr_link(void)
 			break;
 		case MANUAL:
 			// Calculate motor RPM
+
 			set_motor_rpm(
-				max(Tmin, get_motor_offset(0) + T  +P+Y),
-				max(Tmin, get_motor_offset(1) + T-R  -Y),
-				max(Tmin, get_motor_offset(2) + T  -P+Y),
-				max(Tmin, get_motor_offset(3) + T+R  -Y));
+				max(Tmin, get_motor_offset(0) + T  +P+2*Y),
+				max(Tmin, get_motor_offset(1) + T-R  -2*Y),
+				max(Tmin, get_motor_offset(2) + T  -P+2*Y),
+				max(Tmin, get_motor_offset(3) + T+R  -2*Y));
 			break;
 		case YAW_CONTROL:
 			// Calculate motor RPM
@@ -363,14 +364,12 @@ void isr_qr_link(void)
 			break;
 	}
 
-	// Logging timestamp and mode
-	log_tm(tm_array, X32_QR_timestamp,mode);
-	//logging s_bias only in calibration mode
-	if(mode == CALIBRATE) log_sbias(sbias_array,s_bias);
+	log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
+	if(mode == CALIBRATE) log_sbias(sbias_array,s_bias); 	//logging s_bias only in calibration mode
+
 	//in case of debug will log arbitrary values, so this function isn't called
 	if(!DEBUG) log_sensors(sensor_array, s0, s1, s2, s3, s4, s5,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
-	//logging control parameters
-	log_control(mode, control_array, R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); //logging control
+	log_control(mode, control_array, R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); 	//logging control parameters
 
 	if(DEBUG){
 		timeAct = X32_US_CLOCK;

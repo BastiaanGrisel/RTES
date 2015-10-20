@@ -614,7 +614,7 @@ void check_msg_q(){
  * Author: Henko Aantjes
  */
 void exitmain(void){
-	
+
 	if(fd_RS232>0){
 		sendKeyData(ESCAPE);
   		close(fd_RS232);
