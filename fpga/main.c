@@ -194,22 +194,47 @@ void trim(char c){
 		case P_YAW_DOWN:
 			decrease_P_yaw();
 			break;
-		case P1_UP:
+		case P1_ROLL_UP:
 			P1_roll++;
+			break;
+		case P1_ROLL_DOWN:
+			P1_roll--;
+			break;
+		case P2_ROLL_UP:
+			P2_roll++;
+			break;
+		case P2_ROLL_DOWN:
+			P2_roll--;
+			break;
+		case P1_PITCH_UP:
 			P1_pitch++;
 			break;
-		case P1_DOWN:
-			P1_roll--;
+		case P1_PITCH_DOWN:
 			P1_pitch--;
 			break;
-		case P2_UP:
-			P2_roll++;
+		case P2_PITCH_UP:
 			P2_pitch++;
 			break;
-		case P2_DOWN:
-			P2_roll--;
+		case P2_PITCH_DOWN:
 			P2_pitch--;
 			break;
+			case Y_FILTER_UP:
+			   Y_filter++;
+				 break;
+			case Y_FILTER_DOWN:
+			   Y_filter--;
+				 break;
+		 case R_FILTER_UP:
+			 R_filter++;
+			 break;
+		 case R_FILTER_DOWN:
+		 	 R_filter--;
+		 	 break;
+		 case P_FILTER_UP:
+			 P_filter++;
+		 case P_FILTER_DOWN:
+			 P_filter--;
+			 break;
 		default:
 			break;
 	}
@@ -482,7 +507,7 @@ void setup()
 
 	fifo_init(&pc_msg_q);
 
-  if(DEBUG) init_array_test(tm_array,sensor_array);
+  if(DEBUG) init_array_test(tm_array,sensor_array,control_array);
 
 	/* Prepare Interrupts */
 
