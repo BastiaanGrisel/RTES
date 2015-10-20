@@ -140,6 +140,15 @@ shouldn't be cardinal ordered? Like A,B,C,ecc */
 #define LOG_EVENT 'P'
 #define LOG_EV_NEW_LINE 'Q'
 
+#define P_YAW 'R'
+#define P1_ROLL 'S'
+#define P2_ROLL 'T'
+#define P1_PITCH 'U'
+#define P2_PITCH 'V'
+#define FILTER_R 'W'
+#define FILTER_P 'X'
+#define FILTER_Y 'Y'
+#define JS_INFL 'Z'
 
 /* Util functions */
 bool is_valid_mode(Mode mode) {
