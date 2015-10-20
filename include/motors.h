@@ -64,7 +64,6 @@ void reset_motors() {
 }
 
 int32_t get_motor_rpm(int32_t i) {
-	if(i > 3) return 0;
 	return rpm[i];
 }
 
