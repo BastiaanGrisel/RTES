@@ -118,19 +118,19 @@ void drawBase() {
 	ptb(7,55,"|");
 
 	// P_yaw P1 and P2
-	ptb(10,48,"- P_YAW    + (<value>)");
+	ptb(10,48,"- P_YAW    +");
 
-	ptb(12,48,"- P1_ROLL  + (<value>)");
-	ptb(13,48,"- P2_ROLL  + (<value>)");
+	ptb(12,48,"- P1_ROLL  +");
+	ptb(13,48,"- P2_ROLL  +");
 
-	ptb(15,48,"- P1_PITCH + (<value>)");
-	ptb(16,48,"- P2_PITCH + (<value>)");
+	ptb(15,48,"- P1_PITCH +");
+	ptb(16,48,"- P2_PITCH +");
 
-	ptb(18,48,"- FILTER_R + (<value>)");
-	ptb(19,48,"- FILTER_P + (<value>)");
-	ptb(20,48,"- FILTER_Y + (<value>)");
+	ptb(18,48,"- FILTER_R +");
+	ptb(19,48,"- FILTER_P +");
+	ptb(20,48,"- FILTER_Y +");
 
-	ptb(22,48,"- JS_INFL  + (<value>)");
+	ptb(22,48,"- JS_INFL  +");
 }
 
 void drawMode(Mode m) {
@@ -185,6 +185,22 @@ void drawRPM(int m0, int m1, int m2, int m3) {
 	ptb(5,62,"%-4d", m1);
 	ptb(2,55,"%-4d", m0);
 	ptb(8,55,"%-4d", m2);
+}
+
+void drawParameters(int yaw, int p1roll, int p2roll, int p1pitch, int p2pitch, int filterr, int filterp, int filtery, int jsinfl) {
+	ptb(10,61,"(%4d)", yaw);
+
+	ptb(12,61,"(%4d)", p1roll);
+	ptb(13,61,"(%4d)", p2roll);
+
+	ptb(15,61,"(%4d)", p1pitch);
+	ptb(16,61,"(%4d)", p2pitch);
+
+	ptb(18,61,"(%4d)", filterr);
+	ptb(19,61,"(%4d)", filterp);
+	ptb(20,61,"(%4d)", filtery);
+
+	ptb(22,61,"(%4d)", jsinfl);
 }
 
 #endif
