@@ -573,6 +573,12 @@ print_error_message(Error err)
 		case FIRST_CALIBRATE:
 			sprintf(error_message, "[QR]: You first need to calibrate! ");
 			break;
+		case DIVISION_BY_ZERO_HAPPEND:
+			sprintf(error_message, "[QR]: Division by zero!");
+			break;
+		case OVERFLOW_HAPPENED:
+			sprintf(error_message, "[QR]: Integer overflow!");
+			break;
 		default:
 			sprintf(error_message, "[PC] Wrong! not recognized. Wrong error code.");
 	}
@@ -614,7 +620,7 @@ void check_msg_q(){
  * Author: Henko Aantjes
  */
 void exitmain(void){
-	
+
 	if(fd_RS232>0){
 		sendKeyData(ESCAPE);
   		close(fd_RS232);

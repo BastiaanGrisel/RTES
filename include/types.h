@@ -4,9 +4,17 @@
 typedef enum { false, true } bool;
 typedef enum { SAFE, PANIC, MANUAL, CALIBRATE, YAW_CONTROL, FULL_CONTROL } Mode;
 typedef enum { NONE, SENSORS,YAW,FULL } Loglevel;
-typedef enum {LOG_ONLY_IN_SAFE_MODE, MODE_ILLIGAL, MODE_CHANGE_ONLY_VIA_SAFE,
-  	MODE_CHANGE_ONLY_IF_ZERO_RPM, MODE_ALREADY_SET, CONTROL_DISABLED_IN_THIS_MODE ,
-	JS_LIFT_NOT_ZERO, SENSOR_LOG_FULL,FIRST_CALIBRATE} Error;  /* Error Messages */
+typedef enum {  LOG_ONLY_IN_SAFE_MODE,
+                MODE_ILLIGAL,
+                MODE_CHANGE_ONLY_VIA_SAFE,
+  	            MODE_CHANGE_ONLY_IF_ZERO_RPM,
+                MODE_ALREADY_SET,
+                CONTROL_DISABLED_IN_THIS_MODE,
+	              JS_LIFT_NOT_ZERO,
+                SENSOR_LOG_FULL,
+                FIRST_CALIBRATE,
+                DIVISION_BY_ZERO_HAPPEND,
+                OVERFLOW_HAPPENED } Error;  /* Error Messages */
 
 typedef signed char       int8_t;
 typedef signed short      int16_t;

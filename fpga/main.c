@@ -442,6 +442,20 @@ void packet_received(char control, PacketData data) {
 	}
 }
 
+/* Send an error message to the PC
+ * Author: Bastiaan
+ */
+void div0_isr() {
+	send_err_message(DIVISION_BY_ZERO_HAPPEND);
+}
+
+/* Send an error message to the PC
+ * Author: Bastiaan
+ */
+void overflow_isr() {
+	send_err_message(OVERFLOW_HAPPENED);
+}
+
 /* The startup routine.
  * Originally created by: Bastiaan
  */
@@ -449,17 +463,17 @@ void setup()
 {
 	int32_t c;
   char message[200];
+
 	/* Initialize Variables */
 	nexys_display = 0x00;
   missed_packet_counter = 0;
 	R_angle = 0;
 	P_angle = 0;
+
 	init_log_arrays(tm_log,sensor_log,control_log,event_array);
-
-
 	fifo_init(&pc_msg_q);
 
-  	if(DEBUG) init_array_test(tm_log,sensor_log);
+  if(DEBUG) init_array_test(tm_log,sensor_log);
 
 	/* Prepare Interrupts */
 
@@ -472,10 +486,18 @@ void setup()
         SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_RX, 20);
 	while (X32_rs232_char) c = X32_rs232_data; // empty the buffer
 
-	/* Enable Interrupts */
+	// Exception interrupts
+	INTERRUPT_VECTOR(INTERRUPT_OVERFLOW) = &overflow_isr;
+	INTERRUPT_PRIORITY(INTERRUPT_OVERFLOW) = 25;
 
-    	ENABLE_INTERRUPT(INTERRUPT_XUFO);
-        ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX);
+	INTERRUPT_VECTOR(INTERRUPT_DIVISION_BY_ZERO) = &div0_isr;
+	INTERRUPT_PRIORITY(INTERRUPT_DIVISION_BY_ZERO) = 25;
+
+	/* Enable Interrupts */
+  ENABLE_INTERRUPT(INTERRUPT_XUFO);
+  ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX);
+	ENABLE_INTERRUPT(INTERRUPT_OVERFLOW);
+	ENABLE_INTERRUPT(INTERRUPT_DIVISION_BY_ZERO);
 
 	/* Enable all interupts after init code */
 	ENABLE_INTERRUPT(INTERRUPT_GLOBAL);
@@ -552,6 +574,7 @@ int32_t main(void)
 	int feedback_is_send=0;
 
 	setup();
+
 	// Main loop
 	while (1) {
 		// Pings from the PC
@@ -562,7 +585,7 @@ int32_t main(void)
 		X32_leds = ((flicker_slow()?1:0) << mode) | (X32_leds & 0xC0);
 
 		// Process messages
-    		DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
+  	DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
 		check_for_new_packets(&pc_msg_q, &packet_received, &lost_packet);
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
 
