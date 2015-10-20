@@ -41,7 +41,7 @@
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
 #define PANIC_RPM 400
 
-#define DEBUG 0
+#define DEBUG 1
 
 /* Define global variables
  */
@@ -63,13 +63,14 @@ int32_t isr_counter = 0;
 Fifo	pc_msg_q;
 
 Mode mode = SAFE;
-int32_t panic_start_time = 0;
+int32_t mode_start_time = 0;
 //Loglevel log_level = SENSORS;
 
 //LOGGING ARRAYS
-int16_t tm_log[LOG_SIZE][3];       //Timestamp and Mode
-int16_t sensor_log[LOG_SIZE][10];  //sensors + actuators
-int16_t control_log[LOG_SIZE][11]; //control chain
+int16_t tm_array[LOG_SIZE][3];       //Timestamp and Mode
+int16_t sbias_array[6]; 					 //sbias
+int16_t sensor_array[LOG_SIZE][10];  //sensors + actuators
+int16_t control_array[LOG_SIZE][5]; //control chain
 int16_t event_array[LOG_EVENT][4]; //events: change mode, keys and js
 
 
@@ -148,7 +149,7 @@ bool set_mode(Mode new_mode) {
 	// If everything is OK, change the mode
 	reset_motors();
 	mode = new_mode;
-	panic_start_time = X32_ms_clock; //why?
+	mode_start_time = X32_ms_clock;
 
 	send_int_message(CURRENT_MODE,mode);
 	sprintf(message, "Succesfully changed to mode: >%i< ", new_mode);
@@ -242,7 +243,7 @@ void special_request(char request){
 			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
 			break;
 		case ASK_SENSOR_LOG:
-			if(mode==SAFE) send_logs(tm_log,sensor_log,control_log), send_logs_event(event_array);
+			if(mode==SAFE) send_logs(tm_array,sbias_array,sensor_array,control_array), send_logs_event(event_array);
 		   	else send_err_message(LOG_ONLY_IN_SAFE_MODE);
 
 			break;
@@ -324,11 +325,12 @@ void isr_qr_link(void)
 			break;
 		case MANUAL:
 			// Calculate motor RPM
+
 			set_motor_rpm(
-				max(Tmin, get_motor_offset(0) + T  +P+Y),
-				max(Tmin, get_motor_offset(1) + T-R  -Y),
-				max(Tmin, get_motor_offset(2) + T  -P+Y),
-				max(Tmin, get_motor_offset(3) + T+R  -Y));
+				max(Tmin, get_motor_offset(0) + T  +P+2*Y),
+				max(Tmin, get_motor_offset(1) + T-R  -2*Y),
+				max(Tmin, get_motor_offset(2) + T  -P+2*Y),
+				max(Tmin, get_motor_offset(3) + T+R  -2*Y));
 			break;
 		case YAW_CONTROL:
 			// Calculate motor RPM
@@ -349,7 +351,7 @@ void isr_qr_link(void)
 		case PANIC:
 			nexys_display = 0xc1a0;
 
-			if(X32_ms_clock - panic_start_time < 2000) {
+			if(X32_ms_clock - mode_start_time < 2000) {
 				set_motor_rpm(
 						min(PANIC_RPM, get_motor_rpm(0)),
 						min(PANIC_RPM, get_motor_rpm(1)),
@@ -362,14 +364,12 @@ void isr_qr_link(void)
 			break;
 	}
 
-	//Logging timestamp and mode
-	log_tm(tm_log, X32_QR_timestamp,mode);
-	//logging sensors and RPM
-	if(!DEBUG) //in case of debug will log arbitrary values, so this function isn't called
-	log_sensors(sensor_log, s0, s1, s2, s3, s4, s5,
-		get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
-	//logging control parameters
-	log_control(mode, control_log, s_bias,R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle);
+	log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
+	if(mode == CALIBRATE) log_sbias(sbias_array,s_bias); 	//logging s_bias only in calibration mode
+
+	//in case of debug will log arbitrary values, so this function isn't called
+	if(!DEBUG) log_sensors(sensor_array, s0, s1, s2, s3, s4, s5,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
+	log_control(mode, control_array, R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); 	//logging control parameters
 
 	if(DEBUG){
 		timeAct = X32_US_CLOCK;
@@ -470,10 +470,11 @@ void setup()
 	R_angle = 0;
 	P_angle = 0;
 
-	init_log_arrays(tm_log,sensor_log,control_log,event_array);
+	init_log_arrays(tm_array,sbias_array,sensor_array,control_array,event_array);
+
 	fifo_init(&pc_msg_q);
 
-  if(DEBUG) init_array_test(tm_log,sensor_log);
+  if(DEBUG) init_array_test(tm_array,sensor_array);
 
 	/* Prepare Interrupts */
 
