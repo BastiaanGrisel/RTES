@@ -325,26 +325,26 @@ void isr_qr_link(void)
 		case MANUAL:
 			// Calculate motor RPM
 			set_motor_rpm(
-				max(T>>2, get_motor_offset(0) + T  +P+Y),
-				max(T>>2, get_motor_offset(1) + T-R  -Y),
-				max(T>>2, get_motor_offset(2) + T  -P+Y),
-				max(T>>2, get_motor_offset(3) + T+R  -Y));
+				max(Tmin, get_motor_offset(0) + T  +P+Y),
+				max(Tmin, get_motor_offset(1) + T-R  -Y),
+				max(Tmin, get_motor_offset(2) + T  -P+Y),
+				max(Tmin, get_motor_offset(3) + T+R  -Y));
 			break;
 		case YAW_CONTROL:
 			// Calculate motor RPM
 			set_motor_rpm(
-				max(T>>2, get_motor_offset(0) + T  +P+Y_stabilize),
-				max(T>>2, get_motor_offset(1) + T-R  -Y_stabilize),
-				max(T>>2, get_motor_offset(2) + T  -P+Y_stabilize),
-				max(T>>2, get_motor_offset(3) + T+R  -Y_stabilize));
+				max(Tmin, get_motor_offset(0) + T  +P+Y_stabilize),
+				max(Tmin, get_motor_offset(1) + T-R  -Y_stabilize),
+				max(Tmin, get_motor_offset(2) + T  -P+Y_stabilize),
+				max(Tmin, get_motor_offset(3) + T+R  -Y_stabilize));
 			break;
 		case FULL_CONTROL:
 			// Calculate motor RPM
 			set_motor_rpm(
-				max(T>>2, get_motor_offset(0) + T   +P_stabilize	+Y_stabilize),
-				max(T>>2, get_motor_offset(1) + T		-R_stabilize  -Y_stabilize),
-				max(T>>2, get_motor_offset(2) + T   -P_stabilize	+Y_stabilize),
-				max(T>>2, get_motor_offset(3) + T	  +R_stabilize  -Y_stabilize));
+				max(Tmin, get_motor_offset(0) + T   +P_stabilize	+Y_stabilize),
+				max(Tmin, get_motor_offset(1) + T		-R_stabilize  -Y_stabilize),
+				max(Tmin, get_motor_offset(2) + T   -P_stabilize	+Y_stabilize),
+				max(Tmin, get_motor_offset(3) + T	  +R_stabilize  -Y_stabilize));
 			break;
 		case PANIC:
 			nexys_display = 0xc1a0;
@@ -357,7 +357,6 @@ void isr_qr_link(void)
 						min(PANIC_RPM, get_motor_rpm(3)));
 			} else {
 				reset_motors();
-				R = P = Y = T = Tmin = 0;
 				set_mode(SAFE);
 			}
 			break;
