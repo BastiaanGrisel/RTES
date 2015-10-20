@@ -77,7 +77,7 @@ void log_tm(int16_t tm_log[][3], int16_t timestamp, int16_t mode)
 void log_control(Mode mode, int16_t control_log[][11],int32_t s_bias[], int32_t R_stablize,
   int32_t P_stabilize, int32_t Y_stabilize,int32_t R_angle, int32_t P_angle) {
     if(log_counter < LOG_SIZE) {
-      if(mode >= CALIBRATE) // better == ?
+      if(mode >= CALIBRATE) //updating everytime is useless, but is not a big deal in performance
       {
        control_log[log_counter][0] = s_bias[0];
        control_log[log_counter][1] = s_bias[1];
@@ -87,9 +87,9 @@ void log_control(Mode mode, int16_t control_log[][11],int32_t s_bias[], int32_t 
        control_log[log_counter][5] = s_bias[5];
 
        //downcasting control values, right shift to keep the significant bits
-       control_log[log_counter][8] = Y_stabilize;
        control_log[log_counter][6] = R_stablize;
        control_log[log_counter][7] = P_stabilize;
+       control_log[log_counter][8] = Y_stabilize;
        control_log[log_counter][9] = RSHIFT(R_angle,4);
        control_log[log_counter][10] = RSHIFT(P_angle,4);
       }
@@ -139,7 +139,8 @@ void clear_log() {
 	log_counter = 0;
 }
 
-/*Send all the logs relative sensors and control chain  */
+/*Sends all the logs.
+Each line will be >>>>>  "time_h time_l mode s0-s5 rpm0-rpm3 s_bias1-sbias5 R_s P_s Y_s R_angle P_angle" */
 void send_logs(int16_t tm_log[][3], int16_t sensor_log[][10], int16_t control_log[][11]) {
 	int i;
 	int j;
@@ -177,7 +178,8 @@ void send_logs(int16_t tm_log[][3], int16_t sensor_log[][10], int16_t control_lo
 	send_term_message("LOGGING COMPLETED.");
 }
 
-
+//send logs about events coming from keyboard and JS
+//each line >>>>> "time_h time_l control value"
 void send_logs_event(int16_t event_array[][4])
 {
    int i,j;
