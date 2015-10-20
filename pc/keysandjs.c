@@ -257,7 +257,7 @@ void check_alive_connection()
 }
 
 void processMouse(int button, int line, int x){
-	if(button ==BUTTON1_CLICKED){
+	if(button == BUTTON1_CLICKED){
 		//mvprintw(line,x, ".");
 		switch(line){
 			case(18):

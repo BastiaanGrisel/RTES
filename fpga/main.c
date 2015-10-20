@@ -50,6 +50,7 @@ int32_t  X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to
 int32_t  time_last_sensor_input = 0;
 int32_t  packet_counter = 0, packet_lost_counter = 0;
 int32_t  R=0, P=0, Y=0, T=0, Tmin=0;
+int32_t  R_amp, P_amp, Y_amp; //curresponging amplified variables for MANUAL
 int missed_packet_counter;
 
 bool is_calibrated = false;
@@ -327,12 +328,15 @@ void isr_qr_link(void)
 			break;
 		case MANUAL:
 			// Calculate motor RPM
+			 R_amp = 2*R;
+			 P_amp = 2*P;
+       Y_amp = 2*Y;
 
 			set_motor_rpm(
-				max(Tmin, get_motor_offset(0) + T  +P+2*Y),
-				max(Tmin, get_motor_offset(1) + T-R  -2*Y),
-				max(Tmin, get_motor_offset(2) + T  -P+2*Y),
-				max(Tmin, get_motor_offset(3) + T+R  -2*Y));
+				max(Tmin, get_motor_offset(0) + T  +P_amp+Y_amp),
+				max(Tmin, get_motor_offset(1) + T-R_amp  -Y_amp),
+				max(Tmin, get_motor_offset(2) + T  -P_amp+Y_amp),
+				max(Tmin, get_motor_offset(3) + T+R_amp  -Y_amp));
 			break;
 		case YAW_CONTROL:
 			// Calculate motor RPM
