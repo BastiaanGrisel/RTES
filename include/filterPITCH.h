@@ -1,5 +1,6 @@
 /*Pitch parameters*/
-#define	P_FILTER 1
+//#define	P_FILTER 1
+int32_t P_filter = 1;
 #define	C2_P_BIAS_UPDATE 14 /* if you change this, change also C2_rounding_error and P_integrate_rounding_error*/
 #define	P_ANGLE 5  /* if you change this, change also P_integrate_rounding_error*/
 #define	P_ACC_RATIO 2500
@@ -28,7 +29,7 @@ int pitchControl(int pitchRate,int pitch_angle, int P_js){
 		//     substract bias and scale P:
 	    dP = INCREASE_SHIFT(pitchRate,C2_P_BIAS_UPDATE)-Pbias;
 		//   filter
-	    filtered_dP+= - DECREASE_SHIFT(filtered_dP,P_FILTER) + DECREASE_SHIFT(dP,P_FILTER);
+	    filtered_dP+= - DECREASE_SHIFT(filtered_dP,P_filter) + DECREASE_SHIFT(dP,P_filter);
 		//     integrate for the angle and add something to react agianst
 		//     rounding error
 	    P_angle += DECREASE_SHIFT(filtered_dP+P_INTEGRATE_ROUNDING_ERROR, C2_P_BIAS_UPDATE-P_ANGLE);

@@ -1,5 +1,6 @@
 /*Roll parameters*/
-#define	R_FILTER 1
+//#define	R_FILTER 1
+int32_t R_filter = 1;
 #define	C2_R_BIAS_UPDATE 14 /* if you change this, change also C2_rounding_error and R_integrate_rounding_error*/
 #define	R_ANGLE 5  /* if you change this, change also R_integrate_rounding_error*/
 #define	R_ACC_RATIO 2500 //roll acceleration ratio
@@ -32,7 +33,7 @@ int rollControl(int rollRate,int roll_angle, int R_js){
 		//     substract bias and scale R:
 	    dR = INCREASE_SHIFT(rollRate,C2_R_BIAS_UPDATE)-Rbias;
 		//   filter
-	    filtered_dR+= - DECREASE_SHIFT(filtered_dR,R_FILTER) + DECREASE_SHIFT(dR,R_FILTER);
+	    filtered_dR+= - DECREASE_SHIFT(filtered_dR,R_filter) + DECREASE_SHIFT(dR,R_filter);
 		//     integrate for the angle and add something to react agianst
 		//     rounding error
 	    R_angle += DECREASE_SHIFT(filtered_dR+R_INTEGRATE_ROUNDING_ERROR,  C2_R_BIAS_UPDATE-R_ANGLE);
