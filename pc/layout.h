@@ -20,6 +20,7 @@ void init_colors() {
 	init_pair(4, COLOR_BLUE, COLOR_BLACK);
 	init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
 	init_pair(6, COLOR_CYAN, COLOR_BLACK);
+	curs_set(0); // make cursor invisible
 }
 
 void pt(int y, int x, char* format, ...) {
@@ -110,11 +111,16 @@ void drawBase() {
 	ptb(27,14,"in  = ");
 	
 	// QR
-	ptb(3,55,"|");
-	ptb(4,55,"|");
+	ptbc(3,55,1,"|");
+	ptbc(4,55,1,"|");
 	ptb(5,50,"---- + ----");
 	ptb(6,55,"|");
 	ptb(7,55,"|");
+
+	// P_yaw P1 and P2
+	ptb(18,55,"- Pyaw +");
+	ptb(19,55,"-  P1  +");
+	ptb(20,55,"-  P2  +");
 }
 
 void drawMode(Mode m) {

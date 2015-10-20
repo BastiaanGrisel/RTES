@@ -136,7 +136,7 @@ bool set_mode(Mode new_mode) {
 		return false;
 	}
 
-	if(new_mode == FULL_CONTROL || new_mode == YAW_CONTROL) {
+	if(mode == CALIBRATE) {
 		//maybe we can make this a function call
 		Ybias = s_bias[5] << (Y_BIAS_UPDATE-SENSOR_PRECISION);
 		R_ACC_BIAS = DECREASE_SHIFT(s_bias[1]*R_ACC_RATIO,SENSOR_PRECISION);
@@ -148,7 +148,7 @@ bool set_mode(Mode new_mode) {
 	// If everything is OK, change the mode
 	reset_motors();
 	mode = new_mode;
-	panic_start_time = X32_ms_clock;
+	panic_start_time = X32_ms_clock; //why?
 
 	send_int_message(CURRENT_MODE,mode);
 	sprintf(message, "Succesfully changed to mode: >%i< ", new_mode);
@@ -192,21 +192,21 @@ void trim(char c){
 		case P_YAW_DOWN:
 			decrease_P_yaw();
 			break;
-		case P_ROLL_UP:
+		case P1_UP:
 			P1_roll++;
-			//P2_roll++;
-			break;
-		case P_ROLL_DOWN:
-			P1_roll--;
-			//P2_roll--;
-			break;
-		case P_PITCH_UP:
 			P1_pitch++;
-			//P2_pitch++;
 			break;
-		case P_PITCH_DOWN:
+		case P1_DOWN:
+			P1_roll--;
 			P1_pitch--;
-			//P2_pitch--;
+			break;
+		case P2_UP:
+			P2_roll++;
+			P2_pitch++;
+			break;
+		case P2_DOWN:
+			P2_roll--;
+			P2_pitch--;
 			break;
 		default:
 			break;
@@ -360,10 +360,14 @@ void isr_qr_link(void)
 			break;
 	}
 
-	// Add new sensor values to array
+	//Logging timestamp and mode
 	log_tm(tm_log, X32_QR_timestamp,mode);
-	log_sensors(sensor_log, s0, s1, s2, s3, s4, s5,0,0,0,0);// COMMENTED FOR TESTING THE LOGGING WITH ARBITRARY VALUES
-	log_control(mode, control_log, s_bias,R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); //logging control
+	//logging sensors and RPM
+	if(!DEBUG) //in case of debug will log arbitrary values, so this function isn't called
+	log_sensors(sensor_log, s0, s1, s2, s3, s4, s5,
+		get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
+	//logging control parameters
+	log_control(mode, control_log, s_bias,R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle);
 
 	if(DEBUG){
 		timeAct = X32_US_CLOCK;

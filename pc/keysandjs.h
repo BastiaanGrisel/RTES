@@ -46,6 +46,7 @@ void init_keyboard(void);
 struct timeval updateFPS(struct timeval oldtime);
 int joystickInit(void);
 void sendKeyData(int c);
+void processMouse(int button, int line, int x);
 void save_JS_event(int type, int number,int value);
 struct timeval sendJSData(struct timeval packet_time);
 void printJSstate(void);
