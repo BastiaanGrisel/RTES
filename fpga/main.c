@@ -47,7 +47,7 @@
  */
 
 int32_t  X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to avoid going panic before receiving the first msg
-int32_t  time_last_sensor_input = 0xEFFFFFFF;
+int32_t  time_last_sensor_input = 0;
 int32_t  packet_counter = 0, packet_lost_counter = 0;
 int32_t  R=0, P=0, Y=0, T=0, Tmin=0;
 int missed_packet_counter;
@@ -563,7 +563,7 @@ int32_t main(void)
 		//isr_qr_link();
 
 		// Turn on the LED corresponding to the assignment
-		X32_leds = (flicker_slow()?1:0) | (PClinkisOK*2) | ((time_last_sensor_input-X32_ms_clock<100)?4:0);
+		X32_leds = (flicker_slow()?1:0) | (PClinkisOK*2) | ((X32_ms_clock-time_last_sensor_input<100)?4:0);
 
 		// Process messages
     		DISABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Disable incoming messages while working with the message queue
