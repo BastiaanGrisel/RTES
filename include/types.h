@@ -86,6 +86,8 @@ PacketData ch2pd(char in) {
 #define R_FILTER_DOWN '7'
 #define P_FILTER_UP '8'
 #define P_FILTER_DOWN '9'
+#define JS_INFL_UP 'C'
+#define JS_INFL_DOWN 'V'
 
 /* SPECIAL REQUESTS */
 #define SPECIAL_REQUEST 'S'  //= control value

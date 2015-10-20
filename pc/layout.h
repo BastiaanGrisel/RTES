@@ -32,35 +32,35 @@ void pt(int y, int x, char* format, ...) {
 }
 
 void ptb(int y, int x, char* format, ...) {
-	attron(A_BOLD);		
-	va_list args;
-	va_start( args, format );
-	move(y,x);
-	vwprintw(stdscr, format, args);
-	va_end( args );
-	attroff(A_BOLD);		
-}
-
-void ptc(int y, int x, int c, char* format, ...) {
-	col_on(c);	
-	va_list args;
-	va_start( args, format );
-	move(y,x);
-	vwprintw(stdscr, format, args);
-	va_end( args );
-	col_off(c);		
-}
-
-void ptbc(int y, int x, int c, char* format, ...) {
-	col_on(c);
-	attron(A_BOLD);		
+	attron(A_BOLD);
 	va_list args;
 	va_start( args, format );
 	move(y,x);
 	vwprintw(stdscr, format, args);
 	va_end( args );
 	attroff(A_BOLD);
-	col_off(c);		
+}
+
+void ptc(int y, int x, int c, char* format, ...) {
+	col_on(c);
+	va_list args;
+	va_start( args, format );
+	move(y,x);
+	vwprintw(stdscr, format, args);
+	va_end( args );
+	col_off(c);
+}
+
+void ptbc(int y, int x, int c, char* format, ...) {
+	col_on(c);
+	attron(A_BOLD);
+	va_list args;
+	va_start( args, format );
+	move(y,x);
+	vwprintw(stdscr, format, args);
+	va_end( args );
+	attroff(A_BOLD);
+	col_off(c);
 }
 
 // Draw all info on the screen
@@ -73,7 +73,7 @@ void drawBase() {
 	ptb(1,2,"Mode");
 
 	// Joystick
-	ptbc(3,2,2,"Joystick");		
+	ptbc(3,2,2,"Joystick");
 	ptbc(3,16,2,"R = ");
 	ptbc(4,16,2,"P = ");
 	ptbc(5,16,2,"Y = ");
@@ -109,7 +109,7 @@ void drawBase() {
 	ptb(25,14,"out = ");
 	ptbc(26,14,1,"err = ");
 	ptb(27,14,"in  = ");
-	
+
 	// QR
 	ptbc(3,55,1,"|");
 	ptbc(4,55,1,"|");
@@ -118,9 +118,19 @@ void drawBase() {
 	ptb(7,55,"|");
 
 	// P_yaw P1 and P2
-	ptb(18,55,"- Pyaw +");
-	ptb(19,55,"-  P1  +");
-	ptb(20,55,"-  P2  +");
+	ptb(10,48,"- P_YAW    + (<value>)");
+
+	ptb(12,48,"- P1_ROLL  + (<value>)");
+	ptb(13,48,"- P2_ROLL  + (<value>)");
+
+	ptb(15,48,"- P1_PITCH + (<value>)");
+	ptb(16,48,"- P2_PITCH + (<value>)");
+
+	ptb(18,48,"- FILTER_R + (<value>)");
+	ptb(19,48,"- FILTER_P + (<value>)");
+	ptb(20,48,"- FILTER_Y + (<value>)");
+
+	ptb(22,48,"- JS_INFL  + (<value>)");
 }
 
 void drawMode(Mode m) {
@@ -155,8 +165,8 @@ void drawControl(int R_s, int P_s, int Y_s) {
 }
 
 void drawCommunication(int in_packets, int out_packets) {
-	ptbc(22,20,6,"%-32d",out_packets);
-	ptbc(23,20,6,"%-32d",in_packets);
+	ptbc(22,20,6,"%-6d",out_packets);
+	ptbc(23,20,6,"%-6d",in_packets);
 }
 
 void displayMessage(char* message, char* error, char* terminal_message) {
@@ -175,6 +185,6 @@ void drawRPM(int m0, int m1, int m2, int m3) {
 	ptb(5,62,"%-4d", m1);
 	ptb(2,55,"%-4d", m0);
 	ptb(8,55,"%-4d", m2);
-}	
+}
 
 #endif

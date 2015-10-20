@@ -259,31 +259,57 @@ void check_alive_connection()
 void processMouse(int button, int line, int x){
 	if(button == BUTTON1_CLICKED){
 		//mvprintw(line,x, ".");
+	/*	ptb(10,48,"- P_YAW    + (<value>)");
+
+		ptb(12,48,"- P1_ROLL  + (<value>)");
+		ptb(13,48,"- P2_ROLL  + (<value>)");
+
+		ptb(15,48,"- P1_PITCH + (<value>)");
+		ptb(16,48,"- P2_PITCH + (<value>)");
+
+		ptb(18,48,"- FILTER_R + (<value>)");
+		ptb(19,48,"- FILTER_P + (<value>)");
+		ptb(20,48,"- FILTER_Y + (<value>)");
+
+		ptb(22,48,"- JS_INFL  + (<value>)");*/
+
 		switch(line){
-			case(18):
-				if(x==55)
-					pc_send_message('A',P_YAW_DOWN);
-				if(x==62)
-					pc_send_message('A',P_YAW_UP);
-			break;
-			case(19):
-				if(x==55)
-					pc_send_message('A',P1_ROLL_DOWN);
-				if(x==62)
-					pc_send_message('A',P1_ROLL_UP);
-			break;
-			case(20):
-				if(x==55)
-					pc_send_message('A',P2_ROLL_DOWN);
-				if(x==62)
-					pc_send_message('A',P2_ROLL_UP);
-			//@Bastiaan: change it accordingly
-			/*case(21):
-			 if(x ==55)
-			   pc_send_message('A',Y_FILTER_UP);
-			if(x==62)
-			    pc_send_message('A',Y_FILTER_DOWN);*/
-			break;
+			case(10): // YAW
+				if(x==48) pc_send_message('A',P_YAW_DOWN);
+				if(x==59) pc_send_message('A',P_YAW_UP);
+				break;
+			case(12): // P1 ROLL
+				if(x==48) pc_send_message('A',P1_ROLL_DOWN);
+				if(x==59) pc_send_message('A',P1_ROLL_UP);
+				break;
+			case(13): // P2 ROLL
+				if(x==48) pc_send_message('A',P2_ROLL_DOWN);
+				if(x==59) pc_send_message('A',P2_ROLL_UP);
+				break;
+			case(15): // P1 PITCH
+				if(x==48) pc_send_message('A',P1_PITCH_DOWN);
+				if(x==59) pc_send_message('A',P1_PITCH_UP);
+				break;
+			case(16): // P2 PITCH
+				if(x==48) pc_send_message('A',P2_PITCH_DOWN);
+				if(x==59) pc_send_message('A',P2_PITCH_UP);
+				break;
+			case(18): // FILTER ROLL
+				if(x==48) pc_send_message('A',R_FILTER_DOWN);
+				if(x==59) pc_send_message('A',R_FILTER_UP);
+				break;
+			case(19): // FILTER PITCH
+				if(x==48) pc_send_message('A',P_FILTER_DOWN);
+				if(x==59) pc_send_message('A',P_FILTER_UP);
+				break;
+			case(20): // FILTER YAW
+				if(x==48) pc_send_message('A',Y_FILTER_DOWN);
+				if(x==59) pc_send_message('A',Y_FILTER_UP);
+				break;
+			case(22): // FILTER YAW
+				if(x==48) pc_send_message('A',JS_INFL_DOWN);
+				if(x==59) pc_send_message('A',JS_INFL_UP);
+				break;
 		}
 	}
 }
@@ -331,24 +357,6 @@ void sendKeyData(int c){
 				break;
 			case YAW_RIGHT:
 				value = YAW_RIGHT;
-				break;
-			case P_YAW_UP:
-				value = P_YAW_UP;
-				break;
-			case P_YAW_DOWN:
-				value = P_YAW_DOWN;
-				break;
-			case P1_UP:
-				value = P1_UP;
-				break;
-			case P1_DOWN:
-				value = P1_DOWN;
-				break;
-			case P2_UP:
-				value = P2_UP;
-				break;
-			case P2_DOWN:
-				value = P2_DOWN;
 				break;
 			case ASK_MOTOR_RPM:
 				control = SPECIAL_REQUEST;
