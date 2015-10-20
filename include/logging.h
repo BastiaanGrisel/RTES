@@ -6,9 +6,10 @@
 #include "QRmessage.h"
 #include "control.h"
 
+#define CLOCK	peripherals[PERIPHERAL_US_CLOCK]
 
-#define LOG_SIZE 20
-#define EVENT_SIZE 20
+#define LOG_SIZE 10000
+#define EVENT_SIZE 1000
 extern Loglevel log_level = SENSORS;
 int log_counter = 0;
 int event_counter  = 0;
@@ -35,27 +36,33 @@ void init_log_arrays(int16_t tm_array[][3], int16_t sbias_array[], int16_t senso
 }
 
 /*Just for testing*/
-void init_array_test(int16_t tm_array[][3],int16_t sensor_array[][10])
+void init_array_test(int16_t tm_array[][3],int16_t sensor_array[][10], int16_t control_array[][5])
 {
   	int i;
 
   	for(i=0; i < LOG_SIZE; i++)
     {
 
-       tm_array[i][0] = 10000;
-       tm_array[i][1] = 400;
-       tm_array[i][2] = 24400;
+      tm_array[i][0] = CLOCK >> 15;
+      tm_array[i][1] = CLOCK & 0x00007FFF;
+      tm_array[i][2] = 2;
 
    		sensor_array[i][0] = 1;
-   		sensor_array[i][1] = 65400;
+   		sensor_array[i][1] = 600;
    		sensor_array[i][2] = 255;
    		sensor_array[i][3] = 500;
-   		sensor_array[i][4] = 65101;
+   		sensor_array[i][4] = 345;
    		sensor_array[i][5] = 400;
    		sensor_array[i][6] = 0;
       sensor_array[i][7] = 0;
       sensor_array[i][8] = 0;
       sensor_array[i][9] = 0;
+
+      control_array[i][0] = 2;
+      control_array[i][1] = 2;
+      control_array[i][2] = 2;
+      control_array[i][3] = 250;
+      control_array[i][4] = 1000;
    }
 }
 
@@ -63,8 +70,8 @@ void init_array_test(int16_t tm_array[][3],int16_t sensor_array[][10])
 void log_tm(int16_t tm_array[][3], int16_t timestamp, int16_t mode)
 {
   if(log_counter < LOG_SIZE) {
-     tm_array[log_counter][0] = timestamp >> 16;
-     tm_array[log_counter][1] = timestamp & 0x0000FFFF;
+     tm_array[log_counter][0] = timestamp >> 15;
+     tm_array[log_counter][1] = timestamp & 0x00007FFF;
      tm_array[log_counter][2] = mode;
   }
 
@@ -137,10 +144,11 @@ void log_event(int16_t event_array[][4],int32_t timestamp, char control, int16_t
 }
 
 
-
 void clear_log() {
 	log_counter = 0;
 }
+
+
 
 /*Sends all the logs.
 First line: CALIBRATION values

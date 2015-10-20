@@ -325,6 +325,7 @@ void sendKeyData(int c){
 				break;
 			case LIFT_DOWN:
 				value = LIFT_DOWN;
+
 				break;
 			case YAW_LEFT:
 				value = YAW_LEFT;
@@ -338,18 +339,48 @@ void sendKeyData(int c){
 			case P_YAW_DOWN:
 				value = P_YAW_DOWN;
 				break;
-			case P1_UP:
-				value = P1_UP;
+
+			case P1_ROLL_UP:
+				value = P1_ROLL_UP;
 				break;
-			case P1_DOWN:
-				value = P1_DOWN;
+			case P1_ROLL_DOWN:
+				value = P1_ROLL_DOWN;
 				break;
-			case P2_UP:
-				value = P2_UP;
+			case P2_ROLL_UP:
+				value = P2_ROLL_UP;
 				break;
-			case P2_DOWN:
-				value = P2_DOWN;
+			case P2_ROLL_DOWN:
+				value = P2_ROLL_DOWN;
 				break;
+
+			case P1_PITCH_UP:
+				value = P1_PITCH_UP;
+				break;
+			case P1_PITCH_DOWN:
+				value = P1_PITCH_DOWN;
+				break;
+			case P2_PITCH_UP:
+				value = P2_PITCH_UP;
+				break;
+			case P2_PITCH_DOWN:
+				value = P2_PITCH_DOWN;
+				break;
+
+			case Y_FILTER_UP:
+			  value = Y_FILTER_UP;
+			case Y_FILTER_DOWN:
+			  value = Y_FILTER_DOWN;
+
+			case R_FILTER_UP:
+				value = R_FILTER_UP;
+			case R_FILTER_DOWN:
+				value = R_FILTER_DOWN;
+
+			case P_FILTER_UP:
+				value = P_FILTER_UP;
+			case P_FILTER_DOWN:
+				value = P_FILTER_DOWN;
+
 			case ASK_MOTOR_RPM:
 				control = SPECIAL_REQUEST;
 				value = ASK_MOTOR_RPM;
@@ -362,6 +393,7 @@ void sendKeyData(int c){
 				control = SPECIAL_REQUEST;
 				value = ASK_FULL_CONTROL_PARAM;
 				break;
+
 			case RESET_MOTORS:
 				control = SPECIAL_REQUEST;
 				value = RESET_MOTORS;
@@ -370,6 +402,7 @@ void sendKeyData(int c){
 				control = SPECIAL_REQUEST;
 				value = RESET_SENSOR_LOG;
 				break;
+
 			case ASK_SENSOR_LOG:
 			  	control = SPECIAL_REQUEST;
 				value = ASK_SENSOR_LOG;
@@ -378,6 +411,7 @@ void sendKeyData(int c){
 				control = SPECIAL_REQUEST;
 				value = ASK_SENSOR_BIAS;
 				break;
+				
 			case ESCAPE: // ESCAPEKEY
 				control = SPECIAL_REQUEST;
 				value = ESCAPE;
