@@ -27,7 +27,11 @@ int		P_stabilize = 0;
 /*PITCH_CALCULATIONS*/
 int pitchControl(int pitchRate,int pitch_angle, int P_js){
 		//     substract bias and scale P:
-	    dP = INCREASE_SHIFT(pitchRate,C2_P_BIAS_UPDATE)-Pbias;
+		#ifdef DOUBLESENSORS
+	    	dP = INCREASE_SHIFT(pitchRate,C2_P_BIAS_UPDATE-1)-Pbias;
+		#else
+			dP = INCREASE_SHIFT(pitchRate,C2_P_BIAS_UPDATE)-Pbias;
+		#endif /*DOUBLESENSORS*/
 		//   filter
 	    filtered_dP+= - DECREASE_SHIFT(filtered_dP,P_filter) + DECREASE_SHIFT(dP,P_filter);
 		//     integrate for the angle and add something to react agianst

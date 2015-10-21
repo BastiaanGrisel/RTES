@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 
+//#define DOUBLESENSORS
+
 #include "x32.h"
 #include "checksum.h"
 #include "logging.h"
@@ -44,6 +46,7 @@
 #define DEBUG 0
 #define TIMEANALYSIS 0
 
+
 /* Define global variables
  */
 
@@ -59,6 +62,9 @@ bool is_calibrated = false;
 int32_t 	isr_qr_counter = 0;
 
 int32_t	s0 = 0, s1 = 0, s2 = 0, s3 = 0, s4 = 0, s5 = 0;
+#ifdef DOUBLESENSORS
+int32_t	ds0 = 0, ds1 = 0, ds2 = 0, ds3 = 0, ds4 = 0, ds5 = 0;
+#endif
 int32_t s_bias[6] = {0};
 int32_t isr_counter = 0;
 
@@ -353,77 +359,97 @@ void isr_qr_link(void)
 	time_last_sensor_input = X32_ms_clock;
 	if(TIMEANALYSIS) timeTime = X32_US_CLOCK;
 /* get sensor and timestamp values */
-	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
-	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
+
+
+	#ifdef DOUBLESENSORS
+		if(isr_qr_counter==1) {
+			ds0 =s0+ X32_QR_s0; ds1 =s1+ X32_QR_s1; ds2 =s2+ X32_QR_s2;
+			ds3 =s3+ X32_QR_s3; ds4 =s4+ X32_QR_s4; //ds5 =s5+ X32_QR_s5;
+		} else {
+			s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
+			s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
+		}
+	#else
+		s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
+		s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
+	#endif /*DOUBLESENSORS*/
+
+
 	if(TIMEANALYSIS) timeRead = X32_US_CLOCK;
 
 	Y_stabilize = yawControl(s5,Y);
 
 	if(TIMEANALYSIS) timeYaw = X32_US_CLOCK;
 	//QR THREE IS FLIPPED!!
-
-	if(mode >= YAW_CONTROL) ENABLE_INTERRUPT(INTERRUPT_OVERFLOW);
-
 	if(isr_qr_counter++ == 1) {
 		isr_qr_counter = 0;
-		R_stabilize = rollControl(s3,s1,R);
-		P_stabilize = pitchControl(s4,s0,P);
-	}
 
-	if(TIMEANALYSIS) timeFull = X32_US_CLOCK;
+		if(mode >= YAW_CONTROL) ENABLE_INTERRUPT(INTERRUPT_OVERFLOW);
 
-	switch(mode) {
-		case CALIBRATE:
-			record_bias(s_bias, s0, s1, s2, s3, s4, s5);
-			//R_angle = P_angle = 0;
-			break;
-		case MANUAL:
-			set_motor_rpm(
-				max(Tmin, get_motor_offset(0) + T  + (P_amp*P) >> 2 + (Y_amp*Y) >> 2),
-				max(Tmin, get_motor_offset(1) + T	 - (R_amp*R) >> 2 - (Y_amp*Y) >> 2),
-				max(Tmin, get_motor_offset(2) + T  - (P_amp*P) >> 2 + (Y_amp*Y) >> 2),
-				max(Tmin, get_motor_offset(3) + T  + (R_amp*R) >> 2 - (Y_amp*Y) >> 2));
-			break;
-		case YAW_CONTROL:
-			// Calculate motor RPM
-			set_motor_rpm(
-				max(Tmin, get_motor_offset(0) + T  +P+Y_stabilize),
-				max(Tmin, get_motor_offset(1) + T-R  -Y_stabilize),
-				max(Tmin, get_motor_offset(2) + T  -P+Y_stabilize),
-				max(Tmin, get_motor_offset(3) + T+R  -Y_stabilize));
-			break;
-		case FULL_CONTROL:
-			// Calculate motor RPM
-			set_motor_rpm(
-				max(Tmin, get_motor_offset(0) + T   +P_stabilize	+Y_stabilize),
-				max(Tmin, get_motor_offset(1) + T		-R_stabilize  -Y_stabilize),
-				max(Tmin, get_motor_offset(2) + T   -P_stabilize	+Y_stabilize),
-				max(Tmin, get_motor_offset(3) + T	  +R_stabilize  -Y_stabilize));
-			break;
-		case PANIC:
-			nexys_display = 0xc1a0;
+		#ifndef DOUBLESENSORS
+			R_stabilize = rollControl(s3,s1,R);
+			P_stabilize = pitchControl(s4,s0,P);
+		#endif
+		#ifdef DOUBLESENSORS
+			R_stabilize = rollControl(ds3,ds1,R);
+			P_stabilize = pitchControl(ds4,ds0,P);
+		#endif
 
-			if(X32_ms_clock - mode_start_time < 2000) {
+
+		if(TIMEANALYSIS) timeFull = X32_US_CLOCK;
+
+		switch(mode) {
+			case CALIBRATE:
+				record_bias(s_bias, s0, s1, s2, s3, s4, s5);
+				//R_angle = P_angle = 0;
+				break;
+			case MANUAL:
 				set_motor_rpm(
-						min(PANIC_RPM, get_motor_rpm(0)),
-						min(PANIC_RPM, get_motor_rpm(1)),
-						min(PANIC_RPM, get_motor_rpm(2)),
-						min(PANIC_RPM, get_motor_rpm(3)));
-			} else {
-				reset_motors();
-				set_mode(SAFE);
-			}
-			break;
+					max(Tmin, get_motor_offset(0) + T  + (P_amp*P) >> 2 + (Y_amp*Y) >> 2),
+					max(Tmin, get_motor_offset(1) + T	 - (R_amp*R) >> 2 - (Y_amp*Y) >> 2),
+					max(Tmin, get_motor_offset(2) + T  - (P_amp*P) >> 2 + (Y_amp*Y) >> 2),
+					max(Tmin, get_motor_offset(3) + T  + (R_amp*R) >> 2 - (Y_amp*Y) >> 2));
+				break;
+			case YAW_CONTROL:
+				// Calculate motor RPM
+				set_motor_rpm(
+					max(Tmin, get_motor_offset(0) + T  +P+Y_stabilize),
+					max(Tmin, get_motor_offset(1) + T-R  -Y_stabilize),
+					max(Tmin, get_motor_offset(2) + T  -P+Y_stabilize),
+					max(Tmin, get_motor_offset(3) + T+R  -Y_stabilize));
+				break;
+			case FULL_CONTROL:
+				// Calculate motor RPM
+				set_motor_rpm(
+					max(Tmin, get_motor_offset(0) + T   +P_stabilize	+Y_stabilize),
+					max(Tmin, get_motor_offset(1) + T		-R_stabilize  -Y_stabilize),
+					max(Tmin, get_motor_offset(2) + T   -P_stabilize	+Y_stabilize),
+					max(Tmin, get_motor_offset(3) + T	  +R_stabilize  -Y_stabilize));
+				break;
+			case PANIC:
+				nexys_display = 0xc1a0;
+
+				if(X32_ms_clock - mode_start_time < 2000) {
+					set_motor_rpm(
+							min(PANIC_RPM, get_motor_rpm(0)),
+							min(PANIC_RPM, get_motor_rpm(1)),
+							min(PANIC_RPM, get_motor_rpm(2)),
+							min(PANIC_RPM, get_motor_rpm(3)));
+				} else {
+					reset_motors();
+					set_mode(SAFE);
+				}
+				break;
+		}
+		if(TIMEANALYSIS) timeAct = X32_US_CLOCK;
+		log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
+
+		if(mode >= YAW_CONTROL) DISABLE_INTERRUPT(INTERRUPT_OVERFLOW);
+
+		//in case of debug will log arbitrary values, so this function isn't called
+		if(!DEBUG) log_sensors(sensor_array, s0, s1, s2, s3, s4, s5,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
+		log_control(mode, control_array, R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); 	//logging control parameters
 	}
-	if(TIMEANALYSIS) timeAct = X32_US_CLOCK;
-	log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
-
-	if(mode >= YAW_CONTROL) DISABLE_INTERRUPT(INTERRUPT_OVERFLOW);
-
-	//in case of debug will log arbitrary values, so this function isn't called
-	if(!DEBUG) log_sensors(sensor_array, s0, s1, s2, s3, s4, s5,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
-	log_control(mode, control_array, R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); 	//logging control parameters
-
 	if(TIMEANALYSIS){
 		timeLog = X32_US_CLOCK;
 		if(isr_counter++ ==999){

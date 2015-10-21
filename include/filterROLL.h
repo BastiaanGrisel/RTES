@@ -31,7 +31,11 @@ int		R_stabilize = 0;
 /*ROLL_CALCULATIONS*/
 int rollControl(int rollRate,int roll_angle, int R_js){
 		//     substract bias and scale R:
-	    dR = INCREASE_SHIFT(rollRate,C2_R_BIAS_UPDATE)-Rbias;
+		#ifdef DOUBLESENSORS
+	    	dR = INCREASE_SHIFT(rollRate,C2_R_BIAS_UPDATE-1)-Rbias;
+		#else
+			dR = INCREASE_SHIFT(rollRate,C2_R_BIAS_UPDATE)-Rbias;
+		#endif /*DOUBLESENSORS*/
 		//   filter
 	    filtered_dR+= - DECREASE_SHIFT(filtered_dR,R_filter) + DECREASE_SHIFT(dR,R_filter);
 		//     integrate for the angle and add something to react agianst
