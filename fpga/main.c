@@ -74,6 +74,9 @@ Mode mode = SAFE;
 int32_t mode_start_time = 0;
 //Loglevel log_level = SENSORS;
 
+bool always_log = true;
+bool log_ev_completed = false;
+bool log_data_completed = false;
 //LOGGING ARRAYS
 int16_t tm_array[LOG_SIZE][3];       //Timestamp and Mode
 int16_t sbias_array[6]; 					 //sbias
@@ -298,7 +301,7 @@ void special_request(char request){
 			break;
 		case RESET_SENSOR_LOG:
 			clear_log();
-			send_term_message("Resetted sensor log");
+			send_term_message("Resetted logs. New log will start now.");
 			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
 			break;
 		case ASK_SENSOR_LOG:
@@ -384,6 +387,7 @@ void isr_qr_link(void)
 	if(isr_qr_counter++ == 1) {
 		isr_qr_counter = 0;
 
+
 		if(mode >= YAW_CONTROL) ENABLE_INTERRUPT(INTERRUPT_OVERFLOW);
 
 		#ifndef DOUBLESENSORS
@@ -441,14 +445,24 @@ void isr_qr_link(void)
 				}
 				break;
 		}
-		if(TIMEANALYSIS) timeAct = X32_US_CLOCK;
-		log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
 
 		if(mode >= YAW_CONTROL) DISABLE_INTERRUPT(INTERRUPT_OVERFLOW);
+		
+		if(TIMEANALYSIS) timeAct = X32_US_CLOCK;
 
-		//in case of debug will log arbitrary values, so this function isn't called
-		if(!DEBUG) log_sensors(sensor_array, s0, s1, s2, s3, s4, s5,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
-		log_control(mode, control_array, R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); 	//logging control parameters
+		if(always_log || !log_data_completed) {  //if always_log is false, it will perform only one logging
+		log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
+
+				log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
+				if(mode == CALIBRATE) log_sbias(sbias_array,s_bias); 	//logging s_bias only in calibration mode
+
+				if(mode >= YAW_CONTROL) DISABLE_INTERRUPT(INTERRUPT_OVERFLOW);
+
+				//in case of debug will log arbitrary values, so this function isn't called
+				if(!DEBUG) log_sensors(sensor_array, s0, s1, s2, s3, s4, s5,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
+				log_control(mode, control_array, R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); 	//logging control parameters
+		}
+
 	}
 	if(TIMEANALYSIS){
 		timeLog = X32_US_CLOCK;
@@ -495,7 +509,8 @@ void packet_received(char control, PacketData data) {
 		return;
 	}
 
-  log_event(event_array,X32_US_CLOCK,control,data.as_int8_t); //logging all the events
+	if(always_log || !log_ev_completed)
+  			log_event(event_array,X32_US_CLOCK,control,data.as_int8_t); //logging all the events
 
 	switch(control){
 		case MODE_CHANGE:
@@ -553,6 +568,9 @@ void setup()
 	R_angle = 0;
 	P_angle = 0;
 
+	always_log = true;
+  log_ev_completed = false;
+  log_data_completed = false;
 	init_log_arrays(tm_array,sbias_array,sensor_array,control_array,event_array);
 
 	fifo_init(&pc_msg_q);
