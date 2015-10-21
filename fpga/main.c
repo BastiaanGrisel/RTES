@@ -41,14 +41,14 @@
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
 #define PANIC_RPM 400
 
-#define DEBUG 1
+#define DEBUG 0
 
 /* Define global variables
  */
 
 int32_t  X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to avoid going panic before receiving the first msg
 int32_t  time_last_sensor_input = 0;
-int32_t  packet_counter = 0, packet_lost_counter = 0;
+int32_t  packet_counter, packet_lost_counter = 0;
 int32_t  R=0, P=0, Y=0, T=0, Tmin=0;
 int32_t  R_amp, P_amp, Y_amp; //curresponging amplified variables for MANUAL
 int missed_packet_counter;
@@ -232,6 +232,7 @@ void trim(char c){
 		 	 break;
 		 case P_FILTER_UP:
 			 P_filter++;
+			 break;
 		 case P_FILTER_DOWN:
 			 P_filter--;
 			 break;
@@ -601,10 +602,24 @@ void send_feedback()		//TODO: make this function parametric in order to put it i
 		 send_int_message(MP_STAB,P_stabilize);
 		 send_int_message(MY_STAB,Y_stabilize);
  	}
+
+	send_int_message(P_YAW, P_yaw);
+
+  send_int_message(P1_ROLL, P1_roll);
+  send_int_message(P2_ROLL, P2_roll);
+
+  send_int_message(P1_PITCH, P1_pitch);
+  send_int_message(P2_PITCH, P2_pitch);
+
+  send_int_message(FILTER_R, R_filter);
+  send_int_message(FILTER_P, P_filter);
+  send_int_message(FILTER_Y, Y_filter);
+
+  //send_int_message(JS_INFL, )
+
 	sprintf(message, "time it takes to send all this feedback: %6i us",X32_US_CLOCK - sendStart);
 	if(DEBUG) send_term_message(message);
 }
-
 
 int32_t main(void)
 {
@@ -626,8 +641,7 @@ int32_t main(void)
 		check_for_new_packets(&pc_msg_q, &packet_received, &lost_packet);
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
 
-		if(X32_ms_clock %100 == 0)
-			send_feedback();
+		if(X32_ms_clock % 100 == 0) send_feedback();
 	}
 
 	quit();
