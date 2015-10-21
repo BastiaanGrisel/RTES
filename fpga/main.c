@@ -42,6 +42,7 @@
 #define PANIC_RPM 400
 
 #define DEBUG 0
+#define TIMEANALYSIS 0
 
 /* Define global variables
  */
@@ -139,6 +140,7 @@ bool set_mode(Mode new_mode) {
 	}
 
 	if(mode == CALIBRATE) {
+		log_sbias(sbias_array,s_bias); 	//logging s_bias only at end of calibration mode
 		//maybe we can make this a function call
 		Ybias = s_bias[5] << (Y_BIAS_UPDATE-SENSOR_PRECISION);
 		R_ACC_BIAS = DECREASE_SHIFT(s_bias[1]*R_ACC_RATIO,SENSOR_PRECISION);
@@ -238,19 +240,19 @@ void trim(char c){
 			break;
 		case JS_INFL_R_UP:
 			if(mode == MANUAL) R_amp++;
-			if(mode > MANUAL) RJS_TO_ANGLE_RATIO++;
+			if(mode > MANUAL) RJS_TO_ANGLE_RATIO+=20;
 			break;
 		case JS_INFL_R_DOWN:
 			if(mode == MANUAL) R_amp--;
-			if(mode > MANUAL) RJS_TO_ANGLE_RATIO--;
+			if(mode > MANUAL) RJS_TO_ANGLE_RATIO-=20;
 			break;
 		case JS_INFL_P_UP:
 			if(mode == MANUAL) P_amp++;
-			if(mode > MANUAL) PJS_TO_ANGLE_RATIO++;
+			if(mode > MANUAL) PJS_TO_ANGLE_RATIO+=20;
 			break;
 		case JS_INFL_P_DOWN:
 			if(mode == MANUAL) P_amp--;
-			if(mode > MANUAL) PJS_TO_ANGLE_RATIO--;
+			if(mode > MANUAL) PJS_TO_ANGLE_RATIO-=20;
 			break;
 		case JS_INFL_Y_UP:
 			if(mode == MANUAL) Y_amp++;
@@ -347,18 +349,17 @@ void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t 
 */
 void isr_qr_link(void)
 {
-	int timeTime, timeRead, timeLog, timeYaw, timeRoll,timeAct, timestart = X32_US_CLOCK;
+	int timeTime, timeRead, timeLog, timeYaw, timeFull,timeAct, timestart = X32_US_CLOCK;
 	time_last_sensor_input = X32_ms_clock;
-	if(DEBUG) timeTime = X32_US_CLOCK;
+	if(TIMEANALYSIS) timeTime = X32_US_CLOCK;
 /* get sensor and timestamp values */
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
-	if(DEBUG) timeRead = X32_US_CLOCK;
+	if(TIMEANALYSIS) timeRead = X32_US_CLOCK;
 
-	if(DEBUG) timeLog = X32_US_CLOCK;
 	Y_stabilize = yawControl(s5,Y);
 
-	if(DEBUG) timeYaw = X32_US_CLOCK;
+	if(TIMEANALYSIS) timeYaw = X32_US_CLOCK;
 	//QR THREE IS FLIPPED!!
 
 	if(mode >= YAW_CONTROL) ENABLE_INTERRUPT(INTERRUPT_OVERFLOW);
@@ -369,7 +370,7 @@ void isr_qr_link(void)
 		P_stabilize = pitchControl(s4,s0,P);
 	}
 
-	if(DEBUG) timeRoll = X32_US_CLOCK;
+	if(TIMEANALYSIS) timeFull = X32_US_CLOCK;
 
 	switch(mode) {
 		case CALIBRATE:
@@ -414,9 +415,8 @@ void isr_qr_link(void)
 			}
 			break;
 	}
-
+	if(TIMEANALYSIS) timeAct = X32_US_CLOCK;
 	log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
-	if(mode == CALIBRATE) log_sbias(sbias_array,s_bias); 	//logging s_bias only in calibration mode
 
 	if(mode >= YAW_CONTROL) DISABLE_INTERRUPT(INTERRUPT_OVERFLOW);
 
@@ -424,15 +424,19 @@ void isr_qr_link(void)
 	if(!DEBUG) log_sensors(sensor_array, s0, s1, s2, s3, s4, s5,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
 	log_control(mode, control_array, R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); 	//logging control parameters
 
-	if(DEBUG){
-		timeAct = X32_US_CLOCK;
-		if(isr_counter++ ==99){
+	if(TIMEANALYSIS){
+		timeLog = X32_US_CLOCK;
+		if(isr_counter++ ==999){
 			int timefinish = X32_US_CLOCK;
-			isr_counter =0;
-			sprintf(message, "\ntimeoffset = %4i, Read = %4i,Log = %4i, \nYaw = %4i, Roll = %4i, Act = %4i, total = %4i",timeTime -timestart,timeRead-timeTime,timeLog-timeRead,timeYaw-timeLog, timeRoll-timeYaw,timeAct-timeRoll,timefinish-timestart);
+			int timeoffset = timeTime -timestart;
+			isr_counter =1;
+			sprintf(message, "\ntimeoffset = %4i, Read = %4i, \nYaw = %4i, Full = %4i, Act = %4i, Log = %4i, total = %4i",
+				timeoffset,timeRead-timeTime-timeoffset,timeYaw-timeRead-timeoffset,
+				timeFull-timeYaw-timeoffset, timeAct-timeFull-timeoffset,
+				timeLog-timeAct-timeoffset,timefinish-timestart-timeoffset*7);
 			send_term_message(message);
-			sprintf(message,"sending a very long (for example: debug-) message = %4i", X32_US_CLOCK-timefinish);
-			send_term_message(message);
+			/*sprintf(message,"sending a very long (for example: debug-) message = %4i", X32_US_CLOCK-timefinish);
+			send_term_message(message);*/
 		}
 	}
 }
@@ -650,7 +654,7 @@ void send_feedback()		//TODO: make this function parametric in order to put it i
 
   //send_int_message(JS_INFL, )
 
-	sprintf(message, "time it takes to send all this feedback: %6i us",X32_US_CLOCK - sendStart);
+	if(DEBUG) sprintf(message, "time it takes to send all this feedback: %6i us",X32_US_CLOCK - sendStart);
 	if(DEBUG) send_term_message(message);
 }
 
@@ -664,7 +668,7 @@ int32_t main(void)
 	while (1) {
 		// Pings from the PC
 	  PClinkisOK = check_alive_connection();
-		//isr_qr_link();
+		if(TIMEANALYSIS) isr_qr_link();
 
 		// Turn on the LED corresponding to the assignment
 		X32_leds = (flicker_slow()?1:0) | (PClinkisOK*2) | ((X32_ms_clock-time_last_sensor_input<100)?4:0);
