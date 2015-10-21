@@ -11,7 +11,7 @@ typedef enum {  LOG_ONLY_IN_SAFE_MODE,
                 MODE_ALREADY_SET,
                 CONTROL_DISABLED_IN_THIS_MODE,
 	              JS_LIFT_NOT_ZERO,
-                SENSOR_LOG_FULL,
+                LOG_FULL,
                 FIRST_CALIBRATE,
                 DIVISION_BY_ZERO_HAPPEND,
                 OVERFLOW_HAPPENED } Error;  /* Error Messages */
@@ -114,7 +114,7 @@ shouldn't be cardinal ordered? Like A,B,C,ecc */
 #define ERROR_MSG '3'
 #define FB_MSG '4'
 #define FB_MSG_END  '5'
-#define SENSOR_LOG_FULL '6'
+#define LOG_FULL '6'
 #define LOG_MSG_PART '7'
 #define LOG_MSG_NEW_LINE '\n'
 

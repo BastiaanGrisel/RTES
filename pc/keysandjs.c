@@ -228,8 +228,8 @@ int init_joystick(void){
  */
 void init_log(void){
 
-	log_file = fopen("flight_log.txt", "w");
-	log_file_event = fopen("flight_log_event.txt", "w");
+	log_file = fopen("data_log.txt", "w");
+	log_file_event = fopen("event_log.txt", "w");
 
 	if (log_file == NULL || log_file_event == NULL)
 	{
@@ -240,6 +240,8 @@ void init_log(void){
 		clear();
 		refresh();
 	}
+	//writing the legend
+	//fprintf(log_file,"Time_H Time_L Mode S0 S1 S2 S3 S4 S5 S6 RPM0 RPM1 RPM2 RPM3 R_Stable P_Stable Y_Stable R_Angle P_Angle\n");
 }
 
 /* Checks if the PC has sent data in the last 200ms otherwise sends
@@ -634,7 +636,7 @@ print_error_message(Error err)
 		case JS_LIFT_NOT_ZERO:
 			sprintf(error_message, "[PC]: Make sure JS- lift is zero. ");
 			break;
-		case SENSOR_LOG_FULL:
+		case LOG_FULL:
 			sprintf(error_message, "[QR]: Sensor log is full. ");
 			break;
 		case FIRST_CALIBRATE:
