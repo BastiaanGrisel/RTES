@@ -57,7 +57,7 @@ bool is_calibrated = false;
 
 int32_t 	isr_qr_counter = 0;
 
-int32_t	s0, s1, s2, s3, s4, s5 = 0;
+int32_t	s0 = 0, s1 = 0, s2 = 0, s3 = 0, s4 = 0, s5 = 0;
 int32_t s_bias[6] = {0};
 int32_t isr_counter = 0;
 
