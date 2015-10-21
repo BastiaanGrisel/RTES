@@ -218,24 +218,24 @@ void trim(char c){
 		case P2_PITCH_DOWN:
 			P2_pitch--;
 			break;
-			case Y_FILTER_UP:
-			   Y_filter++;
-				 break;
-			case Y_FILTER_DOWN:
-			   Y_filter--;
-				 break;
-		 case R_FILTER_UP:
-			 R_filter++;
+		case Y_FILTER_UP:
+		   Y_filter++;
 			 break;
-		 case R_FILTER_DOWN:
-		 	 R_filter--;
-		 	 break;
-		 case P_FILTER_UP:
-			 P_filter++;
+		case Y_FILTER_DOWN:
+		   Y_filter--;
 			 break;
-		 case P_FILTER_DOWN:
-			 P_filter--;
-			 break;
+		case R_FILTER_UP:
+			R_filter++;
+			break;
+		case R_FILTER_DOWN:
+			R_filter--;
+			break;
+		case P_FILTER_UP:
+			P_filter++;
+			break;
+		case P_FILTER_DOWN:
+			P_filter--;
+			break;
 		default:
 			break;
 	}
