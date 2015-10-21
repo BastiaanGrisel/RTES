@@ -42,22 +42,23 @@
 #define PANIC_RPM 400
 
 #define DEBUG 0
+#define TIMEANALYSIS 0
 
 /* Define global variables
  */
 
 int32_t  X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to avoid going panic before receiving the first msg
 int32_t  time_last_sensor_input = 0;
-int32_t  packet_counter = 0, packet_lost_counter = 0;
+int32_t  packet_counter, packet_lost_counter = 0;
 int32_t  R=0, P=0, Y=0, T=0, Tmin=0;
-int32_t  R_amp, P_amp, Y_amp; //curresponging amplified variables for MANUAL
+int32_t  R_amp = 4, P_amp = 4, Y_amp = 4; //curresponging amplified variables for MANUAL
 int missed_packet_counter;
 
 bool is_calibrated = false;
 
 int32_t 	isr_qr_counter = 0;
 
-int32_t	s0, s1, s2, s3, s4, s5 = 0;
+int32_t	s0 = 0, s1 = 0, s2 = 0, s3 = 0, s4 = 0, s5 = 0;
 int32_t s_bias[6] = {0};
 int32_t isr_counter = 0;
 
@@ -142,6 +143,7 @@ bool set_mode(Mode new_mode) {
 	}
 
 	if(mode == CALIBRATE) {
+		log_sbias(sbias_array,s_bias); 	//logging s_bias only at end of calibration mode
 		//maybe we can make this a function call
 		Ybias = s_bias[5] << (Y_BIAS_UPDATE-SENSOR_PRECISION);
 		R_ACC_BIAS = DECREASE_SHIFT(s_bias[1]*R_ACC_RATIO,SENSOR_PRECISION);
@@ -221,23 +223,48 @@ void trim(char c){
 		case P2_PITCH_DOWN:
 			P2_pitch--;
 			break;
-			case Y_FILTER_UP:
-			   Y_filter++;
-				 break;
-			case Y_FILTER_DOWN:
-			   Y_filter--;
-				 break;
-		 case R_FILTER_UP:
-			 R_filter++;
+		case Y_FILTER_UP:
+		   Y_filter++;
 			 break;
-		 case R_FILTER_DOWN:
-		 	 R_filter--;
-		 	 break;
-		 case P_FILTER_UP:
-			 P_filter++;
-		 case P_FILTER_DOWN:
-			 P_filter--;
+		case Y_FILTER_DOWN:
+		   Y_filter--;
 			 break;
+		case R_FILTER_UP:
+			R_filter++;
+			break;
+		case R_FILTER_DOWN:
+			R_filter--;
+			break;
+		case P_FILTER_UP:
+			P_filter++;
+			break;
+		case P_FILTER_DOWN:
+			P_filter--;
+			break;
+		case JS_INFL_R_UP:
+			if(mode == MANUAL) R_amp++;
+			if(mode > MANUAL) RJS_TO_ANGLE_RATIO+=20;
+			break;
+		case JS_INFL_R_DOWN:
+			if(mode == MANUAL) R_amp--;
+			if(mode > MANUAL) RJS_TO_ANGLE_RATIO-=20;
+			break;
+		case JS_INFL_P_UP:
+			if(mode == MANUAL) P_amp++;
+			if(mode > MANUAL) PJS_TO_ANGLE_RATIO+=20;
+			break;
+		case JS_INFL_P_DOWN:
+			if(mode == MANUAL) P_amp--;
+			if(mode > MANUAL) PJS_TO_ANGLE_RATIO-=20;
+			break;
+		case JS_INFL_Y_UP:
+			if(mode == MANUAL) Y_amp++;
+			if(mode > MANUAL) YJS_TO_ANGLE_RATIO++;
+			break;
+		case JS_INFL_Y_DOWN:
+			if(mode == MANUAL) Y_amp--;
+			if(mode > MANUAL) YJS_TO_ANGLE_RATIO--;
+			break;
 		default:
 			break;
 	}
@@ -325,18 +352,17 @@ void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t 
 */
 void isr_qr_link(void)
 {
-	int timeTime, timeRead, timeLog, timeYaw, timeRoll,timeAct, timestart = X32_US_CLOCK;
+	int timeTime, timeRead, timeLog, timeYaw, timeFull,timeAct, timestart = X32_US_CLOCK;
 	time_last_sensor_input = X32_ms_clock;
-	if(DEBUG) timeTime = X32_US_CLOCK;
+	if(TIMEANALYSIS) timeTime = X32_US_CLOCK;
 /* get sensor and timestamp values */
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2;
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
-	if(DEBUG) timeRead = X32_US_CLOCK;
+	if(TIMEANALYSIS) timeRead = X32_US_CLOCK;
 
-	if(DEBUG) timeLog = X32_US_CLOCK;
 	Y_stabilize = yawControl(s5,Y);
 
-	if(DEBUG) timeYaw = X32_US_CLOCK;
+	if(TIMEANALYSIS) timeYaw = X32_US_CLOCK;
 	//QR THREE IS FLIPPED!!
 
 	if(mode >= YAW_CONTROL) ENABLE_INTERRUPT(INTERRUPT_OVERFLOW);
@@ -347,7 +373,7 @@ void isr_qr_link(void)
 		P_stabilize = pitchControl(s4,s0,P);
 	}
 
-	if(DEBUG) timeRoll = X32_US_CLOCK;
+	if(TIMEANALYSIS) timeFull = X32_US_CLOCK;
 
 	switch(mode) {
 		case CALIBRATE:
@@ -355,16 +381,11 @@ void isr_qr_link(void)
 			//R_angle = P_angle = 0;
 			break;
 		case MANUAL:
-			// Calculate motor RPM
-			 R_amp = 2*R;
-			 P_amp = 2*P;
-       Y_amp = 2*Y;
-
 			set_motor_rpm(
-				max(Tmin, get_motor_offset(0) + T  +P_amp+Y_amp),
-				max(Tmin, get_motor_offset(1) + T-R_amp  -Y_amp),
-				max(Tmin, get_motor_offset(2) + T  -P_amp+Y_amp),
-				max(Tmin, get_motor_offset(3) + T+R_amp  -Y_amp));
+				max(Tmin, get_motor_offset(0) + T  + (P_amp*P) >> 2 + (Y_amp*Y) >> 2),
+				max(Tmin, get_motor_offset(1) + T	 - (R_amp*R) >> 2 - (Y_amp*Y) >> 2),
+				max(Tmin, get_motor_offset(2) + T  - (P_amp*P) >> 2 + (Y_amp*Y) >> 2),
+				max(Tmin, get_motor_offset(3) + T  + (R_amp*R) >> 2 - (Y_amp*Y) >> 2));
 			break;
 		case YAW_CONTROL:
 			// Calculate motor RPM
@@ -398,7 +419,10 @@ void isr_qr_link(void)
 			break;
 	}
 
+	if(TIMEANALYSIS) timeAct = X32_US_CLOCK;
+
 	if(always_log || !log_data_completed) {  //if always_log is false, it will perform only one logging
+	log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
 
 			log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
 			if(mode == CALIBRATE) log_sbias(sbias_array,s_bias); 	//logging s_bias only in calibration mode
@@ -410,15 +434,19 @@ void isr_qr_link(void)
 			log_control(mode, control_array, R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); 	//logging control parameters
 	}
 
-	if(DEBUG){
-		timeAct = X32_US_CLOCK;
-		if(isr_counter++ ==99){
+	if(TIMEANALYSIS){
+		timeLog = X32_US_CLOCK;
+		if(isr_counter++ ==999){
 			int timefinish = X32_US_CLOCK;
-			isr_counter =0;
-			sprintf(message, "\ntimeoffset = %4i, Read = %4i,Log = %4i, \nYaw = %4i, Roll = %4i, Act = %4i, total = %4i",timeTime -timestart,timeRead-timeTime,timeLog-timeRead,timeYaw-timeLog, timeRoll-timeYaw,timeAct-timeRoll,timefinish-timestart);
+			int timeoffset = timeTime -timestart;
+			isr_counter =1;
+			sprintf(message, "\ntimeoffset = %4i, Read = %4i, \nYaw = %4i, Full = %4i, Act = %4i, Log = %4i, total = %4i",
+				timeoffset,timeRead-timeTime-timeoffset,timeYaw-timeRead-timeoffset,
+				timeFull-timeYaw-timeoffset, timeAct-timeFull-timeoffset,
+				timeLog-timeAct-timeoffset,timefinish-timestart-timeoffset*7);
 			send_term_message(message);
-			sprintf(message,"sending a very long (for example: debug-) message = %4i", X32_US_CLOCK-timefinish);
-			send_term_message(message);
+			/*sprintf(message,"sending a very long (for example: debug-) message = %4i", X32_US_CLOCK-timefinish);
+			send_term_message(message);*/
 		}
 	}
 }
@@ -611,10 +639,38 @@ void send_feedback()		//TODO: make this function parametric in order to put it i
 		 send_int_message(MP_STAB,P_stabilize);
 		 send_int_message(MY_STAB,Y_stabilize);
  	}
-	sprintf(message, "time it takes to send all this feedback: %6i us",X32_US_CLOCK - sendStart);
+
+	send_int_message(P_YAW, P_yaw);
+
+  send_int_message(P1_ROLL, P1_roll);
+  send_int_message(P2_ROLL, P2_roll);
+
+  send_int_message(P1_PITCH, P1_pitch);
+  send_int_message(P2_PITCH, P2_pitch);
+
+  send_int_message(FILTER_R, R_filter);
+  send_int_message(FILTER_P, P_filter);
+  send_int_message(FILTER_Y, Y_filter);
+
+	if(mode == MANUAL) {
+		send_int_message(JS_INFL_R, R_amp);
+		send_int_message(JS_INFL_P, P_amp);
+		send_int_message(JS_INFL_Y, Y_amp);
+	} else if(mode >= YAW_CONTROL) {
+		send_int_message(JS_INFL_R, RJS_TO_ANGLE_RATIO);
+		send_int_message(JS_INFL_P, PJS_TO_ANGLE_RATIO);
+		send_int_message(JS_INFL_Y, YJS_TO_ANGLE_RATIO);
+	} else {
+		send_int_message(JS_INFL_R, 0);
+		send_int_message(JS_INFL_P, 0);
+		send_int_message(JS_INFL_Y, 0);
+	}
+
+  //send_int_message(JS_INFL, )
+
+	if(DEBUG) sprintf(message, "time it takes to send all this feedback: %6i us",X32_US_CLOCK - sendStart);
 	if(DEBUG) send_term_message(message);
 }
-
 
 int32_t main(void)
 {
@@ -626,7 +682,7 @@ int32_t main(void)
 	while (1) {
 		// Pings from the PC
 	  PClinkisOK = check_alive_connection();
-		//isr_qr_link();
+		if(TIMEANALYSIS) isr_qr_link();
 
 		// Turn on the LED corresponding to the assignment
 		X32_leds = (flicker_slow()?1:0) | (PClinkisOK*2) | ((X32_ms_clock-time_last_sensor_input<100)?4:0);
@@ -636,8 +692,7 @@ int32_t main(void)
 		check_for_new_packets(&pc_msg_q, &packet_received, &lost_packet);
 		ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX); // Re-enable messages from the PC after processing them
 
-		if(X32_ms_clock %100 == 0)
-			send_feedback();
+		if(X32_ms_clock % 100 == 0) send_feedback();
 	}
 
 	quit();

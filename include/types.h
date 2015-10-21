@@ -86,8 +86,12 @@ PacketData ch2pd(char in) {
 #define R_FILTER_DOWN '7'
 #define P_FILTER_UP '8'
 #define P_FILTER_DOWN '9'
-#define JS_INFL_UP 'C'
-#define JS_INFL_DOWN 'V'
+#define JS_INFL_R_UP 'Z'
+#define JS_INFL_R_DOWN 'X'
+#define JS_INFL_P_UP 'C'
+#define JS_INFL_P_DOWN 'V'
+#define JS_INFL_Y_UP 'B'
+#define JS_INFL_Y_DOWN 'N'
 
 /* SPECIAL REQUESTS */
 #define SPECIAL_REQUEST 'S'  //= control value
@@ -140,6 +144,17 @@ shouldn't be cardinal ordered? Like A,B,C,ecc */
 #define LOG_EVENT 'P'
 #define LOG_EV_NEW_LINE 'Q'
 
+#define P_YAW 'R'
+#define P1_ROLL 'S'
+#define P2_ROLL 'T'
+#define P1_PITCH 'U'
+#define P2_PITCH 'V'
+#define FILTER_R 'W'
+#define FILTER_P 'X'
+#define FILTER_Y 'Y'
+#define JS_INFL_R 'Z'
+#define JS_INFL_P 'a'
+#define JS_INFL_Y 'b'
 
 /* Util functions */
 bool is_valid_mode(Mode mode) {

@@ -8,7 +8,7 @@ int32_t P_filter = 1;
 #define	C1_P_ROUNDING_ERROR  (1<<(C1_P-1)) //INCPEASE_SHIFT(1,C1_P-1);
 #define C2_P_ROUNDING_ERROR  (1<<(C2_P_BIAS_UPDATE-1)) /*INCPEASE_SHIFT(1,C2_P_BIAS_UPDATE-1);*/
 #define	P_INTEGRATE_ROUNDING_ERROR (1<<C2_P_BIAS_UPDATE-P_ANGLE-1) //INCPEASE_SHIFT(1,C2_P_BIAS_UPDATE-P_ANGLE+1);
-#define PJS_TO_ANGLE_RATIO 300
+int PJS_TO_ANGLE_RATIO = 300;
 
 int		P_ACC_BIAS = 0;  /*set this in CALIBPATION mode*/
 int		P1_pitch = 7; // watch out! if P1_roll is higher then C2_P_BIAS_UPDATE then things will go wrong 5

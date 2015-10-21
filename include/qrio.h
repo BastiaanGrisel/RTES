@@ -48,7 +48,7 @@ void rs232_open()
 
   	if(isatty(fd_RS232)<0 | ttyname(fd_RS232) ==0| tcgetattr(fd_RS232, &tty)!=0){
 
-		printw("RS232 connection could not be openend. <<press a key to continue>>");		
+		printw("RS232 connection could not be openend. <<press a key to continue>>");
 //printw("RS232 not found?!     <<press a key to continue>>\nfd = %i;isatty(fd_RS232)= %i;ttyname(fd_RS232) = %i; tcgetattr(fd_RS232, &tty) = %i",fd_RS232,isatty(fd_RS232),ttyname(fd_RS232),tcgetattr(fd_RS232, &tty));
 		fd_RS232 = -1;
 		nodelay(stdscr, false);
@@ -102,7 +102,7 @@ int	rs232_getchar_nb()
 	if (result == 0) {
 		return -1000;
 	} else {
-		assert(result == 1);
+		//assert(result == 1);
 		return (int) c;
 	}
 }
@@ -118,7 +118,7 @@ int	rs232_putchar(char c)
 		result = (int) write(fd_RS232, &c, sizeof(char));
 	} while (result == 0);
 
-	assert(result == 1);
+	//assert(result == 1);
 	return result;
 }
 
