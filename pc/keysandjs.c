@@ -32,7 +32,7 @@ struct 	timeval keep_alive;
 int 	sensors[6];
 int 	QR_r, QR_p = 0;
 int 	QR_rs, QR_ps, QR_ys = 0;
-int		QR_pyaw, QR_p1roll, QR_p2roll, QR_p1pitch, QR_p2pitch, QR_filterr, QR_filterp, QR_filtery, QR_jsinfl = 0;
+int		QR_pyaw, QR_p1roll, QR_p2roll, QR_p1pitch, QR_p2pitch, QR_filterr, QR_filterp, QR_filtery, QR_jsinflr, QR_jsinflp, QR_jsinfly;
 
 int 	RPM[4];
 Mode 	QRMode = SAFE;
@@ -119,7 +119,7 @@ int main (int argc, char **argv)
 		drawCommunication(in_packet_counter, out_packet_counter);
 		displayMessage(last_out_message, error_message, terminal_message);
 		drawRPM(RPM[0],RPM[1],RPM[2],RPM[3]);
-		drawParameters(QR_pyaw, QR_p1roll, QR_p2roll, QR_p1pitch, QR_p2pitch, QR_filterr, QR_filterp, QR_filtery, QR_jsinfl);
+		drawParameters(QR_pyaw, QR_p1roll, QR_p2roll, QR_p1pitch, QR_p2pitch, QR_filterr, QR_filterp, QR_filtery, QR_jsinflr, QR_jsinflp, QR_jsinfly);
 
 		refresh();
 	}
@@ -294,9 +294,17 @@ void processMouse(int button, int line, int x){
 				if(x==48) pc_send_message('A',Y_FILTER_DOWN);
 				if(x==59) pc_send_message('A',Y_FILTER_UP);
 				break;
-			case(22): // FILTER YAW
-				if(x==48) pc_send_message('A',JS_INFL_DOWN);
-				if(x==59) pc_send_message('A',JS_INFL_UP);
+			case(22): // FILTER JS ROLL
+				if(x==48) pc_send_message('A',JS_INFL_R_DOWN);
+				if(x==59) pc_send_message('A',JS_INFL_R_UP);
+				break;
+			case(23): // FILTER JS PITCH
+				if(x==48) pc_send_message('A',JS_INFL_P_DOWN);
+				if(x==59) pc_send_message('A',JS_INFL_P_UP);
+				break;
+			case(24): // FILTER JS YAW
+				if(x==48) pc_send_message('A',JS_INFL_Y_DOWN);
+				if(x==59) pc_send_message('A',JS_INFL_Y_UP);
 				break;
 		}
 	}
@@ -600,8 +608,14 @@ void packet_received(char control, PacketData data){
 		case FILTER_Y:
 			QR_filtery = swapped.as_int16_t;
 	   	break;
-		case JS_INFL:
-			QR_jsinfl = swapped.as_int16_t;
+		case JS_INFL_R:
+			QR_jsinflr = swapped.as_int16_t;
+	   	break;
+		case JS_INFL_P:
+			QR_jsinflp = swapped.as_int16_t;
+	   	break;
+		case JS_INFL_Y:
+			QR_jsinfly = swapped.as_int16_t;
 	   	break;
 		case LOG_MSG_PART:
 	    		fprintf(log_file, "%i ", swapped.as_int16_t);

@@ -50,7 +50,7 @@ int32_t  X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to
 int32_t  time_last_sensor_input = 0;
 int32_t  packet_counter, packet_lost_counter = 0;
 int32_t  R=0, P=0, Y=0, T=0, Tmin=0;
-int32_t  R_amp, P_amp, Y_amp; //curresponging amplified variables for MANUAL
+int32_t  R_amp = 4, P_amp = 4, Y_amp = 4; //curresponging amplified variables for MANUAL
 int missed_packet_counter;
 
 bool is_calibrated = false;
@@ -236,6 +236,30 @@ void trim(char c){
 		case P_FILTER_DOWN:
 			P_filter--;
 			break;
+		case JS_INFL_R_UP:
+			if(mode == MANUAL) R_amp++;
+			if(mode > MANUAL) RJS_TO_ANGLE_RATIO++;
+			break;
+		case JS_INFL_R_DOWN:
+			if(mode == MANUAL) R_amp--;
+			if(mode > MANUAL) RJS_TO_ANGLE_RATIO--;
+			break;
+		case JS_INFL_P_UP:
+			if(mode == MANUAL) P_amp++;
+			if(mode > MANUAL) PJS_TO_ANGLE_RATIO++;
+			break;
+		case JS_INFL_P_DOWN:
+			if(mode == MANUAL) P_amp--;
+			if(mode > MANUAL) PJS_TO_ANGLE_RATIO--;
+			break;
+		case JS_INFL_Y_UP:
+			if(mode == MANUAL) Y_amp++;
+			if(mode > MANUAL) YJS_TO_ANGLE_RATIO++;
+			break;
+		case JS_INFL_Y_DOWN:
+			if(mode == MANUAL) Y_amp--;
+			if(mode > MANUAL) YJS_TO_ANGLE_RATIO--;
+			break;
 		default:
 			break;
 	}
@@ -353,16 +377,11 @@ void isr_qr_link(void)
 			//R_angle = P_angle = 0;
 			break;
 		case MANUAL:
-			// Calculate motor RPM
-			 R_amp = 2*R;
-			 P_amp = 2*P;
-       Y_amp = 2*Y;
-
 			set_motor_rpm(
-				max(Tmin, get_motor_offset(0) + T  +P_amp+Y_amp),
-				max(Tmin, get_motor_offset(1) + T-R_amp  -Y_amp),
-				max(Tmin, get_motor_offset(2) + T  -P_amp+Y_amp),
-				max(Tmin, get_motor_offset(3) + T+R_amp  -Y_amp));
+				max(Tmin, get_motor_offset(0) + T  + (P_amp*P) >> 2 + (Y_amp*Y) >> 2),
+				max(Tmin, get_motor_offset(1) + T	 - (R_amp*R) >> 2 - (Y_amp*Y) >> 2),
+				max(Tmin, get_motor_offset(2) + T  - (P_amp*P) >> 2 + (Y_amp*Y) >> 2),
+				max(Tmin, get_motor_offset(3) + T  + (R_amp*R) >> 2 - (Y_amp*Y) >> 2));
 			break;
 		case YAW_CONTROL:
 			// Calculate motor RPM
@@ -614,6 +633,20 @@ void send_feedback()		//TODO: make this function parametric in order to put it i
   send_int_message(FILTER_R, R_filter);
   send_int_message(FILTER_P, P_filter);
   send_int_message(FILTER_Y, Y_filter);
+
+	if(mode == MANUAL) {
+		send_int_message(JS_INFL_R, R_amp);
+		send_int_message(JS_INFL_P, P_amp);
+		send_int_message(JS_INFL_Y, Y_amp);
+	} else if(mode >= YAW_CONTROL) {
+		send_int_message(JS_INFL_R, RJS_TO_ANGLE_RATIO);
+		send_int_message(JS_INFL_P, PJS_TO_ANGLE_RATIO);
+		send_int_message(JS_INFL_Y, YJS_TO_ANGLE_RATIO);
+	} else {
+		send_int_message(JS_INFL_R, 0);
+		send_int_message(JS_INFL_P, 0);
+		send_int_message(JS_INFL_Y, 0);
+	}
 
   //send_int_message(JS_INFL, )
 

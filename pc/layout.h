@@ -130,7 +130,9 @@ void drawBase() {
 	ptb(19,48,"- FILTER_P +");
 	ptb(20,48,"- FILTER_Y +");
 
-	ptb(22,48,"- JS_INFL  +");
+	ptb(22,48,"- JS_R     +");
+	ptb(23,48,"- JS_P     +");
+	ptb(24,48,"- JS_Y     +");
 }
 
 void drawMode(Mode m) {
@@ -187,7 +189,7 @@ void drawRPM(int m0, int m1, int m2, int m3) {
 	ptb(8,55,"%-4d", m2);
 }
 
-void drawParameters(int yaw, int p1roll, int p2roll, int p1pitch, int p2pitch, int filterr, int filterp, int filtery, int jsinfl) {
+void drawParameters(int yaw, int p1roll, int p2roll, int p1pitch, int p2pitch, int filterr, int filterp, int filtery, int jsinflr, int jsinflp, int jsinfly) {
 	ptb(10,61,"(%4d)", yaw);
 
 	ptb(12,61,"(%4d)", p1roll);
@@ -200,7 +202,9 @@ void drawParameters(int yaw, int p1roll, int p2roll, int p1pitch, int p2pitch, i
 	ptb(19,61,"(%4d)", filterp);
 	ptb(20,61,"(%4d)", filtery);
 
-	ptb(22,61,"(%4d)", jsinfl);
+	ptb(22,61,"(%4d)", jsinflr);
+	ptb(23,61,"(%4d)", jsinflp);
+	ptb(24,61,"(%4d)", jsinfly);
 }
 
 #endif
