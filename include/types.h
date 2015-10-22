@@ -13,7 +13,7 @@ typedef enum {  LOG_ONLY_IN_SAFE_MODE,
 	              JS_LIFT_NOT_ZERO,
                 LOG_FULL,
                 FIRST_CALIBRATE,
-                DIVISION_BY_ZERO_HAPPEND,
+                DIVISION_BY_ZERO_HAPPENED,
                 OVERFLOW_HAPPENED } Error;  /* Error Messages */
 
 typedef signed char       int8_t;

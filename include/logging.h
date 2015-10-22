@@ -9,7 +9,7 @@
 
 #define CLOCK	peripherals[PERIPHERAL_US_CLOCK]
 
-#define LOG_SIZE 1000
+#define LOG_SIZE 10000
 #define EVENT_SIZE 1000
 
 extern bool always_log;
@@ -122,7 +122,7 @@ void log_control(Mode mode, int16_t control_array[][5],int32_t R_stablize,
        control_array[log_counter][0] = R_stablize;
        control_array[log_counter][1] = P_stabilize;
        control_array[log_counter][2] = Y_stabilize;
-      //9 stands for the exact shift we use in the control loops
+       //9 stands for the exact shift we use in the control loops
        control_array[log_counter][3] = DECREASE_SHIFT(R_angle,9);
        control_array[log_counter][4] = DECREASE_SHIFT(P_angle,9);
       }

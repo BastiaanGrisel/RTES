@@ -671,7 +671,7 @@ print_error_message(Error err)
 		case FIRST_CALIBRATE:
 			sprintf(error_message, "[QR]: You first need to calibrate! ");
 			break;
-		case DIVISION_BY_ZERO_HAPPEND:
+		case DIVISION_BY_ZERO_HAPPENED:
 			sprintf(error_message, "[QR]: Division by zero!");
 			break;
 		case OVERFLOW_HAPPENED:

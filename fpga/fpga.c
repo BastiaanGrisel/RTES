@@ -455,8 +455,6 @@ void isr_qr_link(void)
 			if(log_cond) {  //if always_log is false, it will perform only one logging
 					log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
 
-					if(mode >= YAW_CONTROL) DISABLE_INTERRUPT(INTERRUPT_OVERFLOW);
-
 					//in case of debug will log arbitrary values, so this function isn't called
 					if(!DEBUG) log_sensors(sensor_array, s0, s1, s2, s3, s4, s5,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
 					log_control(mode, control_array, R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); 	//logging control parameters
@@ -547,7 +545,7 @@ void packet_received(char control, PacketData data) {
  * Author: Bastiaan
  */
 void div0_isr() {
-	send_err_message(DIVISION_BY_ZERO_HAPPEND);
+	send_err_message(DIVISION_BY_ZERO_HAPPENED);
 }
 
 /* Send an error message to the PC
