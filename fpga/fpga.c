@@ -449,8 +449,6 @@ void isr_qr_link(void)
 				log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
 				if(mode == CALIBRATE) log_sbias(sbias_array,s_bias); 	//logging s_bias only in calibration mode
 
-				if(mode >= YAW_CONTROL) DISABLE_INTERRUPT(INTERRUPT_OVERFLOW);
-
 				//in case of debug will log arbitrary values, so this function isn't called
 				if(!DEBUG) log_sensors(sensor_array, s0, s1, s2, s3, s4, s5,
 																			get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
