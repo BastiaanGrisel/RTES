@@ -1,11 +1,11 @@
 CC=lcc-x32
 CFLAGS=-I$(X32INC) -I../include
-OBJS=main.o
+OBJS=fpga.o
 
 .PHONY: clean stubbed stubbedrun uploadrun test
 
 main.ce: $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -lib $(X32INC) -o main.ce
+	$(CC) $(CFLAGS) $(OBJS) -lib $(X32INC) -o fpga.ce
 
 stubbed: CFLAGS+=-DSENSOR_STUB
 stubbed: main.ce
@@ -19,10 +19,10 @@ init2:
 	sudo chmod 777 /dev/ttyUSB1
 
 clean:
-	rm -f main.ce $(OBJS) $(OBJS:.o=.d)
+	rm -f fpga.ce $(OBJS) $(OBJS:.o=.d)
 
 uploadrun: main.ce
-	x32-upload main.ce -c $(X32_PACKAGE_SERIAL) -e
+	x32-upload fpga.ce -c $(X32_PACKAGE_SERIAL) -e
 
 test: test.ce
 	x32-upload test.ce -c $(X32_PACKAGE_SERIAL)
