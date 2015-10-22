@@ -73,8 +73,7 @@ int main (int argc, char **argv)
 		/* Check keypress */
 		if ((c= getch()) != -1){
 			sendKeyData(c); // send a message if user gave input
-			if(c == KEY_MOUSE)
-				if(getmouse(&event) == OK)
+			if(c == KEY_MOUSE && getmouse(&event) == OK)
 					processMouse(event.bstate,event.y,event.x);
 		}
 
