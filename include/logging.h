@@ -97,13 +97,15 @@ void log_tm(int16_t tm_array[][3], int16_t timestamp, int16_t mode) {
   }
 }
 
+
 void log_sbias(int16_t sbias_array[],int32_t s_bias[]) {
-  sbias_array[0] = s_bias[0];
-  sbias_array[1] = s_bias[1];
-  sbias_array[2] = s_bias[2];
-  sbias_array[3] = s_bias[3];
-  sbias_array[4] = s_bias[4];
-  sbias_array[5] = s_bias[5];
+  //shifting back to the original values
+  sbias_array[0] = DECREASE_SHIFT(s_bias[0],SENSOR_PRECISION);
+  sbias_array[1] = DECREASE_SHIFT(s_bias[1],SENSOR_PRECISION);
+  sbias_array[2] = DECREASE_SHIFT(s_bias[2],SENSOR_PRECISION);
+  sbias_array[3] = DECREASE_SHIFT(s_bias[3],SENSOR_PRECISION);
+  sbias_array[4] = DECREASE_SHIFT(s_bias[4],SENSOR_PRECISION);
+  sbias_array[5] = DECREASE_SHIFT(s_bias[5],SENSOR_PRECISION);
 }
 
 
@@ -113,16 +115,16 @@ void log_control(Mode mode, int16_t control_array[][5],int32_t R_stablize,
 
       if(mode >= YAW_CONTROL)
       {
-       //downcasting control values, right shift to keep the significant bits
+       //downcasting control values, without losing information
        control_array[log_counter][0] = R_stablize;
        control_array[log_counter][1] = P_stabilize;
        control_array[log_counter][2] = Y_stabilize;
-       control_array[log_counter][3] = RSHIFT(R_angle,4);
-       control_array[log_counter][4] = RSHIFT(P_angle,4);
+      //9 stands for the exact shift we use in the control loops
+       control_array[log_counter][3] = DECREASE_SHIFT(R_angle,9);
+       control_array[log_counter][4] = DECREASE_SHIFT(P_angle,9);
       }
 
 }
-
 
 
 //sensors and rpm
@@ -140,7 +142,6 @@ void log_sensors(int16_t sensor_array[][10], int32_t s0, int32_t s1, int32_t s2,
     sensor_array[log_counter][7] = rpm1;
     sensor_array[log_counter][8] = rpm2;
     sensor_array[log_counter][9] = rpm3;
-
 }
 
 

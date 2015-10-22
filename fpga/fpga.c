@@ -41,56 +41,60 @@
 
 #define OFFSET_STEP 5
 #define TIMEOUT 500 //ms after which - if not receiving packets - the QR goes to panic mode
+
 #define PANIC_RPM 400
+#define PANIC_TIME 2000
 
 #define DEBUG 0
-#define TIMEANALYSIS 1
+#define TIMEANALYSIS 0
 
+#define min(one, two) ((one < two) ? one : two)
+#define max(one, two) ((one > two) ? one : two)
 
 /* Define global variables
  */
 
 int32_t  X32_ms_last_packet = -1; //ms of the last received packet. Set to -1 to avoid going panic before receiving the first msg
 int32_t  time_last_sensor_input = 0;
-int32_t  packet_counter, packet_lost_counter = 0;
-int32_t  R=0, P=0, Y=0, T=0, Tmin=0;
-int32_t  R_amp = 4, P_amp = 4, Y_amp = 4; //curresponging amplified variables for MANUAL
-int missed_packet_counter;
+int32_t  packet_counter = 0, packet_lost_counter = 0;
+int32_t  R = 0, P = 0, Y = 0, T = 0, Tmin=0;
+int32_t  R_amp = 4, P_amp = 4, Y_amp = 4; // Amplification factor for the joystick
 
 bool is_calibrated = false;
 
-int32_t 	isr_qr_counter = 0;
+int32_t isr_qr_counter = 0;
+int32_t isr_ta_counter = 0;
 
 int32_t	s0 = 0, s1 = 0, s2 = 0, s3 = 0, s4 = 0, s5 = 0;
 #ifdef DOUBLESENSORS
 int32_t	ds0 = 0, ds1 = 0, ds2 = 0, ds3 = 0, ds4 = 0, ds5 = 0;
 #endif
 int32_t s_bias[6] = {0};
-int32_t isr_counter = 0;
 
 Fifo	pc_msg_q;
 
 Mode mode = SAFE;
 int32_t mode_start_time = 0;
-//Loglevel log_level = SENSORS;
 
+/****LOG VARIABLES****/
 bool always_log = true;
 bool log_ev_completed = false;
 bool log_data_completed = false;
-//LOGGING ARRAYS
+
+//log arrays
 int16_t tm_array[LOG_SIZE][3];       //Timestamp and Mode
-int16_t sbias_array[6]; 					 //sbias
+int16_t sbias_array[6]; 					   //sbias
 int16_t sensor_array[LOG_SIZE][10];  //sensors + actuators
-int16_t control_array[LOG_SIZE][5]; //control chain
-int16_t event_array[LOG_EVENT][4]; //events: change mode, keys and js
+int16_t control_array[LOG_SIZE][5];  //control chain
+int16_t event_array[LOG_EVENT][4];   //events: change mode, keys and js
 
-
-void update_nexys_display(){
+// Author: Alessio
+void update_nexys_display() {
 	nexys_display = packet_counter << 8 + packet_lost_counter;
 }
 
-void lost_packet()
-{
+// Author: Alessio
+void lost_packet() {
 	packet_lost_counter++;
 	sprintf(message,"Lost packets: %d\n",packet_lost_counter);
 	send_term_message(message);
@@ -141,8 +145,6 @@ bool set_mode(Mode new_mode) {
 		}
 	}
 
-
-
 	if((new_mode == FULL_CONTROL || new_mode == YAW_CONTROL) && !is_calibrated){
 		send_err_message(FIRST_CALIBRATE);
 		return false;
@@ -150,7 +152,6 @@ bool set_mode(Mode new_mode) {
 
 	if(mode == CALIBRATE) {
 		log_sbias(sbias_array,s_bias); 	//logging s_bias only at end of calibration mode
-		//maybe we can make this a function call
 		Ybias = s_bias[5] << (Y_BIAS_UPDATE-SENSOR_PRECISION);
 		R_ACC_BIAS = DECREASE_SHIFT(s_bias[1]*R_ACC_RATIO,SENSOR_PRECISION);
 		Rbias = INCREASE_SHIFT(s_bias[3],C2_R_BIAS_UPDATE-SENSOR_PRECISION);
@@ -165,7 +166,7 @@ bool set_mode(Mode new_mode) {
 	log_event(event_array,X32_US_CLOCK,MODE_CHANGE,mode);
 
 	send_int_message(CURRENT_MODE,mode);
-	sprintf(message, "Succesfully changed to mode: >%i< ", new_mode);
+	sprintf(message, "Succesfully changed to mode %i", new_mode);
 	send_term_message(message);
 	return true;
 }
@@ -250,19 +251,19 @@ void trim(char c){
 			break;
 		case JS_INFL_R_UP:
 			if(mode == MANUAL) R_amp++;
-			if(mode > MANUAL) RJS_TO_ANGLE_RATIO+=20;
+			if(mode > MANUAL) RJS_TO_ANGLE_RATIO += 20;
 			break;
 		case JS_INFL_R_DOWN:
 			if(mode == MANUAL) R_amp--;
-			if(mode > MANUAL) RJS_TO_ANGLE_RATIO-=20;
+			if(mode > MANUAL) RJS_TO_ANGLE_RATIO -= 20;
 			break;
 		case JS_INFL_P_UP:
 			if(mode == MANUAL) P_amp++;
-			if(mode > MANUAL) PJS_TO_ANGLE_RATIO+=20;
+			if(mode > MANUAL) PJS_TO_ANGLE_RATIO += 20;
 			break;
 		case JS_INFL_P_DOWN:
 			if(mode == MANUAL) P_amp--;
-			if(mode > MANUAL) PJS_TO_ANGLE_RATIO-=20;
+			if(mode > MANUAL) PJS_TO_ANGLE_RATIO -= 20;
 			break;
 		case JS_INFL_Y_UP:
 			if(mode == MANUAL) Y_amp++;
@@ -277,10 +278,11 @@ void trim(char c){
 	}
 }
 
+/* Processes special requests for logging and telemetery
+ * Author: Alessio
+ */
 void special_request(char request){
-
 	switch(request){
-
 		case ESCAPE:
 			if(mode >= MANUAL) set_mode(PANIC);
 			break;
@@ -308,7 +310,6 @@ void special_request(char request){
 		case ASK_SENSOR_LOG:
 			if(mode==SAFE) send_logs(tm_array,sbias_array,sensor_array,control_array), send_logs_event(event_array);
 		   	else send_err_message(LOG_ONLY_IN_SAFE_MODE);
-
 			break;
 		case RESET_MOTORS: //reset
 			reset_motors();
@@ -318,7 +319,7 @@ void special_request(char request){
 
 /*
  * Process interrupts from serial connection
- * Author: Bastiaan Grisel
+ * Author: Bastiaan
  */
 void isr_rs232_rx(void)
 {
@@ -342,6 +343,9 @@ void isr_rs232_rx(void)
 	}
 }
 
+/* Records the bias of the sensor values
+ * Author: Bastiaan
+ */
 void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t s3, int32_t s4, int32_t s5) {
 	s_bias[0]  -= DECREASE_SHIFT(s_bias[0],SENSOR_PRECISION) - s0;
 	s_bias[1]  -= DECREASE_SHIFT(s_bias[1],SENSOR_PRECISION) - s1;
@@ -351,20 +355,17 @@ void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t 
 	s_bias[5]  -= DECREASE_SHIFT(s_bias[5],SENSOR_PRECISION) - s5;
 }
 
-#define min(one, two) ((one < two) ? one : two)
-
-#define max(one, two) ((one > two) ? one : two)
-
 /* ISR when new sensor readings are read from the QR
-*/
+ * Author: Henko, Alessio, Bastiaan
+ */
 void isr_qr_link(void)
 {
-	bool log_cond;
 	int timeTime, timeRead, timeLog, timeYaw, timeFull,timeAct, timestart = X32_US_CLOCK;
 	time_last_sensor_input = X32_ms_clock;
-	if(TIMEANALYSIS) timeTime = X32_US_CLOCK;
-/* get sensor and timestamp values */
 
+	if(mode >= YAW_CONTROL) ENABLE_INTERRUPT(INTERRUPT_OVERFLOW);
+
+	if(TIMEANALYSIS) timeTime = X32_US_CLOCK;
 
 	#ifdef DOUBLESENSORS
 		if(isr_qr_counter==1) {
@@ -379,35 +380,29 @@ void isr_qr_link(void)
 		s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
 	#endif /*DOUBLESENSORS*/
 
-
 	if(TIMEANALYSIS) timeRead = X32_US_CLOCK;
 
 	Y_stabilize = yawControl(s5,Y);
 
 	if(TIMEANALYSIS) timeYaw = X32_US_CLOCK;
-	//QR THREE IS FLIPPED!!
+
+	// Process the full-control loop once every two interrupts (635Hz)
 	if(isr_qr_counter++ == 1) {
 		isr_qr_counter = 0;
-
-
-		if(mode >= YAW_CONTROL) ENABLE_INTERRUPT(INTERRUPT_OVERFLOW);
 
 		#ifndef DOUBLESENSORS
 			R_stabilize = rollControl(s3,s1,R);
 			P_stabilize = pitchControl(s4,s0,P);
-		#endif
-		#ifdef DOUBLESENSORS
+		#else
 			R_stabilize = rollControl(ds3,ds1,R);
 			P_stabilize = pitchControl(ds4,ds0,P);
 		#endif
-
 
 		if(TIMEANALYSIS) timeFull = X32_US_CLOCK;
 
 		switch(mode) {
 			case CALIBRATE:
 				record_bias(s_bias, s0, s1, s2, s3, s4, s5);
-				//R_angle = P_angle = 0;
 				break;
 			case MANUAL:
 				set_motor_rpm(
@@ -417,7 +412,6 @@ void isr_qr_link(void)
 					max(Tmin, get_motor_offset(3) + T  + (R_amp*R) >> 2 - (Y_amp*Y) >> 2));
 				break;
 			case YAW_CONTROL:
-				// Calculate motor RPM
 				set_motor_rpm(
 					max(Tmin, get_motor_offset(0) + T  +P+Y_stabilize),
 					max(Tmin, get_motor_offset(1) + T-R  -Y_stabilize),
@@ -425,7 +419,6 @@ void isr_qr_link(void)
 					max(Tmin, get_motor_offset(3) + T+R  -Y_stabilize));
 				break;
 			case FULL_CONTROL:
-				// Calculate motor RPM
 				set_motor_rpm(
 					max(Tmin, get_motor_offset(0) + T   +P_stabilize	+Y_stabilize),
 					max(Tmin, get_motor_offset(1) + T		-R_stabilize  -Y_stabilize),
@@ -435,12 +428,13 @@ void isr_qr_link(void)
 			case PANIC:
 				nexys_display = 0xc1a0;
 
-				if(X32_ms_clock - mode_start_time < 2000) {
+				if(X32_ms_clock - mode_start_time < PANIC_TIME) {
 					set_motor_rpm(
 							min(PANIC_RPM, get_motor_rpm(0)),
 							min(PANIC_RPM, get_motor_rpm(1)),
 							min(PANIC_RPM, get_motor_rpm(2)),
-							min(PANIC_RPM, get_motor_rpm(3)));
+							min(PANIC_RPM, get_motor_rpm(3))
+						);
 				} else {
 					reset_motors();
 					set_mode(SAFE);
@@ -452,41 +446,39 @@ void isr_qr_link(void)
 
 		if(TIMEANALYSIS) timeAct = X32_US_CLOCK;
 
-  {
-		log_cond = (mode >= MANUAL && (always_log || !log_data_completed));
-			if(log_cond) {  //if always_log is false, it will perform only one logging
-					log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
-					if(mode == CALIBRATE) log_sbias(sbias_array,s_bias); 	//logging s_bias only in calibration mode
+		if(mode >= MANUAL && (always_log || !log_data_completed)) {  //if always_log is false, it will perform only one logging
+				log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
+				if(mode == CALIBRATE) log_sbias(sbias_array,s_bias); 	//logging s_bias only in calibration mode
 
-					if(mode >= YAW_CONTROL) DISABLE_INTERRUPT(INTERRUPT_OVERFLOW);
+				//in case of debug will log arbitrary values, so this function isn't called
+				if(!DEBUG) log_sensors(sensor_array, s0, s1, s2, s3, s4, s5,
+																			get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
 
-					//in case of debug will log arbitrary values, so this function isn't called
-					if(!DEBUG) log_sensors(sensor_array, s0, s1, s2, s3, s4, s5,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
-					log_control(mode, control_array, R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); 	//logging control parameters
-			}
+				log_control(mode, control_array, R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); 	//logging control parameters
+		}
 	}
 
-	}
-	if(TIMEANALYSIS){
+	if(TIMEANALYSIS) {
 		timeLog = X32_US_CLOCK;
-		if(isr_counter++ ==999){
+
+		if(isr_ta_counter++ == 999) {
 			int timefinish = X32_US_CLOCK;
 			int timeoffset = timeTime -timestart;
-			isr_counter =1;
+			isr_ta_counter =1;
 			sprintf(message, "\ntimeoffset = %4i, Read = %4i, \nYaw = %4i, Full = %4i, Act = %4i, Log = %4i, total = %4i",
 				timeoffset,timeRead-timeTime-timeoffset,timeYaw-timeRead-timeoffset,
 				timeFull-timeYaw-timeoffset, timeAct-timeFull-timeoffset,
 				timeLog-timeAct-timeoffset,timefinish-timestart-timeoffset*7);
 			send_term_message(message);
-			/*sprintf(message,"sending a very long (for example: debug-) message = %4i", X32_US_CLOCK-timefinish);
-			send_term_message(message);*/
 		}
 	}
+
 }
 
 /* Make the throttle scale non-linear
  * 0-45   = 0-450
  * 46-255 = 450-660
+ * Author: Bastiaan
  */
 int16_t scale_throttle(uint8_t throttle) {
 	if(throttle < 45) {
@@ -500,26 +492,21 @@ int16_t scale_throttle(uint8_t throttle) {
  * Author: Bastiaan
  */
 void packet_received(char control, PacketData data) {
-	//data = swap_byte_order(data);
 	if(control == 0) return;
-
-	//sprintf(message, "Packet Received: %c %c\n#", control, data.as_char);
-	//send_term_message(message);
 
 	if((mode < MANUAL ||mode == CALIBRATE) && !(control == MODE_CHANGE || control == ADJUST || control == SPECIAL_REQUEST)){
 		sprintf(message, "[%c %i] Change mode to operate the QR!\n", control, data.as_char);
 		send_term_message(message);
 		return;
 	}
+
 	if(control == MODE_CHANGE){
 		set_mode(data.as_char);
-		// logging happens inside the set_mode
 		return;
 	}
 
-		if(always_log || !log_data_completed)
-	  			log_event(event_array,X32_US_CLOCK,control,data.as_int8_t); //logging all the events
-
+	if(always_log || !log_data_completed)
+		log_event(event_array,X32_US_CLOCK,control,data.as_int8_t); //logging all the events
 
 	switch(control){
 		case JS_ROLL:
@@ -534,8 +521,6 @@ void packet_received(char control, PacketData data) {
 		case JS_LIFT:
 			T = scale_throttle(data.as_int8_t);
 			Tmin = T>>2;
-			//sprintf(message, "Throttle: %i",T);
-			//send_term_message(message);
 			break;
 		case ADJUST:
 			trim(data.as_int8_t);
@@ -563,14 +548,12 @@ void overflow_isr() {
 /* The startup routine.
  * Originally created by: Bastiaan
  */
-void setup()
-{
+void setup() {
 	int32_t c;
   char message[200];
 
 	/* Initialize Variables */
 	nexys_display = 0x00;
-  missed_packet_counter = 0;
 	R_angle = 0;
 	P_angle = 0;
 
@@ -613,8 +596,7 @@ void setup()
 /* Function that is called when the program terminates
  * Originally created by: Bastiaan
  */
-void quit()
-{
+void quit() {
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
 }
 
@@ -644,13 +626,11 @@ int check_alive_connection() {
 	return 1;
 }
 
-
-
-/*Send real-time feedback from the QR.
-Included: Timestamp mode sensors[6] RPM, control and signal proc chain values, telemetry.
-Author: Alessio*/
-void send_feedback()		//TODO: make this function parametric in order to put it in header file.
-{
+/* Send real-time feedback from the QR.
+ * Included: Timestamp mode sensors[6] RPM, control and signal proc chain values, telemetry.
+ * Author: Alessio
+ */
+void send_feedback() {
 	int sendStart = X32_US_CLOCK;
 	send_int_message(TIMESTAMP,X32_ms_clock);
 	send_int_message(CURRENT_MODE,mode);
@@ -702,16 +682,13 @@ void send_feedback()		//TODO: make this function parametric in order to put it i
 		send_int_message(JS_INFL_Y, 0);
 	}
 
-  //send_int_message(JS_INFL, )
-
 	if(DEBUG) sprintf(message, "time it takes to send all this feedback: %6i us",X32_US_CLOCK - sendStart);
 	if(DEBUG) send_term_message(message);
 }
 
-int32_t main(void)
-{
-	int feedback_is_send=0;
-	int PClinkisOK =0;
+int32_t main(void) {
+	int feedback_is_send = 0;
+	int PClinkisOK = 0;
 	setup();
 
 	// Main loop
