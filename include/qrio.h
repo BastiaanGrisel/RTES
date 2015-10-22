@@ -14,13 +14,11 @@
 #define USB_DEVICE0	"/dev/ttyUSB0" /* may need to change this */
 #define USB_DEVICE1	"/dev/ttyUSB1"
 #define WIFI_DEVICE 	"/dev/ttyUSB0" /* may need to change this */
+extern int fd_RS232;
 
 /* Open RS232 connection
  * Copy pasted by: Henko Aantjes
  */
-
-extern int fd_RS232;
-
 void rs232_open()
 {
   	char 	 *name;

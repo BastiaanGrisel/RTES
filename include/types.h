@@ -167,7 +167,7 @@ PacketData swap_byte_order(PacketData p) {
 	p2.as_bytes[1] = p.as_bytes[0];
 	return p2;
 }
-
+/*Author: Bastiaan*/
 char* mode_to_string(Mode m) {
 	switch(m) {
 		case SAFE: return "Safe";
