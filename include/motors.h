@@ -8,6 +8,7 @@
 #define X32_QR_a1 		peripherals[PERIPHERAL_XUFO_A1]
 #define X32_QR_a2 		peripherals[PERIPHERAL_XUFO_A2]
 #define X32_QR_a3 		peripherals[PERIPHERAL_XUFO_A3]
+#define get_motor_offset(i) (offset[i])
 
 int32_t offset[4] = {0};
 int32_t rpm[4] = {0};
@@ -19,8 +20,6 @@ void add_motor_offset(int32_t motor0, int32_t motor1, int32_t motor2, int32_t mo
 	offset[2] += motor2;
 	offset[3] += motor3;
 }
-
-#define get_motor_offset(i) (offset[i])
 
 bool motors_have_zero_rpm() {
 	int32_t i;

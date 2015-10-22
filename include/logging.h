@@ -23,8 +23,7 @@ extern char message[100] = {0};
 
 /***utils logging functions***/
 /*Standard function to send 32bit values in 2 different 16bits packets*/
-void send_highlow(int32_t val32)
-{
+void send_highlow(int32_t val32) {
   PacketData p1,p2;
   p1.as_uint16_t = val32 & 0x0000FFFF; //low
   p2.as_uint16_t = val32 >> 16; //high
@@ -51,41 +50,39 @@ void clear_log() {
 }
 
 /*Just for testing*/
-void init_array_test(int16_t tm_array[][3],int16_t sensor_array[][10], int16_t control_array[][5])
-{
+void init_array_test(int16_t tm_array[][3],int16_t sensor_array[][10], int16_t control_array[][5]) {
   	size_t i;
 
   	for(i=0; i < LOG_SIZE; i++)
     {
 
-      tm_array[i][0] = CLOCK >> 15;
-      tm_array[i][1] = CLOCK & 0x00007FFF;
-      tm_array[i][2] = 2;
+        tm_array[i][0] = CLOCK >> 15;
+        tm_array[i][1] = CLOCK & 0x00007FFF;
+        tm_array[i][2] = 2;
 
-   		sensor_array[i][0] = 1;
-   		sensor_array[i][1] = 600;
-   		sensor_array[i][2] = 255;
-   		sensor_array[i][3] = 500;
-   		sensor_array[i][4] = 345;
-   		sensor_array[i][5] = 400;
-   		sensor_array[i][6] = 0;
-      sensor_array[i][7] = 0;
-      sensor_array[i][8] = 0;
-      sensor_array[i][9] = 0;
+    	sensor_array[i][0] = 1;
+    	sensor_array[i][1] = 600;
+    	sensor_array[i][2] = 255;
+    	sensor_array[i][3] = 500;
+    	sensor_array[i][4] = 345;
+    	sensor_array[i][5] = 400;
+    	sensor_array[i][6] = 0;
+        sensor_array[i][7] = 0;
+        sensor_array[i][8] = 0;
+        sensor_array[i][9] = 0;
 
-      control_array[i][0] = 2;
-      control_array[i][1] = 2;
-      control_array[i][2] = 2;
-      control_array[i][3] = 250;
-      control_array[i][4] = 1000;
+        control_array[i][0] = 2;
+        control_array[i][1] = 2;
+        control_array[i][2] = 2;
+        control_array[i][3] = 250;
+        control_array[i][4] = 1000;
    }
 }
 
 
 /**** actual logging functions ****/
 //TM = time & mode
-void log_tm(int16_t tm_array[][3], int16_t timestamp, int16_t mode)
-{
+void log_tm(int16_t tm_array[][3], int16_t timestamp, int16_t mode) {
   tm_array[log_counter][0] = timestamp >> 15;
   tm_array[log_counter][1] = timestamp & 0x00007FFF;
   tm_array[log_counter][2] = mode;
@@ -100,8 +97,7 @@ void log_tm(int16_t tm_array[][3], int16_t timestamp, int16_t mode)
   }
 }
 
-void log_sbias(int16_t sbias_array[],int32_t s_bias[])
-{
+void log_sbias(int16_t sbias_array[],int32_t s_bias[]) {
   sbias_array[0] = s_bias[0];
   sbias_array[1] = s_bias[1];
   sbias_array[2] = s_bias[2];
@@ -133,36 +129,34 @@ void log_control(Mode mode, int16_t control_array[][5],int32_t R_stablize,
 void log_sensors(int16_t sensor_array[][10], int32_t s0, int32_t s1, int32_t s2, int32_t s3, int32_t s4, int32_t s5,
   int16_t rpm0, int16_t rpm1, int16_t rpm2, int16_t rpm3) {
 
-    	sensor_array[log_counter][0] = s0;
-    	sensor_array[log_counter][1] = s1;
-    	sensor_array[log_counter][2] = s2;
-    	sensor_array[log_counter][3] = s3;
-    	sensor_array[log_counter][4] = s4;
-    	sensor_array[log_counter][5] = s5;
+	sensor_array[log_counter][0] = s0;
+	sensor_array[log_counter][1] = s1;
+	sensor_array[log_counter][2] = s2;
+	sensor_array[log_counter][3] = s3;
+	sensor_array[log_counter][4] = s4;
+	sensor_array[log_counter][5] = s5;
 
-      sensor_array[log_counter][6] = rpm0;
-      sensor_array[log_counter][7] = rpm1;
-      sensor_array[log_counter][8] = rpm2;
-      sensor_array[log_counter][9] = rpm3;
+    sensor_array[log_counter][6] = rpm0;
+    sensor_array[log_counter][7] = rpm1;
+    sensor_array[log_counter][8] = rpm2;
+    sensor_array[log_counter][9] = rpm3;
 
 }
 
 
-void log_event(int16_t event_array[][4],int32_t timestamp, char control, int16_t value)
-{
-         event_array[event_counter][0] = timestamp >> 15; //high
-         event_array[event_counter][1] = timestamp & 0x00007FFF; //low
-         event_array[event_counter][2] = control;
-         event_array[event_counter][3] = value;
+void log_event(int16_t event_array[][4],int32_t timestamp, char control, int16_t value) {
+        event_array[event_counter][0] = timestamp >> 15; //high
+        event_array[event_counter][1] = timestamp & 0x00007FFF; //low
+        event_array[event_counter][2] = control;
+        event_array[event_counter][3] = value;
 
-         event_counter++;
-         event_counter%=EVENT_SIZE;
+        event_counter++;
+        event_counter%=EVENT_SIZE;
 
-          if((event_counter == 0) && (!always_log)){
-              send_err_message(LOG_FULL);
-              log_ev_completed = true;
-          }
-
+        if((event_counter == 0) && (!always_log)){
+            send_err_message(LOG_FULL);
+            log_ev_completed = true;
+        }
 }
 
 
@@ -205,28 +199,25 @@ void send_logs(int16_t tm_array[][3], int16_t sbias_array[], int16_t sensor_arra
 			send_term_message(message);
 		}
 
-	}//for i
-
-	send_term_message("LOGGING COMPLETED.");
+	}
 }
 
 //send logs about events coming from keyboard and JS
 //each line >>>>> "time_h time_l control value"
-void send_logs_event(int16_t event_array[][4])
-{
+void send_logs_event(int16_t event_array[][4]) {
    size_t i,j;
    PacketData p;
-
+   send_term_message("SENDING LOGEVENTS NOW.");
    for(i=0; i < EVENT_SIZE; i++)
    {
       for(j=0; j < 4; j++){
          p.as_uint16_t = event_array[i][j];
          send_message(LOG_EVENT, p);
-       }
+      }
 
        send_message(LOG_EV_NEW_LINE,p);
-   }//for
-
+   }
+   	send_term_message("LOGGING COMPLETED.");
 }
 
 #endif
