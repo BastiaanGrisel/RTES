@@ -44,7 +44,7 @@
 #define PANIC_RPM 400
 
 #define DEBUG 0
-#define TIMEANALYSIS 0
+#define TIMEANALYSIS 1
 
 
 /* Define global variables
@@ -447,21 +447,24 @@ void isr_qr_link(void)
 		}
 
 		if(mode >= YAW_CONTROL) DISABLE_INTERRUPT(INTERRUPT_OVERFLOW);
-		
+
 		if(TIMEANALYSIS) timeAct = X32_US_CLOCK;
 
-		if(always_log || !log_data_completed) {  //if always_log is false, it will perform only one logging
-		log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
+  {
+		bool log_cond = (mode >= MANUAL && (always_log || !log_data_completed));
+			if(log_cond) {  //if always_log is false, it will perform only one logging
+			log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
 
-				log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
-				if(mode == CALIBRATE) log_sbias(sbias_array,s_bias); 	//logging s_bias only in calibration mode
+					log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
+					if(mode == CALIBRATE) log_sbias(sbias_array,s_bias); 	//logging s_bias only in calibration mode
 
-				if(mode >= YAW_CONTROL) DISABLE_INTERRUPT(INTERRUPT_OVERFLOW);
+					if(mode >= YAW_CONTROL) DISABLE_INTERRUPT(INTERRUPT_OVERFLOW);
 
-				//in case of debug will log arbitrary values, so this function isn't called
-				if(!DEBUG) log_sensors(sensor_array, s0, s1, s2, s3, s4, s5,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
-				log_control(mode, control_array, R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); 	//logging control parameters
-		}
+					//in case of debug will log arbitrary values, so this function isn't called
+					if(!DEBUG) log_sensors(sensor_array, s0, s1, s2, s3, s4, s5,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
+					log_control(mode, control_array, R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); 	//logging control parameters
+			}
+	}
 
 	}
 	if(TIMEANALYSIS){
@@ -509,8 +512,9 @@ void packet_received(char control, PacketData data) {
 		return;
 	}
 
-	if(always_log || !log_ev_completed)
-  			log_event(event_array,X32_US_CLOCK,control,data.as_int8_t); //logging all the events
+		if(always_log || !log_data_completed)
+	  			log_event(event_array,X32_US_CLOCK,control,data.as_int8_t); //logging all the events
+
 
 	switch(control){
 		case MODE_CHANGE:

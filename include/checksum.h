@@ -9,14 +9,15 @@ unsigned char checksum(char control, PacketData packet_data)
 {
 	/*With 8-bits checksum there's always the issue of being insensitive to the order of the bytes.
 	This happens for example if we only compute a sum of the bytes.
-	The Fletcher checksum should avoid this problem */
+	The Fletcher checksum should avoid this problem
+	edit: now we have 16 bits available, this checksum should be improved*/
 
 	unsigned char sum1,sum2 ;
 	unsigned char data[3] = {0};
-  	int i;
+  size_t i;
 
 	data[0] = control;
-  	data[1] = packet_data.as_bytes[0];
+  data[1] = packet_data.as_bytes[0];
 	data[2] = packet_data.as_bytes[1];
 
 	sum1 = sum2 = 0;
@@ -29,13 +30,13 @@ unsigned char checksum(char control, PacketData packet_data)
 	}
 
 	/*In addition we can add this line to the sum2 value. If the bytes order is wrong, the XOR will produce
-	a different output	and we can detect that the order is wrong.*/
+	a different output	and we can detect the error.*/
 	return sum2 ^ data[0];
 }
 
-/*  Check if the checksums match and return a boolean value
-    Author: Alessio
-*/
+
+/*  Checks if the checksums match and return a boolean value
+    Author: Alessio*/
 bool check_packet(char control, PacketData data, unsigned char in_checksum)
 {
 	return checksum(control, data) == in_checksum;

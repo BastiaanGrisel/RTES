@@ -6,10 +6,10 @@ int main(void) {
 	char value[] = {1,2,222,'f','e',127,'e',0xF,17};
 
 
-  int i,j;
+  size_t i,j;
 	for(i=0; i < 9; i++)
 	{
-			printf("Checksum %i %i = %i\n",control[i],value[i],checksum(control[i],value[i]));
+			printf("Checksum %i %i = %i\n",control[i],value[i],checksum(control[i],ch2pd(value[i])));
 	}
 
 /*data[0] = 'M';

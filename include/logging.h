@@ -9,8 +9,8 @@
 
 #define CLOCK	peripherals[PERIPHERAL_US_CLOCK]
 
-#define LOG_SIZE 10000
-#define EVENT_SIZE 5
+#define LOG_SIZE 1000
+#define EVENT_SIZE 1000
 
 extern bool always_log;
 extern bool log_data_completed;
@@ -35,8 +35,8 @@ void send_highlow(int32_t val32)
 /*Zeroing all the log arrays. */
 void init_log_arrays(int16_t tm_array[][3], int16_t sbias_array[], int16_t sensor_array[][10],int16_t control_array[][5],int16_t event_array[][4]) {
   log_counter = event_counter = 0;
-
-  memset(tm_array,0,sizeof(tm_array[0][0]) *LOG_SIZE * 3); //memset functions is inlined by the compiler, so it's faster
+  //memset functions is inlined by the compiler, so it's faster
+  memset(tm_array,0,sizeof(tm_array[0][0]) *LOG_SIZE * 3);
   memset(sbias_array,0,sizeof(sbias_array[0]) *6);
   memset(sensor_array,0,sizeof(sensor_array[0][0]) *LOG_SIZE * 10);
   memset(control_array,0,sizeof(control_array[0][0]) *LOG_SIZE * 5);
@@ -53,7 +53,7 @@ void clear_log() {
 /*Just for testing*/
 void init_array_test(int16_t tm_array[][3],int16_t sensor_array[][10], int16_t control_array[][5])
 {
-  	int i;
+  	size_t i;
 
   	for(i=0; i < LOG_SIZE; i++)
     {
@@ -170,8 +170,7 @@ void log_event(int16_t event_array[][4],int32_t timestamp, char control, int16_t
 First line: CALIBRATION values
 Each line after will be >>>>>  "time_h  time_l  mode s0-s5  rpm0-rpm3  R_s  P_s  Y_s  R_angle  P_angle" */
 void send_logs(int16_t tm_array[][3], int16_t sbias_array[], int16_t sensor_array[][10], int16_t control_array[][5]) {
-	int i;
-	int j;
+	size_t i,j;
 	PacketData p;
 	//first line: CALIBRATION paramaters only
   for(i=0; i < 6; i++)
@@ -179,7 +178,6 @@ void send_logs(int16_t tm_array[][3], int16_t sbias_array[], int16_t sensor_arra
     p.as_uint16_t = sbias_array[i];
     send_message(LOG_MSG_PART,p);
   }
-
   send_control_message(LOG_MSG_NEW_LINE);
 
   for(i=0; i < LOG_SIZE; i++)
@@ -216,7 +214,7 @@ void send_logs(int16_t tm_array[][3], int16_t sbias_array[], int16_t sensor_arra
 //each line >>>>> "time_h time_l control value"
 void send_logs_event(int16_t event_array[][4])
 {
-   int i,j;
+   size_t i,j;
    PacketData p;
 
    for(i=0; i < EVENT_SIZE; i++)
