@@ -12,7 +12,7 @@ int PJS_TO_ANGLE_RATIO = 300;
 
 int		P_ACC_BIAS = 0;  /*set this in CALIBPATION mode*/
 int		P1_pitch = 7; // watch out! if P1_roll is higher then C2_P_BIAS_UPDATE then things will go wrong 5
-int		P2_pitch = 6; // watch out! if P2_roll is higher then C2_P_BIAS_UPDATE then things will go wrong 5
+int		P2_pitch = 5; // watch out! if P2_roll is higher then C2_P_BIAS_UPDATE then things will go wrong 5
 int P1_pitch_minor = 0;
 int P2_pitch_minor = 0;
 
