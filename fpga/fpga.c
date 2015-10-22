@@ -403,6 +403,8 @@ void isr_qr_link(void)
 		switch(mode) {
 			case CALIBRATE:
 				record_bias(s_bias, s0, s1, s2, s3, s4, s5);
+				R_angle = 0;
+				P_angle = 0;
 				break;
 			case MANUAL:
 				set_motor_rpm(
