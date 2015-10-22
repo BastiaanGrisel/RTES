@@ -207,28 +207,28 @@ void trim(char c){
 			decrease_P_yaw();
 			break;
 		case P1_ROLL_UP:
-			P1_roll++;
+			P1_roll_minor++;
 			break;
 		case P1_ROLL_DOWN:
-			P1_roll--;
+			P1_roll_minor--;
 			break;
 		case P2_ROLL_UP:
-			P2_roll++;
+			P2_roll_minor++;
 			break;
 		case P2_ROLL_DOWN:
-			P2_roll--;
+			P2_roll_minor--;
 			break;
 		case P1_PITCH_UP:
-			P1_pitch++;
+			P1_pitch_minor++;
 			break;
 		case P1_PITCH_DOWN:
-			P1_pitch--;
+			P1_pitch_minor--;
 			break;
 		case P2_PITCH_UP:
-			P2_pitch++;
+			P2_pitch_minor++;
 			break;
 		case P2_PITCH_DOWN:
-			P2_pitch--;
+			P2_pitch_minor--;
 			break;
 		case Y_FILTER_UP:
 		   Y_filter++;
@@ -678,11 +678,11 @@ void send_feedback()		//TODO: make this function parametric in order to put it i
 
 	send_int_message(P_YAW, P_yaw);
 
-  send_int_message(P1_ROLL, P1_roll);
-  send_int_message(P2_ROLL, P2_roll);
+  send_int_message(P1_ROLL, P1_roll_minor);
+  send_int_message(P2_ROLL, P2_roll_minor);
 
-  send_int_message(P1_PITCH, P1_pitch);
-  send_int_message(P2_PITCH, P2_pitch);
+  send_int_message(P1_PITCH, P1_pitch_minor);
+  send_int_message(P2_PITCH, P2_pitch_minor);
 
   send_int_message(FILTER_R, R_filter);
   send_int_message(FILTER_P, P_filter);
