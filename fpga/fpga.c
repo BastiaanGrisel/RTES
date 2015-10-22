@@ -359,6 +359,7 @@ void record_bias(int32_t s_bias[6], int32_t s0, int32_t s1, int32_t s2, int32_t 
 */
 void isr_qr_link(void)
 {
+	bool log_cond;
 	int timeTime, timeRead, timeLog, timeYaw, timeFull,timeAct, timestart = X32_US_CLOCK;
 	time_last_sensor_input = X32_ms_clock;
 	if(TIMEANALYSIS) timeTime = X32_US_CLOCK;
@@ -452,10 +453,8 @@ void isr_qr_link(void)
 		if(TIMEANALYSIS) timeAct = X32_US_CLOCK;
 
   {
-		bool log_cond = (mode >= MANUAL && (always_log || !log_data_completed));
+		log_cond = (mode >= MANUAL && (always_log || !log_data_completed));
 			if(log_cond) {  //if always_log is false, it will perform only one logging
-			log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
-
 					log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
 					if(mode == CALIBRATE) log_sbias(sbias_array,s_bias); 	//logging s_bias only in calibration mode
 
