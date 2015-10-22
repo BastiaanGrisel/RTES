@@ -6,8 +6,8 @@ int 	filtered_dY = 0; //
 #define	Y_BIAS_UPDATE 10 // update bias each sample with a fraction of 1/(2^Y_BIAS_UPDATE)
 int	Y_filter = 3; // simple filter that updates 1/2^Y_FILTER
 int 	P_yaw=10; // P = 2^4     Y_TO_ENGINE_SCALE
-int 	dY;
-int 	Y_stabilize;
+int 	dY =0;
+int 	Y_stabilize =0;
 int YJS_TO_ANGLE_RATIO = 2;
 
 #define increase_P_yaw() P_yaw++
