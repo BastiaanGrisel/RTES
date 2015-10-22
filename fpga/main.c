@@ -162,6 +162,7 @@ bool set_mode(Mode new_mode) {
 	reset_motors();
 	mode = new_mode;
 	mode_start_time = X32_ms_clock;
+	log_event(event_array,X32_US_CLOCK,MODE_CHANGE,mode);
 
 	send_int_message(CURRENT_MODE,mode);
 	sprintf(message, "Succesfully changed to mode: >%i< ", new_mode);
@@ -447,7 +448,7 @@ void isr_qr_link(void)
 		}
 
 		if(mode >= YAW_CONTROL) DISABLE_INTERRUPT(INTERRUPT_OVERFLOW);
-		
+
 		if(TIMEANALYSIS) timeAct = X32_US_CLOCK;
 
 		if(always_log || !log_data_completed) {  //if always_log is false, it will perform only one logging
@@ -503,9 +504,14 @@ void packet_received(char control, PacketData data) {
 	//sprintf(message, "Packet Received: %c %c\n#", control, data.as_char);
 	//send_term_message(message);
 
-	if(mode < MANUAL && !(control == MODE_CHANGE || control == ADJUST || control == SPECIAL_REQUEST)){
+	if((mode < MANUAL ||mode == CALIBRATE) && !(control == MODE_CHANGE || control == ADJUST || control == SPECIAL_REQUEST)){
 		sprintf(message, "[%c %i] Change mode to operate the QR!\n", control, data.as_char);
 		send_term_message(message);
+		return;
+	}
+	if(control == MODE_CHANGE){
+		set_mode(data.as_char);
+		// logging happens inside the set_mode
 		return;
 	}
 
@@ -513,9 +519,6 @@ void packet_received(char control, PacketData data) {
   			log_event(event_array,X32_US_CLOCK,control,data.as_int8_t); //logging all the events
 
 	switch(control){
-		case MODE_CHANGE:
-			set_mode(data.as_char);
-			break;
 		case JS_ROLL:
 			R = data.as_int8_t;
 			break;
