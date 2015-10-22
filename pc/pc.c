@@ -73,8 +73,7 @@ int main (int argc, char **argv)
 		/* Check keypress */
 		if ((c= getch()) != -1){
 			sendKeyData(c); // send a message if user gave input
-			if(c == KEY_MOUSE)
-				if(getmouse(&event) == OK)
+			if(c == KEY_MOUSE && getmouse(&event) == OK)
 					processMouse(event.bstate,event.y,event.x);
 		}
 
@@ -392,18 +391,24 @@ void sendKeyData(int c){
 
 			case Y_FILTER_UP:
 			  value = Y_FILTER_UP;
+				break;
 			case Y_FILTER_DOWN:
 			  value = Y_FILTER_DOWN;
+				break;
 
 			case R_FILTER_UP:
 				value = R_FILTER_UP;
+				break;
 			case R_FILTER_DOWN:
 				value = R_FILTER_DOWN;
+				break;
 
 			case P_FILTER_UP:
 				value = P_FILTER_UP;
+				break;
 			case P_FILTER_DOWN:
 				value = P_FILTER_DOWN;
+				break;
 
 			case ASK_MOTOR_RPM:
 				control = SPECIAL_REQUEST;
