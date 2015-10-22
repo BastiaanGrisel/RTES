@@ -60,7 +60,8 @@ void send_feedback_message(char message[])
 	send_control_message(FB_MSG_END);
 }
 
-/*Send int16_t messages with different control values*/
+/*Send int16_t messages with different control values
+Author: Alessio*/
 void send_int_message(char control,int16_t value) {
 	PacketData p;
 	p.as_uint16_t = value;
