@@ -76,16 +76,17 @@ Fifo	pc_msg_q;
 Mode mode = SAFE;
 int32_t mode_start_time = 0;
 
+/****LOG VARIABLES****/
 bool always_log = true;
 bool log_ev_completed = false;
 bool log_data_completed = false;
 
-//LOGGING ARRAYS
+//log arrays
 int16_t tm_array[LOG_SIZE][3];       //Timestamp and Mode
-int16_t sbias_array[6]; 					 //sbias
+int16_t sbias_array[6]; 					   //sbias
 int16_t sensor_array[LOG_SIZE][10];  //sensors + actuators
-int16_t control_array[LOG_SIZE][5]; //control chain
-int16_t event_array[LOG_EVENT][4]; //events: change mode, keys and js
+int16_t control_array[LOG_SIZE][5];  //control chain
+int16_t event_array[LOG_EVENT][4];   //events: change mode, keys and js
 
 // Author: Alessio
 void update_nexys_display() {

@@ -11,23 +11,22 @@ int fd_RS232, fd_js;
 int	axis[6];
 bool 	axisflags[6];
 int	button[12];
-
+//log files
 FILE 	*log_file;
 FILE 	*log_file_event;
-int 	timers[2];
 
+//communication
+int 	timers[2];
 char 	error_message[100];
 char 	received_chars[QR_INPUT_BUFFERSIZE];
 char 	terminal_message[QR_INPUT_BUFFERSIZE];
 int 	charpos = 0;
-
 Fifo	qr_msg_q;
 int 	in_packet_counter=0;
 int 	out_packet_counter=0;
 int 	ms_last_packet_sent;
 char 	last_out_message[4];
 struct 	timeval keep_alive;
-
 
 int 	sensors[6];
 int 	QR_r, QR_p = 0;
@@ -38,7 +37,7 @@ int 	RPM[4];
 Mode 	QRMode = SAFE;
 int 	loopcount = 0; // to calculate the FPS
 
-//***********
+/*************************************************************************/
 /* Main function that mainly consists of polling the different connections
  * which are: Keyboard, Joystick, RS232 (connection to QR)
  */
@@ -55,7 +54,7 @@ int main (int argc, char **argv)
 	initscr();
 	mousemask(BUTTON1_CLICKED, NULL);
 	init_colors();
-  	init_keyboard();
+  init_keyboard();
 	init_joystick();
 	rs232_open(fd_RS232);
 	init_log();
@@ -484,6 +483,7 @@ struct timeval sendJSData(struct timeval last_packet_time){
 			gettimeofday(&timenew,NULL);
 			int timediff = timenew.tv_usec+1000000*timenew.tv_sec-last_packet_time.tv_usec-1000000*last_packet_time.tv_sec;
 
+			//doesn't send JS values with a freq higher than 1000Hz
 			if(timediff < 1000 * 10){
 				return last_packet_time;
 			} else {

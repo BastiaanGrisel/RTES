@@ -10,7 +10,7 @@ unsigned char checksum(char control, PacketData packet_data)
 	/*With 8-bits checksum there's always the issue of being insensitive to the order of the bytes.
 	This happens for example if we only compute a sum of the bytes.
 	The Fletcher checksum should avoid this problem
-	edit: now we have 16 bits available, this checksum should be improved*/
+	edit: we extended the protocol to handle 16bits payloads so this checksum can be refined*/
 
 	unsigned char sum1,sum2 ;
 	unsigned char data[3] = {0};
