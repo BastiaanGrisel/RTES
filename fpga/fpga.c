@@ -403,6 +403,8 @@ void isr_qr_link(void)
 		switch(mode) {
 			case CALIBRATE:
 				record_bias(s_bias, s0, s1, s2, s3, s4, s5);
+				R_angle = 0;
+				P_angle = 0;
 				break;
 			case MANUAL:
 				set_motor_rpm(
@@ -644,10 +646,9 @@ void send_feedback() {
 	send_int_message(RPM2,get_motor_rpm(2));
 	send_int_message(RPM3,get_motor_rpm(3));
 
-	send_int_message(MP_ANGLE,DECREASE_SHIFT(P_angle,C2_P_BIAS_UPDATE-P_ANGLE));
-	send_int_message(MR_ANGLE,DECREASE_SHIFT(R_angle,C2_R_BIAS_UPDATE-R_ANGLE));
-
-	if(mode >= YAW_CONTROL) {
+	if(is_calibrated) {
+		 send_int_message(MP_ANGLE,DECREASE_SHIFT(P_angle,C2_P_BIAS_UPDATE-P_ANGLE));
+		 send_int_message(MR_ANGLE,DECREASE_SHIFT(R_angle,C2_R_BIAS_UPDATE-R_ANGLE));
 		 send_int_message(MR_STAB,R_stabilize);
 		 send_int_message(MP_STAB,P_stabilize);
 		 send_int_message(MY_STAB,Y_stabilize);

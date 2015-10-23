@@ -391,18 +391,24 @@ void sendKeyData(int c){
 
 			case Y_FILTER_UP:
 			  value = Y_FILTER_UP;
+				break;
 			case Y_FILTER_DOWN:
 			  value = Y_FILTER_DOWN;
+				break;
 
 			case R_FILTER_UP:
 				value = R_FILTER_UP;
+				break;
 			case R_FILTER_DOWN:
 				value = R_FILTER_DOWN;
+				break;
 
 			case P_FILTER_UP:
 				value = P_FILTER_UP;
+				break;
 			case P_FILTER_DOWN:
 				value = P_FILTER_DOWN;
+				break;
 
 			case ASK_MOTOR_RPM:
 				control = SPECIAL_REQUEST;
