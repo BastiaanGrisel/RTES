@@ -504,7 +504,7 @@ struct timeval sendJSData(struct timeval last_packet_time){
 Author: Alessio */
 void print_log_to_file(PacketData data)
 {
-	fprintf(log_file, "%hu ", data.as_uint16_t);
+	fprintf(log_file, "%i ", data.as_int16_t);
 }
 
 

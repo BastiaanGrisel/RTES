@@ -45,7 +45,7 @@
 #define PANIC_RPM 400
 #define PANIC_TIME 2000
 
-#define DEBUG 0
+#define DEBUG 1
 #define TIMEANALYSIS 0
 
 #define min(one, two) ((one < two) ? one : two)
@@ -304,6 +304,7 @@ void special_request(char request){
 			break;
 		case RESET_SENSOR_LOG:
 			clear_log();
+			init_log_arrays(tm_array,sbias_array,sensor_array,control_array,event_array); //zeroing
 			send_term_message("Resetted logs. New log will start now.");
 			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
 			break;
@@ -448,13 +449,15 @@ void isr_qr_link(void)
 
 		if(TIMEANALYSIS) timeAct = X32_US_CLOCK;
 
+		if(!DEBUG){
 		if(mode >= MANUAL && (always_log || !log_data_completed)) {  //if always_log is false, it will perform only one logging
 				log_tm(tm_array, X32_QR_timestamp,mode); 	// Logging timestamp and mode
 
 					//in case of debug will log arbitrary values, so this function isn't called
-					if(!DEBUG) log_sensors(sensor_array, s0, s1, s2, s3, s4, s5,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
+					log_sensors(sensor_array, s0, s1, s2, s3, s4, s5,get_motor_rpm(0),get_motor_rpm(1),get_motor_rpm(2),get_motor_rpm(3));
 					log_control(mode, control_array, R_stabilize,P_stabilize,Y_stabilize,R_angle,P_angle); 	//logging control parameters
 			}
+		}
 	}
 
 	if(TIMEANALYSIS) {
@@ -505,7 +508,7 @@ void packet_received(char control, PacketData data) {
 	}
 
 	if(always_log || !log_data_completed)
-		log_event(event_array,X32_US_CLOCK,control,data.as_int8_t); //logging all the events
+		log_event(event_array,X32_QR_timestamp,control,data.as_int8_t); //logging all the events
 
 	switch(control){
 		case JS_ROLL:
@@ -563,7 +566,7 @@ void setup() {
 
 	fifo_init(&pc_msg_q);
 
-  if(DEBUG) init_array_test(tm_array,sensor_array,control_array);
+  if(DEBUG) init_array_test(tm_array,sbias_array,sensor_array,control_array);
 
 	/* Prepare Interrupts */
 

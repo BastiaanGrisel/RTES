@@ -9,8 +9,8 @@
 
 #define CLOCK	peripherals[PERIPHERAL_US_CLOCK]
 
-#define LOG_SIZE 10000
-#define EVENT_SIZE 1000
+#define LOG_SIZE 7000
+#define EVENT_SIZE 2000
 
 extern bool always_log;
 extern bool log_data_completed;
@@ -50,23 +50,45 @@ void clear_log() {
 }
 
 /*Just for testing*/
-void init_array_test(int16_t tm_array[][3],int16_t sensor_array[][10], int16_t control_array[][5]) {
+void init_array_test(int16_t tm_array[][3],int16_t sbias_array[], int16_t sensor_array[][10], int16_t control_array[][5]) {
   	size_t i;
+    size_t j;
 
-  	for(i=0; i < LOG_SIZE; i++)
+    for(i=0; i < 6; i++)
     {
+      sbias_array[i] = i+500;
+    }
 
-        tm_array[i][0] = CLOCK >> 15;
+
+      for(i=0; i < LOG_SIZE; i++)
+      {
+        for(j=0; j < 3; j++){
+          tm_array[i][j] = i+400;
+        }
+
+    		for(j = 0; j < 10; j++) {
+    		 sensor_array[i][j] = i+400;
+
+    		}
+
+        for(j = 0; j < 5; j++) {
+          control_array[i][j] = i;
+        }
+      }
+
+
+
+    /*    tm_array[i][0] = CLOCK >> 15;
         tm_array[i][1] = CLOCK & 0x00007FFF;
         tm_array[i][2] = 2;
 
-    	sensor_array[i][0] = 1;
-    	sensor_array[i][1] = 600;
-    	sensor_array[i][2] = 255;
-    	sensor_array[i][3] = 500;
-    	sensor_array[i][4] = 345;
-    	sensor_array[i][5] = 400;
-    	sensor_array[i][6] = 0;
+      	sensor_array[i][0] = 1;
+      	sensor_array[i][1] = 600;
+      	sensor_array[i][2] = 255;
+      	sensor_array[i][3] = 500;
+      	sensor_array[i][4] = 345;
+      	sensor_array[i][5] = 400;
+      	sensor_array[i][6] = 0;
         sensor_array[i][7] = 0;
         sensor_array[i][8] = 0;
         sensor_array[i][9] = 0;
@@ -75,14 +97,14 @@ void init_array_test(int16_t tm_array[][3],int16_t sensor_array[][10], int16_t c
         control_array[i][1] = 2;
         control_array[i][2] = 2;
         control_array[i][3] = 250;
-        control_array[i][4] = 1000;
+        control_array[i][4] = 1000; */
    }
-}
+
 
 
 /**** actual logging functions ****/
 //TM = time & mode
-void log_tm(int16_t tm_array[][3], int16_t timestamp, int16_t mode) {
+void log_tm(int16_t tm_array[][3], int32_t timestamp, int16_t mode) {
   tm_array[log_counter][0] = timestamp >> 15;
   tm_array[log_counter][1] = timestamp & 0x00007FFF;
   tm_array[log_counter][2] = mode;
@@ -119,9 +141,9 @@ void log_control(Mode mode, int16_t control_array[][5],int32_t R_stablize,
        control_array[log_counter][0] = R_stablize;
        control_array[log_counter][1] = P_stabilize;
        control_array[log_counter][2] = Y_stabilize;
-       //9 stands for the exact shift we use in the control loops
-       control_array[log_counter][3] = DECREASE_SHIFT(R_angle,9);
-       control_array[log_counter][4] = DECREASE_SHIFT(P_angle,9);
+       //7 stands for the exact shift we use in the control loops
+       control_array[log_counter][3] = DECREASE_SHIFT(R_angle,7);
+       control_array[log_counter][4] = DECREASE_SHIFT(P_angle,7);
       }
 
 }
@@ -138,10 +160,10 @@ void log_sensors(int16_t sensor_array[][10], int32_t s0, int32_t s1, int32_t s2,
 	sensor_array[log_counter][4] = s4;
 	sensor_array[log_counter][5] = s5;
 
-    sensor_array[log_counter][6] = rpm0;
-    sensor_array[log_counter][7] = rpm1;
-    sensor_array[log_counter][8] = rpm2;
-    sensor_array[log_counter][9] = rpm3;
+  sensor_array[log_counter][6] = rpm0;
+  sensor_array[log_counter][7] = rpm1;
+  sensor_array[log_counter][8] = rpm2;
+  sensor_array[log_counter][9] = rpm3;
 }
 
 
@@ -175,30 +197,30 @@ void send_logs(int16_t tm_array[][3], int16_t sbias_array[], int16_t sensor_arra
   }
   send_control_message(LOG_MSG_NEW_LINE);
 
+
   for(i=0; i < LOG_SIZE; i++)
   {
-    for(j=0; j < 3; j++){
-      p.as_uint16_t = tm_array[i][j];
-      send_message(LOG_MSG_PART, p);
-    }
+      for(j=0; j < 3; j++){
+        p.as_uint16_t = tm_array[i][j];
+        send_message(LOG_MSG_PART, p);
+      }
 
-		for(j = 0; j < 10; j++) {
-			p.as_uint16_t = sensor_array[i][j];
-			send_message(LOG_MSG_PART, p);
-		}
+  		for(j = 0; j < 10; j++) {
+  			p.as_uint16_t = sensor_array[i][j];
+  			send_message(LOG_MSG_PART, p);
+  		}
 
-    for(j = 0; j < 5; j++) {
-      p.as_uint16_t = control_array[i][j];
-      send_message(LOG_MSG_PART, p);
-    //send_highlow(control_array[i][j]);
-    }
+      for(j = 0; j < 5; j++) {
+        p.as_uint16_t = control_array[i][j];
+        send_message(LOG_MSG_PART, p);
+      }
 
-		send_control_message(LOG_MSG_NEW_LINE);
+  		send_control_message(LOG_MSG_NEW_LINE);
 
-		if(i%(LOG_SIZE/100)==(LOG_SIZE/100)-1){
-			sprintf(message, "%i%%",i/100+1);
-			send_term_message(message);
-		}
+  		if(i%(LOG_SIZE/100)==(LOG_SIZE/100)-1){
+  			sprintf(message, "%i%%",i/100+1);
+  			send_term_message(message);
+  		}
 
 	}
 }
