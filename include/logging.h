@@ -102,7 +102,7 @@ void init_array_test(int16_t tm_array[][3],int16_t sbias_array[], int16_t sensor
 
 
 
-/**** actual logging functions ****/
+/**** Actual logging functions ****/
 //TM = time & mode
 void log_tm(int16_t tm_array[][3], int32_t timestamp, int16_t mode) {
   tm_array[log_counter][0] = timestamp >> 15;
@@ -182,6 +182,7 @@ void log_event(int16_t event_array[][4],int32_t timestamp, char control, int16_t
         }
 }
 
+/***Logging sending functions***/
 
 /*Sends all the logs.
 First line: CALIBRATION values

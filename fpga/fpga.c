@@ -45,7 +45,7 @@
 #define PANIC_RPM 400
 #define PANIC_TIME 2000
 
-#define DEBUG 1
+#define DEBUG 0
 #define TIMEANALYSIS 0
 
 #define min(one, two) ((one < two) ? one : two)
@@ -82,11 +82,11 @@ bool log_ev_completed = false;
 bool log_data_completed = false;
 
 //log arrays
+int16_t event_array[LOG_EVENT][4];   //events: change mode, keys and js
 int16_t tm_array[LOG_SIZE][3];       //Timestamp and Mode
 int16_t sbias_array[6]; 					   //sbias
 int16_t sensor_array[LOG_SIZE][10];  //sensors + actuators
 int16_t control_array[LOG_SIZE][5];  //control chain
-int16_t event_array[LOG_EVENT][4];   //events: change mode, keys and js
 
 // Author: Alessio
 void update_nexys_display() {

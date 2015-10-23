@@ -36,7 +36,7 @@ typedef union {
  */
 PacketData ch2pd(char in) {
 	PacketData p;
-	p.as_bytes[0] = in;
+  p.as_char = in;
 	return p;
 }
 
