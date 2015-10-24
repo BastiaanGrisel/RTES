@@ -5,15 +5,15 @@
 /* Perform an 8-bits checksum
    Author: Alessio */
 
-unsigned char checksum(char control, PacketData packet_data)
+uint8_t checksum(char control, PacketData packet_data)
 {
 	/*With 8-bits checksum there's always the issue of being insensitive to the order of the bytes.
 	This happens for example if we only compute a sum of the bytes. Another issue is that of the small
 	universe of cks values that a simple checksum provides.
 	The Fletcher checksum should avoid this problem*/
 
-	unsigned char sum1,sum2 ;
-	unsigned char data[3] = {0};
+	uint8_t sum1,sum2 ;
+	uint8_t data[3] = {0};
   size_t i;
 
 	data[0] = control;
