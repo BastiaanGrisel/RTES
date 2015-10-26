@@ -1,5 +1,5 @@
-#ifndef KEYSANDJS_H
-#define KEYSANDJS_H
+#ifndef PC_H
+#define PC_H
 
 #include <sys/ioctl.h>
 
@@ -29,7 +29,6 @@
 #define WIFI_DEVICE 	"/dev/ttyUSB0" /* may need to change this */
 
 #define QR_INPUT_BUFFERSIZE 1000
-#define TIMEOUT 150 //ms
 #define MAX_MSG_TIME 200000 //frames
 #define MAX_ERROR_MSG_TIME 200000 //frames
 //Number of line where to print in the window
@@ -44,6 +43,7 @@
 
 void init_keyboard(void);
 struct timeval updateFPS(struct timeval oldtime);
+void check_alive_connection(void);
 int joystickInit(void);
 void sendKeyData(int c);
 void processMouse(int button, int line, int x);
@@ -58,7 +58,6 @@ void check_msg_q(void);
 void col_on(int col);
 void col_off(int col);
 void exitmain(void);
-void check_alive_connection();
 
 void drawBase();
 void drawJS(int R, int P, int Y, int T);

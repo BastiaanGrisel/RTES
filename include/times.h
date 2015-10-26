@@ -1,8 +1,12 @@
+/*Author: Alessio*/
 #ifndef TIME_H
 #define TIME_H
 
 #include <sys/time.h>
 #include <sys/types.h>
+#include "PCmessage.h"
+
+#define TIMEOUT 150 //ms
 
 extern struct timeval keep_alive;
 extern int ms_last_packet_sent;

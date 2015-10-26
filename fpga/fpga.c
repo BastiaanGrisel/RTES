@@ -309,7 +309,7 @@ void special_request(char request){
 			X32_leds = X32_leds & 0x7F; // 01111111 = disable led 7
 			break;
 		case ASK_SENSOR_LOG:
-			if(mode==SAFE) send_logs(tm_array,sbias_array,sensor_array,control_array), send_logs_event(event_array);
+			if(mode==SAFE) send_data_logs(tm_array,sbias_array,sensor_array,control_array), send_event_logs(event_array);
 		   	else send_err_message(LOG_ONLY_IN_SAFE_MODE);
 			break;
 		case RESET_MOTORS: //reset
@@ -564,9 +564,9 @@ void setup() {
   log_data_completed = false;
 	init_log_arrays(tm_array,sbias_array,sensor_array,control_array,event_array);
 
-	fifo_init(&pc_msg_q);
-
   if(DEBUG) init_array_test(tm_array,sbias_array,sensor_array,control_array);
+
+	fifo_init(&pc_msg_q);
 
 	/* Prepare Interrupts */
 
@@ -613,7 +613,7 @@ bool flicker_fast() { return (X32_ms_clock % 100 < 20); }
  * otherwise panic() is called.
  * Author: Alessio
  */
-int check_alive_connection() {
+int check_alive_connection(void) {
 	if(X32_ms_last_packet == -1) return 0; //does not perform the check untill a new message arrives
 
 	// If a packet has not been received within the TIMEOUT interval, go to panic mode
@@ -632,7 +632,7 @@ int check_alive_connection() {
  * Included: Timestamp mode sensors[6] RPM, control and signal proc chain values, telemetry.
  * Author: Alessio
  */
-void send_feedback() {
+void send_feedback(void) {
 	int sendStart = X32_US_CLOCK;
 	send_int_message(TIMESTAMP,X32_ms_clock);
 	send_int_message(CURRENT_MODE,mode);

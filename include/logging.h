@@ -43,7 +43,7 @@ void init_log_arrays(int16_t tm_array[][3], int16_t sbias_array[], int16_t senso
 }
 
 
-void clear_log() {
+void clear_log(void) {
   always_log = false;
 	log_counter = 0;
   event_counter = 0;
@@ -187,7 +187,7 @@ void log_event(int16_t event_array[][4],int32_t timestamp, char control, int16_t
 /*Sends all the logs.
 First line: CALIBRATION values
 Each line after will be >>>>>  "time_h  time_l  mode s0-s5  rpm0-rpm3  R_s  P_s  Y_s  R_angle  P_angle" */
-void send_logs(int16_t tm_array[][3], int16_t sbias_array[], int16_t sensor_array[][10], int16_t control_array[][5]) {
+void send_data_logs(int16_t tm_array[][3], int16_t sbias_array[], int16_t sensor_array[][10], int16_t control_array[][5]) {
 	size_t i,j;
 	PacketData p;
 	//first line: CALIBRATION paramaters only
@@ -228,7 +228,7 @@ void send_logs(int16_t tm_array[][3], int16_t sbias_array[], int16_t sensor_arra
 
 //send logs about events coming from keyboard and JS
 //each line >>>>> "time_h time_l control value"
-void send_logs_event(int16_t event_array[][4]) {
+void send_event_logs(int16_t event_array[][4]) {
    size_t i,j;
    PacketData p;
    send_term_message("SENDING LOGEVENTS NOW.");

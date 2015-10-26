@@ -126,6 +126,20 @@ int main (int argc, char **argv)
 	return 0;
 }
 
+/* Checks if the PC has sent data in the last 200ms otherwise sends
+a packet to keep alive the connection.
+Author: Alessio */
+void check_alive_connection(void)
+{
+	gettimeofday(&keep_alive,NULL);
+	int current_ms = ((keep_alive.tv_usec+1000000*keep_alive.tv_sec) / 1000);
+	if(current_ms - ms_last_packet_sent > TIMEOUT)
+	{
+		pc_send_message(0,0);
+	}
+	return;
+}
+
 /* Calculate the mean loop frequency (100 loopcount mean)
  * Author: Henko Aantjes
  */
@@ -245,19 +259,7 @@ void init_log(void){
 	//fprintf(log_file,"Time_H Time_L Mode S0 S1 S2 S3 S4 S5 S6 RPM0 RPM1 RPM2 RPM3 R_Stable P_Stable Y_Stable R_Angle P_Angle\n");
 }
 
-/* Checks if the PC has sent data in the last 200ms otherwise sends
-a packet to keep alive the connection.
-Author: Alessio */
-void check_alive_connection()
-{
-	gettimeofday(&keep_alive,NULL);
-	int current_ms = ((keep_alive.tv_usec+1000000*keep_alive.tv_sec) / 1000);
-	if(current_ms - ms_last_packet_sent > TIMEOUT)
-	{
-		pc_send_message(0,0);
-	}
-	return;
-}
+
 
 void processMouse(int button, int line, int x){
 	if(button == BUTTON1_CLICKED){
@@ -500,10 +502,14 @@ struct timeval sendJSData(struct timeval last_packet_time){
 	}
 }
 
-/*Print log values to file, taking in account the endianess
+/*Print log to file taking into account the endianess.
+Edit: After the extending of the protocol it's no more necessary, but in cases
+of data that needs particular processing before printing, it's useful to have
+a proper function for that purpose.
 Author: Alessio */
 void print_log_to_file(PacketData data)
 {
+	//swap endianess function
 	fprintf(log_file, "%i ", data.as_int16_t);
 }
 
@@ -644,7 +650,9 @@ void packet_received(char control, PacketData data){
 	}
 }
 
-/*Displays the error message.
+/*Handles incoming error messages.
+The message will be later displayed on screen by
+specific drawing functions.
 Author: Alessio */
 print_error_message(Error err)
 {
@@ -688,6 +696,7 @@ print_error_message(Error err)
 
 	timers[1] = 0;
 }
+
 
 void check_msg_q(){
 	while(fifo_size(&qr_msg_q) >= 4) { // Check if there are one or more packets in the queue
