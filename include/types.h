@@ -109,9 +109,6 @@ PacketData ch2pd(char in) {
  *  QR->PC  *
  ************/
 
-/*Since these are codes used only by the main function (i.e. are not keys),
-shouldn't be cardinal ordered? Like A,B,C,ecc */
-#define TERMINAL_MSG_START '0'
 #define TERMINAL_MSG_PART '1'
 #define TERMINAL_MSG_FINISH '2'
 

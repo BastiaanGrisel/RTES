@@ -38,8 +38,7 @@ void send_long_message(char control, char message[]){
  * Author: Henko
  */
 void send_term_message(char message[]){
-	send_control_message(TERMINAL_MSG_START); // begin terminal message
-	send_long_message(TERMINAL_MSG_PART, message);
+	send_long_message(TERMINAL_MSG_PART, message); //send terminal message 
 	send_control_message(TERMINAL_MSG_FINISH); // end terminal message
 }
 

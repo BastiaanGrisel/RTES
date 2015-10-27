@@ -67,12 +67,12 @@ int main (int argc, char **argv)
 	refresh();
 
 	while(1) {
-		// Transform all data
 		check_alive_connection();
 
 		/* Check keypress */
 		if ((c= getch()) != -1){
 			sendKeyData(c); // send a message if user gave input
+			//check mouse click
 			if(c == KEY_MOUSE && getmouse(&event) == OK)
 					processMouse(event.bstate,event.y,event.x);
 		}
@@ -105,10 +105,10 @@ int main (int argc, char **argv)
 			}
 			break;
 		}
-
-		// Draw everything
+		//clean the terminal from old messages
 		clearMessages();
 
+		// Draw everything
 		drawMode(QRMode);
 		drawJS(axis[0],axis[1],axis[2],axis[3]);
 		drawSensors(sensors);
@@ -531,9 +531,6 @@ void packet_received(char control, PacketData data){
 	uint16_t value = swapped.as_uint16_t;
 
 	switch(control){
-		case TERMINAL_MSG_START: // start new qr terminal message (not necessary)
-			charpos = 0;
-			break;
 		case TERMINAL_MSG_PART: // characters of the terminal message
 			if(charpos<QR_INPUT_BUFFERSIZE)
 				received_chars[charpos++]= valueChar;
