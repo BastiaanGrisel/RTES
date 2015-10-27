@@ -9,8 +9,8 @@
 
 #define CLOCK	peripherals[PERIPHERAL_US_CLOCK]
 
-#define LOG_SIZE 7000
-#define EVENT_SIZE 2000
+#define LOG_SIZE 50
+#define EVENT_SIZE 20
 
 extern bool always_log;
 extern bool log_data_completed;

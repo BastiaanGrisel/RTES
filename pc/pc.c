@@ -6,7 +6,6 @@ int fd_RS232, fd_js;
 
 /* current axis and button readings
  */
-
 // Joystick
 int	axis[6];
 bool 	axisflags[6];
@@ -28,13 +27,16 @@ int 	ms_last_packet_sent;
 char 	last_out_message[4];
 struct 	timeval keep_alive;
 
+/*sensors and control variables*/
 int 	sensors[6];
 int 	QR_r, QR_p = 0;
 int 	QR_rs, QR_ps, QR_ys = 0;
 int		QR_pyaw, QR_p1roll, QR_p2roll, QR_p1pitch, QR_p2pitch, QR_filterr, QR_filterp, QR_filtery, QR_jsinflr, QR_jsinflp, QR_jsinfly;
 
+/*motors and mode*/
 int 	RPM[4];
 Mode 	QRMode = SAFE;
+
 int 	loopcount = 0; // to calculate the FPS
 
 /*************************************************************************/

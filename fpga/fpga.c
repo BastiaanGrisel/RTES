@@ -45,7 +45,7 @@
 #define PANIC_RPM 400
 #define PANIC_TIME 2000
 
-#define DEBUG 0
+#define DEBUG 1
 #define TIMEANALYSIS 0
 
 #define min(one, two) ((one < two) ? one : two)
@@ -163,7 +163,6 @@ bool set_mode(Mode new_mode) {
 	reset_motors();
 	mode = new_mode;
 	mode_start_time = X32_ms_clock;
-	log_event(event_array,X32_US_CLOCK,MODE_CHANGE,mode);
 
 	send_int_message(CURRENT_MODE,mode);
 	sprintf(message, "Succesfully changed to mode %i", new_mode);
@@ -508,7 +507,7 @@ void packet_received(char control, PacketData data) {
 	}
 
 	if(always_log || !log_data_completed)
-		log_event(event_array,X32_QR_timestamp,control,data.as_int8_t); //logging all the events
+		log_event(event_array,X32_US_CLOCK,control,data.as_int8_t); //logging all the events
 
 	switch(control){
 		case JS_ROLL:
