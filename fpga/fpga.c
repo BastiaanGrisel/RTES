@@ -45,7 +45,7 @@
 #define PANIC_RPM 400
 #define PANIC_TIME 2000
 
-#define DEBUG 1
+#define DEBUG 0
 #define TIMEANALYSIS 0
 
 #define min(one, two) ((one < two) ? one : two)
