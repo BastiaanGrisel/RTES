@@ -33,16 +33,5 @@ if(flag)
 			printf("Checksum %i %i %i= %i\n",control[i],val1[i],val2[i],checksum(control[i],pd));
 	}
 
-/*data[0] = 'M';
-	data[1] = '5';
-	control = 'M';
-	value = '5';
-	printf("Checksum M5(chars): %i\n", checksum(data,2));
-
-	control = 'M';
-	int value2 = 5;
-	// Int will get chopped up, do not just put an int into this function. This is just for testing purposes.
-	printf("Checksum M5(int): %i\n", checksum(control,value2));*/
-
 	return 0;
 }
