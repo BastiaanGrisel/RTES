@@ -7,7 +7,7 @@ This happens for example if we only compute a sum of the bytes. Another issue is
 universe of cks values that a simple checksum provides.
 The Fletcher checksum should avoid this problem*/
 
-/* Efficient implementation of an 8-bits checksum
+/* Efficient implementation of an 8-bits Fletcher checksum
    Author: Alessio */
 uint8_t checksum(char control, PacketData packet_data)
 {
@@ -19,13 +19,14 @@ uint8_t checksum(char control, PacketData packet_data)
 	sum1 = ( (sum1 + control) ) & 0xFF + (sum1 >> 8);
 	sum2 = ( (sum2 + sum1) ) & 0xFF + (sum2 >> 8);
 
-
 	/*Loop on the payload.  The shifts are way more efficient than division,
 	  and guarantee reduces the sums modulo 255*/
 	for(i=0; i < PAYLOAD_LENGTH; i++)
 	{
-		sum1 = ( (sum1 + packet_data.as_bytes[i]) ) & 0xFF + (sum1 >> 8);
-		sum2 = ( (sum2 + sum1) ) & 0xFF + (sum2 >> 8);
+		sum2 += sum1 += packet_data.as_bytes[i];
+
+		sum1 = (sum1 & 0xFF) + (sum1 >> 8);
+		sum2 = (sum2  & 0xFF) + (sum2 >> 8);
 	}
 
   /*after the previous calculations are in the range 1-0x1FE and thus an overflow is present.

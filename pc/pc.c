@@ -505,13 +505,13 @@ struct timeval sendJSData(struct timeval last_packet_time){
 }
 
 /*Print log to file taking into account the endianess.
-Edit: After the extending of the protocol it's no more necessary, but in cases
+Edit: After the extension of the protocol this is no more necessary, but in cases
 of data that needs particular processing before printing, it's useful to have
 a proper function for that purpose.
 Author: Alessio */
 void print_log_to_file(PacketData data)
 {
-	//swap endianess function
+	//swap endianess calculations here
 	fprintf(log_file, "%i ", data.as_int16_t);
 }
 
